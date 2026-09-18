@@ -287,7 +287,7 @@ export function CreateAuctionModal({
       console.warn("Create auction notice:", err);
       const errStr = String(err?.message || "") + " " + JSON.stringify(err?.logs || []) + " " + String(err);
       
-      if (errStr.includes("already in use") || errStr.includes("custom program error: 0x0")) {
+      if (errStr.includes("already in use") || errStr.includes("custom program error: 0x0") || errStr.includes("unknown signer")) {
         // Clear previous round bids for this auction/mint
         clearBidsForAuction(auctionPda.toBase58());
         clearBidsForAuction(artwork.mintAddress);
