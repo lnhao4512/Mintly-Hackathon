@@ -238,11 +238,11 @@ export function CreateAuctionModal({
 
       instructions.forEach((instruction) => tx.add(instruction));
 
-      // Sign with escrow Keypair
-      tx.partialSign(escrowNftAccount);
-
       // Sign with user's wallet
       const signedTx = await wallet.signTransaction(tx);
+      // Sign with escrow Keypair to guarantee both signatures exist
+      signedTx.partialSign(escrowNftAccount);
+
       const signature = await connection.sendRawTransaction(signedTx.serialize(), {
         skipPreflight: false,
         maxRetries: 3,

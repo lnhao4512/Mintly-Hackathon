@@ -175,7 +175,7 @@ export async function mintNFT(
   onProgress?.("confirming");
 
   try {
-    const signature = await wallet.sendTransaction(tx, connection);
+    const signature = await wallet.sendTransaction(tx, connection, { signers: [mintKeypair] });
     await connection.confirmTransaction(signature, "confirmed");
     onProgress?.("success");
 

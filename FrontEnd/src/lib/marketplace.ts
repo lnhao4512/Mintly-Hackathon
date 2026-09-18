@@ -161,8 +161,8 @@ export async function createListingOnChain(
     lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
   }).add(ix);
 
-  tx.partialSign(escrowNftAccount);
   const signedTx = await wallet.signTransaction!(tx);
+  signedTx.partialSign(escrowNftAccount);
   const signature = await connection.sendRawTransaction(signedTx.serialize(), {
     skipPreflight: false,
   });
@@ -267,13 +267,12 @@ export async function createAuctionOnChain(
 
   instructions.forEach((i) => tx.add(i));
 
-  // Sign with escrow Keypair
-  tx.partialSign(escrowNftAccount);
-
   if (!wallet.signTransaction) {
     throw new Error("Ví không hỗ trợ ký giao dịch");
   }
   const signedTx = await wallet.signTransaction(tx);
+  signedTx.partialSign(escrowNftAccount);
+
   const signature = await connection.sendRawTransaction(signedTx.serialize(), {
     skipPreflight: false,
     maxRetries: 3,
