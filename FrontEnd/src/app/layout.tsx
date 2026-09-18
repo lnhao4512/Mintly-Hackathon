@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "MINTLY — On-Chain Solana Marketplace",
   description:
     "MINTLY is a decentralized marketplace for digital ownership on Solana. Discover, auction, and trade provenance-backed digital artifacts.",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

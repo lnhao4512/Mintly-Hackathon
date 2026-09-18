@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpIcon } from "@/components/ui/Icons";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
@@ -13,10 +14,20 @@ export function Footer() {
   return (
     <footer className="border-t border-[rgba(68,71,72,0.2)] bg-[#0a0d10] px-6 pb-20 pt-20 md:px-16">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-5 md:max-w-[320px]">
-          <p className="font-display text-[32px] leading-10 text-text">MINTLY</p>
+        <div className="flex flex-col gap-4 md:max-w-[320px]">
+          <div className="flex items-center gap-3">
+            <div className="relative size-10 overflow-hidden rounded-xl border border-white/15 bg-[#1f2b23] shadow-inner">
+              <Image
+                src="/logo.png"
+                alt="MINTLY Logo"
+                fill
+                className="object-cover"
+              />
+            </div>
+            <p className="font-display text-[30px] leading-none text-text">MINTLY</p>
+          </div>
           <p className="eyebrow leading-4 text-text-dim">
-            © 2024 MINTLY.
+            © 2026 MINTLY.
             <br />
             {t("footer.tagline")}
           </p>

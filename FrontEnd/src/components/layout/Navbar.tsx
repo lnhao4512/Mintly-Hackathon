@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { SearchIcon, CollectionIcon } from "@/components/ui/Icons";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
@@ -79,9 +80,20 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="font-display text-[24px] leading-10 tracking-[-1.2px] text-text sm:text-[28px] lg:text-[32px]"
+              className="group flex items-center gap-2.5 transition-transform duration-200 hover:scale-[1.02]"
             >
-              MINTLY
+              <div className="relative size-8 sm:size-9 overflow-hidden rounded-xl border border-white/15 bg-[#1f2b23] shadow-inner transition-transform group-hover:rotate-3">
+                <Image
+                  src="/logo.png"
+                  alt="MINTLY Logo"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <span className="font-display text-[22px] leading-none tracking-[-1px] text-text sm:text-[26px] lg:text-[28px]">
+                MINTLY
+              </span>
             </Link>
             <span className="hidden rounded-full border border-white/10 bg-white/[0.02] px-2 py-1 font-mono text-[8px] uppercase tracking-[0.22em] text-text-dim md:inline-flex">
               {t("nav.fieldStudio")}
