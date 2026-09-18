@@ -48,16 +48,4 @@ cd FrontEnd
 npm install
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-### Deploying to Vercel
-1. Import this repository into Vercel.
-2. In **Project Settings** $\rightarrow$ **General**:
-   - Set **Root Directory** to `FrontEnd`.
-   - Framework Preset: **Next.js**.
-3. In **Environment Variables**, add:
-   - `NEXT_PUBLIC_SOLANA_RPC_URL`: `https://api.devnet.solana.com`
-   - `NEXT_PUBLIC_SOLANA_NETWORK`: `devnet`
-   - `NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID`: `Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq`
-   - `NEXT_PUBLIC_PAYMENT_MINT`: `So11111111111111111111111111111111111111112`
-4. Click **Deploy**!
