@@ -193,6 +193,8 @@ export function CreateAuctionModal({
       }
 
       // 3. Add createAuction instruction
+      instructions.push(ix);
+
       // Check if auction PDA is already allocated on Devnet (secondary resale auction)
       const existingAuctionInfo = await connection.getAccountInfo(auctionPda);
       if (existingAuctionInfo && existingAuctionInfo.lamports > 0) {
@@ -238,14 +240,10 @@ export function CreateAuctionModal({
 
       instructions.forEach((instruction) => tx.add(instruction));
 
-      // Sign with user's wallet
-      const signedTx = await wallet.signTransaction(tx);
-      // Sign with escrow Keypair to guarantee both signatures exist
-      signedTx.partialSign(escrowNftAccount);
-
-      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      // Send transaction with wallet adapter + escrow Keypair signer
+      const signature = await wallet.sendTransaction(tx, connection, {
+        signers: [escrowNftAccount],
         skipPreflight: false,
-        maxRetries: 3,
       });
 
       await connection.confirmTransaction(
