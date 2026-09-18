@@ -37,6 +37,12 @@ export function saveMintedArtwork(record: MintedArtworkRecord) {
     // Save image to art prefix
     saveArtworkImage(record.mintAddress, record.imageUrl);
 
+    // If image is a large data URL, don't duplicate the massive string in multiple lists
+    const isLargeDataUrl = record.imageUrl && record.imageUrl.startsWith("data:") && record.imageUrl.length > 50000;
+    const compactRecord: MintedArtworkRecord = isLargeDataUrl
+      ? { ...record, imageUrl: record.imageUrl }
+      : record;
+
     // Save item to wallet portfolio list
     const walletKey = `${PORTFOLIO_PREFIX}${record.creator}`;
     const existingRaw = window.localStorage.getItem(walletKey);
@@ -45,24 +51,32 @@ export function saveMintedArtwork(record: MintedArtworkRecord) {
     // Check if already exists
     const idx = list.findIndex((x) => x.mintAddress === record.mintAddress);
     if (idx >= 0) {
-      list[idx] = record;
+      list[idx] = compactRecord;
     } else {
-      list.unshift(record);
+      list.unshift(compactRecord);
     }
 
-    window.localStorage.setItem(walletKey, JSON.stringify(list));
+    try {
+      window.localStorage.setItem(walletKey, JSON.stringify(list.slice(0, 20)));
+    } catch {
+      window.localStorage.setItem(walletKey, JSON.stringify(list.slice(0, 5)));
+    }
 
-    // Also maintain a global minted list
+    // Also maintain a global minted list (limit to 20 items to prevent QuotaExceededError)
     const globalKey = `${PORTFOLIO_PREFIX}all`;
     const globalRaw = window.localStorage.getItem(globalKey);
     const globalList: MintedArtworkRecord[] = globalRaw ? JSON.parse(globalRaw) : [];
     const gIdx = globalList.findIndex((x) => x.mintAddress === record.mintAddress);
     if (gIdx >= 0) {
-      globalList[gIdx] = record;
+      globalList[gIdx] = compactRecord;
     } else {
-      globalList.unshift(record);
+      globalList.unshift(compactRecord);
     }
-    window.localStorage.setItem(globalKey, JSON.stringify(globalList));
+    try {
+      window.localStorage.setItem(globalKey, JSON.stringify(globalList.slice(0, 20)));
+    } catch {
+      window.localStorage.setItem(globalKey, JSON.stringify(globalList.slice(0, 5)));
+    }
   } catch (err) {
     console.warn("Failed to persist minted artwork to localStorage:", err);
   }
