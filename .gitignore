@@ -1,0 +1,26 @@
+# Root gitignore for Mintly Monorepo (FrontEnd & BackEnd)
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Solana & Rust build artifacts
+test-ledger/
+BackEnd/target/
+.anchor/
+BackEnd/.anchor/
+
+# Next.js build artifacts
+FrontEnd/.next/
+FrontEnd/out/
+FrontEnd/build/
+.vercel/
+
+# Environment files (template or public config kept in code, secret envs ignored)
+.env*.local
+
+# Logs and OS files
+*.log
+.DS_Store
+*.pem
+*.tsbuildinfo

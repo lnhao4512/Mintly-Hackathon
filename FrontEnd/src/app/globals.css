@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0d10;
+  --bg-elevated: #12161b;
+  --surface: rgba(17, 20, 24, 0.8);
+  --text: #f2efe9;
+  --text-dim: #b9c0c8;
+  --text-dim-2: #d4d8db;
+  --accent: #c7b7ff;
+  --accent-strong: #d9ceff;
+  --accent-soft: rgba(199, 183, 255, 0.14);
+  --border: rgba(196, 202, 214, 0.14);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-glass: rgba(255, 255, 255, 0.09);
+  --success: #8ef7c0;
+  --amber: #f4d19b;
+  --rainbow-1: #ff7eb6;
+  --rainbow-2: #ffb86b;
+  --rainbow-3: #8ef7c0;
+  --rainbow-4: #6fe7ff;
+  --rainbow-5: #b7a5ff;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-dim-2: var(--text-dim-2);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-line: var(--border);
+  --color-line-subtle: var(--border-subtle);
+  --color-line-glass: var(--border-glass);
+  --color-success: var(--success);
+  --color-amber: var(--amber);
+
+  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-sans: "Be Vietnam Pro", sans-serif;
+}
+
+* {
+  border-color: var(--border);
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(255, 126, 182, 0.14), transparent 25%),
+    radial-gradient(circle at 15% 20%, rgba(111, 231, 255, 0.12), transparent 26%),
+    radial-gradient(circle at 85% 12%, rgba(183, 165, 255, 0.16), transparent 24%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), "Be Vietnam Pro", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rainbow-border {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(255, 126, 182, 0.12), rgba(183, 165, 255, 0.10), rgba(111, 231, 255, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 20px 50px -30px rgba(0, 0, 0, 0.9);
+}
+
+.rainbow-text {
+  background: linear-gradient(90deg, #ffd4a8 0%, #ff8ab6 20%, #c7b7ff 45%, #65e0ff 70%, #aaf2c0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(23, 25, 29, 0.82), rgba(12, 14, 18, 0.72));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+img {
+  user-select: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.eyebrow {
+  font-family: var(--font-sans), "Be Vietnam Pro", sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1.45;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.display {
+  font-family: var(--font-bricolage), "Bricolage Grotesque", sans-serif;
+  color: var(--text);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
