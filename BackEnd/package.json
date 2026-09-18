@@ -1,0 +1,25 @@
+{
+  "name": "mintly-solana-marketplace",
+  "version": "1.0.0",
+  "description": "Mintly Solana NFT Marketplace",
+  "main": "index.js",
+  "scripts": {
+    "test": "anchor test",
+    "lint": "prettier --write \"**/*.ts\""
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.95.3"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

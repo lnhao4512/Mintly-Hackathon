@@ -1,0 +1,22 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+mintly_marketplace = "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq"
+
+[programs.devnet]
+mintly_marketplace = "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test-flow = "npx ts-node scripts/test-flow.ts"
