@@ -1,11 +1,15 @@
 import { getDb } from "@/lib/mongodb";
+import type { ImageFeatures } from "@/lib/fingerprint/features";
 
-export interface ArtworkFingerprint {
-  fingerprint: string; // sha256, unique key
+export interface ArtworkFingerprint extends Partial<ImageFeatures> {
+  fingerprint: string; // sha256 of the exported artwork, unique key
   title: string;
   mint?: string;
-  vector: number[];
-  dominantColors: string[];
+  creator?: string;
+  /** L2-normalised CLIP embedding (512-d); absent when the browser could not run the model */
+  embedding?: number[] | null;
+  /** Legacy 16-d byte-sample vector (pre-perceptual-hash registry entries) */
+  vector?: number[];
   createdAt: number;
 }
 
