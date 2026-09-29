@@ -49,7 +49,7 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 |---|---|---|---|
 | 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | ✅ Đã nối thật vào chương trình Anchor (`place_bid`, `pay_balance`, `default_winner`) | Tiền phạt bùng kèo vào **quỹ xử phạt của sàn** (`config.forfeiture_recipient`), không tự động chuyển cho Seller |
 | 2 | Cơ chế Commit-Reveal đấu giá kín (SHA-256) | ⚙️ Có sẵn on-chain (`commit_bid.rs`, `reveal_bid.rs`) nhưng **không dùng trong luồng đấu giá hiện tại** | UI hiện tại hiển thị giá cao nhất công khai theo thời gian thực (English auction), không tương thích với mô hình "giấu giá tới khi hết giờ". Có thể làm tiếp ở bản v2 nếu muốn |
-| 3 | AI kiểm tra trùng lặp ảnh trước khi mint | ✅ Hoạt động | Là heuristic tự viết (SHA-256 cho trùng khớp tuyệt đối + vector đặc trưng lấy mẫu byte ảnh cho trùng khớp tương đối), không phải mô hình AI/perceptual-hash học sâu thật |
+| 3 | AI kiểm tra trùng lặp ảnh trước khi mint | ✅ Hoạt động | Đa tín hiệu: perceptual hash (pHash + dHash, nhận diện cả ảnh lật/cắt/resize/nén lại) + layout + màu + embedding CLIP chạy ngay trên trình duyệt. Chỉ cảnh báo, không chặn mint. Xem mục 5.1 |
 | 4 | NFT Passport + đấu giá lại nhiều vòng | ✅ Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |
 | 5 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | ✅ Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
 | 6 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
@@ -82,7 +82,10 @@ FrontEnd/
     data.ts          # đọc dữ liệu đấu giá/listing từ Solana
     artworkCache.ts  # cache MongoDB cho metadata tác phẩm & lịch sử bán (KHÔNG chứa giá/đấu giá)
     auction-crypto.ts# bí mật reveal bid + tiện ích commitment hash
-    visionSimilarity.ts # công cụ AI kiểm tra trùng lặp ảnh
+    visionSimilarity.ts # engine kiểm tra trùng lặp ảnh (hash + embedding)
+    ai.ts            # client: thu nhỏ ảnh, SHA-256, embedding CLIP trên trình duyệt
+    fingerprint/     # features.ts (sharp, pHash/dHash...), embedding.client.ts (CLIP)
+  src/data/site-fingerprints.json # fingerprint tính sẵn của tác phẩm trong public/assets
   src/lib/db/        # các module MongoDB (artworks, sales, bidSecrets, fingerprints)
   src/app/api/       # API route Next.js làm cầu nối tới MongoDB
 ```
@@ -126,6 +129,25 @@ anchor deploy         # deploy lên cluster khai báo trong Anchor.toml (mặc �
 
 Chương trình đã deploy sẵn ở địa chỉ `Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq` trên Devnet — không cần deploy lại nếu chỉ chạy thử FrontEnd.
 
+### 5.1. Kiểm tra trùng lặp ảnh (AI Similarity)
+
+Cách hoạt động (tối ưu cho Vercel, không chạy model nặng trong serverless function):
+
+1. **Trình duyệt** thu nhỏ ảnh ≤768px, tính SHA-256 và chạy **CLIP (ViT-B/32, int8)** bằng `@huggingface/transformers` → vector 512 chiều. Model (~90MB) tải một lần từ Hugging Face rồi được trình duyệt cache.
+2. Gửi thumbnail + SHA-256 + embedding tới `POST /api/ai/similarity`.
+3. **Server** (`sharp`) tính pHash, dHash (kể cả bản lật và các vùng cắt), layout 16×16, histogram màu, rồi đối chiếu với: catalogue có sẵn (`src/data/site-fingerprints.json`) + mọi NFT đã mint (MongoDB `artwork_fingerprints`).
+4. Điểm cuối = tín hiệu mạnh nhất trong hash / embedding / tổ hợp layout+màu. Ngưỡng: ≥75% cảnh báo cao, ≥40% trung bình. Kết quả phân loại: bản sao y hệt / ảnh chỉnh sửa / nhái phong cách.
+5. Trước khi mint, hệ thống quét lại đúng ảnh sắp mint và ghi pHash + điểm nguyên bản vào metadata NFT. Sau khi mint thành công, fingerprint được đăng ký (`action: "register"`).
+
+**Khi thêm/đổi ảnh trong `public/assets`**, tạo lại fingerprint (lần đầu sẽ tải model ~90MB) rồi commit file JSON:
+
+```bash
+cd FrontEnd
+npm run fingerprints
+```
+
+Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, API sẽ ưu tiên gọi `${URL}/analyze` (cùng định dạng response), lỗi thì quay về engine tích hợp.
+
 ---
 
 ## 6. Quy trình đấu giá (end-to-end)
@@ -142,7 +164,7 @@ Chương trình đã deploy sẵn ở địa chỉ `Cp7nRDpPothhBnSzLv8EmVGQcg4A
 ## 7. Hạn chế đã biết (để làm tiếp nếu phát triển thêm)
 
 - Chưa có test suite tự động cho chương trình Anchor.
-- AI kiểm tra trùng lặp là heuristic đơn giản (SHA-256 + vector byte-sampling), không phải mô hình học sâu — không chống được ảnh bị resize/crop/nén lại.
+- AI kiểm tra trùng lặp: chưa bắt được ảnh vừa lật vừa đổi màu, hoặc ảnh thêm viền dày; embedding do trình duyệt tính nên có thể bị giả mạo (chấp nhận được vì chỉ cảnh báo). So sánh đang duyệt tuyến tính — khi có hàng chục nghìn NFT nên chuyển sang MongoDB Atlas Vector Search. NFT mint trước bản nâng cấp chỉ khớp theo SHA-256.
 - Commit-reveal sealed-bid đã có sẵn on-chain nhưng chưa được tích hợp vào UI đấu giá (đang dùng mô hình đấu giá công khai kiểu English auction).
 - Chưa có UI hủy listing (`cancel_listing`) — chỉ có hủy auction.
 

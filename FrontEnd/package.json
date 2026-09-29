@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "fingerprints": "node --experimental-strip-types --no-warnings scripts/build-site-fingerprints.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
+    "@huggingface/transformers": "^4.3.0",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.5.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
@@ -27,7 +29,8 @@
     "pngjs": "^7.0.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "rpc-websockets": "^10.0.1"
+    "rpc-websockets": "^10.0.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

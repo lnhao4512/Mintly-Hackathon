@@ -45,7 +45,8 @@ export function createNftMetadata(
   description: string,
   imageUrl: string,
   creatorAddress: string,
-  properties?: NftProperties
+  properties?: NftProperties,
+  extraAttributes: NftMetadata["attributes"] = []
 ): NftMetadata {
   return {
     name: title || "Untitled Opus",
@@ -55,6 +56,7 @@ export function createNftMetadata(
     attributes: [
       { trait_type: "Medium", value: "Digital" },
       { trait_type: "Platform", value: "MINTLY" },
+      ...extraAttributes,
     ],
     properties: properties ?? {
       files: [{ uri: imageUrl, type: "image/png" }],
@@ -100,14 +102,15 @@ export async function mintNFT(
   description: string,
   creator: string,
   properties?: NftProperties,
-  onProgress?: (step: "preparing" | "awaiting-wallet" | "confirming" | "success") => void
+  onProgress?: (step: "preparing" | "awaiting-wallet" | "confirming" | "success") => void,
+  extraAttributes?: NftMetadata["attributes"]
 ): Promise<{ signature: string; mintAddress: string; metadataUri: string; metadata: NftMetadata; proof: CreationProof }> {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error("Wallet not connected");
   }
 
   const creatorAddress = creator || wallet.publicKey.toBase58();
-  const metadataPayload = createNftMetadata(title, description, base64Image, creatorAddress, properties);
+  const metadataPayload = createNftMetadata(title, description, base64Image, creatorAddress, properties, extraAttributes);
 
   const proof = await createArtworkProof({
     base64Image,

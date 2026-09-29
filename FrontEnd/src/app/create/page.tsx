@@ -11,7 +11,7 @@ import { CanvasToolbar } from "@/components/canvas/CanvasToolbar";
 import { MintModal } from "@/components/canvas/MintModal";
 import { mintNFT } from "@/lib/mint";
 import { useI18n } from "@/lib/i18n";
-import { analyzeArtworkSimilarity, registerMintedArtworkAI, type ArtworkSimilarityResult } from "@/lib/ai";
+import { analyzeArtworkSimilarity, registerMintedArtworkAI, type AiStage, type ArtworkSimilarityResult } from "@/lib/ai";
 import { saveMintedArtwork } from "@/lib/artworkCache";
 
 export default function CreatorStudioPage() {
@@ -36,13 +36,20 @@ export default function CreatorStudioPage() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [aiCheck, setAiCheck] = useState<ArtworkSimilarityResult | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
+  const [aiStage, setAiStage] = useState<AiStage | null>(null);
+  const aiStageLabel: Record<AiStage, string> = {
+    preparing: "Đang chuẩn bị ảnh...",
+    "loading-model": "Đang tải mô hình AI (chỉ lần đầu)...",
+    embedding: "AI đang phân tích hình ảnh...",
+    comparing: "Đang đối chiếu với kho tác phẩm...",
+  };
 
   const runAiSimilarityCheck = useCallback(async () => {
     setAiChecking(true);
     try {
       const base64Data = await actions.exportToBase64();
       if (base64Data) {
-        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement });
+        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage);
         setAiCheck(result);
       }
     } catch (error) {
@@ -114,7 +121,7 @@ export default function CreatorStudioPage() {
       setPreviewUrl(base64Data);
       setAiChecking(true);
       try {
-        setAiCheck(await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }));
+        setAiCheck(await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage));
       } catch (error) {
         console.error("AI similarity check failed:", error);
       } finally {
@@ -131,6 +138,16 @@ export default function CreatorStudioPage() {
       const base64Data = await actions.exportToBase64();
       if (!base64Data) throw new Error("Failed to export canvas");
 
+      // Final check on the exact pixels being minted; the fingerprint is written into the NFT
+      // metadata (and therefore into the creation proof) so provenance order can be proven.
+      const finalCheck = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }).catch(() => null);
+      const provenanceAttributes = finalCheck?.perceptualHash
+        ? [
+            { trait_type: "Perceptual Hash", value: finalCheck.perceptualHash },
+            { trait_type: "Originality Score", value: `${finalCheck.originalityScore ?? ""}` },
+          ]
+        : [];
+
       const result = await mintNFT(
         connection,
         wallet,
@@ -143,7 +160,8 @@ export default function CreatorStudioPage() {
           category: "image",
           creators: [{ address: publicKey.toBase58(), share: 100 }],
         },
-        onProgress
+        onProgress,
+        provenanceAttributes
       );
 
       // Only now index and store artwork fingerprint into AI registry for copyright protection
@@ -422,7 +440,7 @@ export default function CreatorStudioPage() {
               {aiChecking ? (
                 <div className="flex flex-col items-center justify-center py-4 gap-2 text-xs text-text-dim">
                   <div className="size-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-                  <span className="text-[11px] uppercase tracking-wider">{t("ai.checking")}</span>
+                  <span className="text-[11px] uppercase tracking-wider">{aiStage ? aiStageLabel[aiStage] : t("ai.checking")}</span>
                 </div>
               ) : aiCheck ? (
                 <div className="space-y-3">
@@ -490,11 +508,40 @@ export default function CreatorStudioPage() {
                         <strong className="text-text">{aiCheck.closestMatch.title}</strong>
                       </div>
                       <div className="mt-1 flex justify-between text-[10px]">
-                        <span>Độ tương đồng thị giác:</span>
+                        <span>Độ tương đồng tổng hợp:</span>
                         <span className="text-accent">{aiCheck.similarity}%</span>
                       </div>
+                      {aiCheck.matchType && aiCheck.matchType !== "DISTINCT" && (
+                        <div className="mt-1 flex justify-between text-[10px]">
+                          <span>Loại trùng lặp:</span>
+                          <span className="text-text">
+                            {aiCheck.matchType === "EXACT"
+                              ? "Bản sao y hệt"
+                              : aiCheck.matchType === "NEAR_DUPLICATE"
+                                ? "Ảnh chỉnh sửa nhẹ"
+                                : "Nhái phong cách/bố cục"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* Per-signal breakdown */}
+                  <div className="grid grid-cols-4 gap-1.5 text-center">
+                    {[
+                      ["Hash", aiCheck.hashSimilarity],
+                      ["Bố cục", aiCheck.visualSimilarity],
+                      ["Màu", aiCheck.colorSimilarity],
+                      ["AI", aiCheck.embeddingAvailable ? aiCheck.semanticSimilarity : null],
+                    ].map(([label, value]) => (
+                      <div key={label as string} className="rounded-lg border border-white/5 bg-white/[0.02] px-1 py-1.5">
+                        <div className="font-mono text-[11px] font-bold text-text">
+                          {value == null ? "—" : `${value}%`}
+                        </div>
+                        <div className="text-[9px] uppercase tracking-wider text-text-dim">{label as string}</div>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Message & Proof Fingerprint */}
                   {aiCheck.message && (

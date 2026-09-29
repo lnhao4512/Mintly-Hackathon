@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { analyzeArtwork, registerMintedArtwork } from "@/lib/visionSimilarity";
+import { PublicKey } from "@solana/web3.js";
+import { analyzeArtwork, registerMintedArtwork, type AnalyzeInput } from "@/lib/visionSimilarity";
 
-interface SimilarityRequest {
+// sharp needs the Node.js runtime (not Edge).
+export const runtime = "nodejs";
+export const maxDuration = 30;
+
+interface SimilarityRequest extends Partial<AnalyzeInput> {
   action?: "analyze" | "register";
-  imageData?: string;
-  metadata?: { name?: string; description?: string; mint?: string };
 }
+
+const MAX_IMAGE_CHARS = 4_000_000; // Vercel rejects request bodies > 4.5MB anyway
 
 export async function POST(request: Request) {
   let body: SimilarityRequest;
@@ -15,13 +20,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.imageData || typeof body.imageData !== "string") {
-    return NextResponse.json({ error: "imageData is required" }, { status: 400 });
+  if (!body.imageData || typeof body.imageData !== "string" || !body.imageData.startsWith("data:image/")) {
+    return NextResponse.json({ error: "imageData (image data URL) is required" }, { status: 400 });
   }
+  if (body.imageData.length > MAX_IMAGE_CHARS) {
+    return NextResponse.json({ error: "imageData too large — send a downscaled thumbnail" }, { status: 413 });
+  }
+  if (body.sha256 !== undefined && !/^[0-9a-f]{64}$/.test(body.sha256)) {
+    return NextResponse.json({ error: "sha256 must be 64 hex chars" }, { status: 400 });
+  }
+
+  const input: AnalyzeInput = {
+    imageData: body.imageData,
+    sha256: body.sha256,
+    embedding: body.embedding,
+    metadata: body.metadata,
+  };
 
   // Handle explicit indexing after on-chain minting
   if (body.action === "register") {
-    const registered = await registerMintedArtwork(body.imageData, body.metadata);
+    try {
+      new PublicKey(body.metadata?.mint ?? "");
+    } catch {
+      return NextResponse.json({ error: "A valid metadata.mint address is required" }, { status: 400 });
+    }
+    const registered = await registerMintedArtwork(input);
     return NextResponse.json({
       success: registered,
       message: registered
@@ -30,25 +53,28 @@ export async function POST(request: Request) {
     });
   }
 
-  // If external AI vector provider URL is configured, optionally proxy
+  // Optional external analysis provider (must speak the same response shape)
   const externalProvider = process.env.MINTLY_AI_PROVIDER_URL;
   if (externalProvider) {
     try {
       const externalRes = await fetch(`${externalProvider}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageData: body.imageData, metadata: body.metadata }),
+        body: JSON.stringify(input),
         signal: AbortSignal.timeout(4000),
       });
       if (externalRes.ok) {
         return NextResponse.json(await externalRes.json());
       }
     } catch {
-      // Fall back to local perceptual AI engine
+      // Fall back to the built-in engine
     }
   }
 
-  // Execute real-time Computer Vision & AI Similarity analysis without persisting
-  const result = await analyzeArtwork(body.imageData, body.metadata);
-  return NextResponse.json(result);
+  try {
+    return NextResponse.json(await analyzeArtwork(input));
+  } catch (err) {
+    console.error("analyzeArtwork failed:", err);
+    return NextResponse.json({ error: "Could not analyse this image" }, { status: 422 });
+  }
 }
