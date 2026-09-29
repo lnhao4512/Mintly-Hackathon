@@ -20,6 +20,7 @@ import {
   saveBidSecretLocally,
   getSavedBidSecret,
   getAllSavedBidsForAuction,
+  hydrateBidSecretsForAuction,
 } from "@/lib/auction-crypto";
 import {
   commitBidOnChain,
@@ -33,7 +34,14 @@ import {
   claimDefaultWinnerPenalty,
 } from "@/lib/marketplace";
 import { getMarketplaceProgram } from "@/utils/anchor";
-import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, updateSecondaryAuctionBid } from "@/lib/artworkCache";
+import {
+  saveMintedArtwork,
+  markArtworkAsSold,
+  isAuctionSettled,
+  updateSecondaryAuctionBid,
+  hydrateSales,
+  hydrateSecondaryAuctions,
+} from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 
 type Phase =
@@ -82,7 +90,11 @@ export default function AuctionDetailPage({
       const [data, totalVol] = await Promise.all([
         fetchAuctionById(connection, id),
         fetchTotalAuctionBidsVolume(connection),
+        hydrateBidSecretsForAuction(id),
+        hydrateSales(),
+        hydrateSecondaryAuctions(),
       ]);
+      if (data?.id && data.id !== id) await hydrateBidSecretsForAuction(data.id);
       setAuction(data);
       setPlatformTotalBidsSol(totalVol);
 

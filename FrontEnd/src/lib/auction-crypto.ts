@@ -93,7 +93,10 @@ export async function computeCommitmentHash(
 }
 
 /**
- * Client-side local storage helper for user bid secrets.
+ * Bid secrets, persisted to MongoDB via /api/bids so a bidder never loses the
+ * secret needed to reveal a winning bid by clearing storage or switching device.
+ * An in-memory mirror below keeps existing synchronous render call sites working;
+ * hydrate it first with hydrateBidSecretsForAuction / hydrateBidSecretsForBidder / hydrateAllBidSecrets.
  */
 export interface SavedBidSecret {
   auctionPda: string;
@@ -105,93 +108,88 @@ export interface SavedBidSecret {
   timestamp: number;
 }
 
-const STORAGE_KEY = "mintly_bid_secrets_v1";
+let bidSecretsCache: SavedBidSecret[] = [];
 
-export function saveBidSecretLocally(item: SavedBidSecret): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const list: SavedBidSecret[] = raw ? JSON.parse(raw) : [];
-    // Replace if exists
-    const idx = list.findIndex(
-      (x) => x.auctionPda === item.auctionPda && x.bidder === item.bidder
-    );
-    if (idx >= 0) {
-      list[idx] = item;
-    } else {
-      list.push(item);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch (err) {
-    console.warn("Failed to store bid secret locally:", err);
-  }
+function upsertBidLocal(item: SavedBidSecret) {
+  const idx = bidSecretsCache.findIndex((x) => x.auctionPda === item.auctionPda && x.bidder === item.bidder);
+  if (idx >= 0) bidSecretsCache[idx] = item;
+  else bidSecretsCache.push(item);
 }
 
-export function getSavedBidSecret(
-  auctionPda: string,
-  bidder: string
-): SavedBidSecret | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const list: SavedBidSecret[] = JSON.parse(raw);
-    return (
-      list.find(
-        (x) =>
-          x.auctionPda.toLowerCase() === auctionPda.toLowerCase() &&
-          x.bidder.toLowerCase() === bidder.toLowerCase()
-      ) || null
-    );
-  } catch {
-    return null;
-  }
+export function saveBidSecretLocally(item: SavedBidSecret): void {
+  upsertBidLocal(item);
+  fetch("/api/bids", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(item),
+  }).catch((err) => console.warn("Failed to persist bid secret:", err));
+}
+
+export function getSavedBidSecret(auctionPda: string, bidder: string): SavedBidSecret | null {
+  return (
+    bidSecretsCache.find(
+      (x) => x.auctionPda.toLowerCase() === auctionPda.toLowerCase() && x.bidder.toLowerCase() === bidder.toLowerCase()
+    ) || null
+  );
 }
 
 export function getAllSavedBidsForAuction(auctionPda: string, minTimestampMs: number = 0): SavedBidSecret[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const list: SavedBidSecret[] = JSON.parse(raw);
-    return list
-      .filter((x) => {
-        const match = x.auctionPda.toLowerCase() === auctionPda.toLowerCase();
-        if (!match) return false;
-        if (minTimestampMs > 0 && x.timestamp && x.timestamp < minTimestampMs) return false;
-        return true;
-      })
-      .sort((a, b) => b.bidAmountSol - a.bidAmountSol);
-  } catch {
-    return [];
-  }
+  return bidSecretsCache
+    .filter((x) => {
+      const match = x.auctionPda.toLowerCase() === auctionPda.toLowerCase();
+      if (!match) return false;
+      if (minTimestampMs > 0 && x.timestamp && x.timestamp < minTimestampMs) return false;
+      return true;
+    })
+    .sort((a, b) => b.bidAmountSol - a.bidAmountSol);
 }
 
 export function clearBidsForAuction(auctionPdaOrMint: string): void {
-  if (typeof window === "undefined" || !auctionPdaOrMint) return;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const list: SavedBidSecret[] = JSON.parse(raw);
-    const target = auctionPdaOrMint.toLowerCase().trim();
-    const filtered = list.filter(
-      (x) => x.auctionPda.toLowerCase().trim() !== target && !x.auctionPda.toLowerCase().includes(target)
-    );
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (err) {
-    console.warn("Failed to clear bids for auction:", err);
-  }
+  if (!auctionPdaOrMint) return;
+  const target = auctionPdaOrMint.toLowerCase().trim();
+  bidSecretsCache = bidSecretsCache.filter(
+    (x) => x.auctionPda.toLowerCase().trim() !== target && !x.auctionPda.toLowerCase().includes(target)
+  );
+  fetch(`/api/bids?auctionPdaOrMint=${encodeURIComponent(auctionPdaOrMint)}`, { method: "DELETE" }).catch((err) =>
+    console.warn("Failed to clear bids for auction:", err)
+  );
 }
 
 export function getUserActiveBids(bidder: string): SavedBidSecret[] {
-  if (typeof window === "undefined" || !bidder) return [];
+  if (!bidder) return [];
+  return bidSecretsCache.filter((x) => x.bidder.toLowerCase() === bidder.toLowerCase());
+}
+
+// ---- Hydration (call from useEffect before relying on the sync getters above) ----
+
+export async function hydrateBidSecretsForAuction(auctionPda: string): Promise<void> {
+  if (!auctionPda) return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const list: SavedBidSecret[] = JSON.parse(raw);
-    return list.filter((x) => x.bidder.toLowerCase() === bidder.toLowerCase());
+    const res = await fetch(`/api/bids?auctionPda=${encodeURIComponent(auctionPda)}`);
+    const data = await res.json();
+    (data?.bids || []).forEach(upsertBidLocal);
   } catch {
-    return [];
+    // keep whatever is already cached
   }
 }
 
+export async function hydrateBidSecretsForBidder(bidder: string): Promise<void> {
+  if (!bidder) return;
+  try {
+    const res = await fetch(`/api/bids?bidder=${encodeURIComponent(bidder)}`);
+    const data = await res.json();
+    (data?.bids || []).forEach(upsertBidLocal);
+  } catch {
+    // keep whatever is already cached
+  }
+}
+
+export async function hydrateAllBidSecrets(): Promise<void> {
+  try {
+    const res = await fetch(`/api/bids?all=true`);
+    const data = await res.json();
+    (data?.bids || []).forEach(upsertBidLocal);
+  } catch {
+    // keep whatever is already cached
+  }
+}

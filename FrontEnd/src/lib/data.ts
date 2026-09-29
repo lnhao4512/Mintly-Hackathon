@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import type { Artwork } from "@/components/explore/ArtworkCard";
-import { getArtworkImage, getSecondaryAuction, getAllSecondaryAuctions } from "@/lib/artworkCache";
+import { getArtworkImage, getSecondaryAuction, getAllSecondaryAuctions, hydrateSecondaryAuctions } from "@/lib/artworkCache";
 
 export type Auction = {
   id: string;
@@ -174,6 +174,7 @@ let cachedLiveAuctions: Auction[] = [];
  */
 export async function fetchLiveAuctions(connection: Connection): Promise<Auction[]> {
   try {
+    await hydrateSecondaryAuctions();
     const program = getMarketplaceProgram(connection);
     const rawAuctions = await program.account.auction.all();
 
@@ -370,6 +371,7 @@ export async function fetchAuctionById(
   id: string
 ): Promise<Auction | null> {
   try {
+    await hydrateSecondaryAuctions();
     const secondary = getSecondaryAuction(id);
     if (secondary) {
       const now = Math.floor(Date.now() / 1000);

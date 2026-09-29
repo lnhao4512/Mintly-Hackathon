@@ -9,7 +9,7 @@ import { Footer } from "@/components/layout/Footer";
 import { SolanaIcon } from "@/components/ui/Icons";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useI18n } from "@/lib/i18n";
-import { getArtworkImage, getUserMintedArtworks } from "@/lib/artworkCache";
+import { getArtworkImage, hydrateArtworkByMint } from "@/lib/artworkCache";
 import { sha256Hex } from "@/lib/proof";
 
 export default function PassportPage({ params }: { params: Promise<{ mint: string }> }) {
@@ -36,6 +36,8 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
 
       // 0. Compute Immediate Deterministic Cryptographic Fingerprint
       try {
+        await hydrateArtworkByMint(mint);
+        if (!active) return;
         const cachedImg = getArtworkImage(mint);
         if (cachedImg) {
           setArtworkImage(cachedImg);

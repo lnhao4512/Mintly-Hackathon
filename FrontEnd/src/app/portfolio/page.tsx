@@ -20,10 +20,16 @@ import {
   isArtworkSoldBySeller,
   isAuctionSettled,
   getWonArtworksForBuyer,
+  hydrateAllCaches,
   type MintedArtworkRecord,
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
-import { getUserActiveBids, getAllSavedBidsForAuction, type SavedBidSecret } from "@/lib/auction-crypto";
+import {
+  getUserActiveBids,
+  getAllSavedBidsForAuction,
+  hydrateBidSecretsForBidder,
+  type SavedBidSecret,
+} from "@/lib/auction-crypto";
 import { fetchAuctionById, fetchLiveAuctions, type Auction } from "@/lib/data";
 
 export default function PortfolioPage() {
@@ -56,60 +62,64 @@ export default function PortfolioPage() {
     const walletKey = publicKey;
     const walletStr = walletKey.toBase58();
 
-    // Auto-unhide any artworks won / purchased by this wallet
-    const wonArtworks = getWonArtworksForBuyer(walletStr);
-    wonArtworks.forEach((w) => unhideArtwork(w.mintAddress, walletStr));
-
-    const freshHiddenMints = getHiddenMints(walletStr);
-    const localList = getUserMintedArtworks(walletStr).filter(
-      (item) => !freshHiddenMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr)
-    );
-
-    // Initial load from local cache
-    setArtworks(localList);
-
-    // Fetch user's active bids
-    const bids = getUserActiveBids(walletStr);
-    setMyActiveBids(bids);
-
-    // Fetch live & ended auctions across the platform
-    fetchLiveAuctions(connection).then((allAuctions) => {
+    (async () => {
+      // Hydrate the MongoDB-backed cache for this wallet before running any sync reads below
+      await Promise.all([hydrateAllCaches(walletStr), hydrateBidSecretsForBidder(walletStr)]);
       if (!isMounted) return;
-      setAllLiveAuctions(allAuctions);
 
-      // Build auction map from fetched auctions without extra RPC spam
-      const map: Record<string, Auction> = {};
-      allAuctions.forEach((a) => {
-        map[a.id] = a;
-        if (a.nftMint) map[a.nftMint] = a;
-      });
-      setAuctionMap((prev) => ({ ...prev, ...map }));
+      // Auto-unhide any artworks won / purchased by this wallet
+      const wonArtworks = getWonArtworksForBuyer(walletStr);
+      wonArtworks.forEach((w) => unhideArtwork(w.mintAddress, walletStr));
 
-      // Filter out only auctions where current wallet is the SELLER and has actually sold the NFT
-      const settledSoldMints = allAuctions
-        .filter(
-          (a) =>
-            a.nftMint &&
-            isArtworkSoldBySeller(a.nftMint, walletStr)
-        )
-        .map((a) => a.nftMint)
-        .filter(Boolean) as string[];
+      const freshHiddenMints = getHiddenMints(walletStr);
+      const localList = getUserMintedArtworks(walletStr).filter(
+        (item) => !freshHiddenMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr)
+      );
 
-      if (settledSoldMints.length > 0) {
-        settledSoldMints.forEach((m) => deleteMintedArtwork(m, walletStr));
-        setArtworks((prev) =>
-          prev.filter((item) => !settledSoldMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr))
-        );
-      }
-    }).catch(() => {});
+      setArtworks(localList);
 
-    // Fetch SOL balance
-    connection.getBalance(walletKey).then((bal) => {
-      if (isMounted) setSolBalance(bal / 1e9);
-    }).catch(() => {});
+      // Fetch user's active bids
+      const bids = getUserActiveBids(walletStr);
+      setMyActiveBids(bids);
 
-    // Query on-chain token accounts owned by the wallet
-    async function scanOnChainTokens() {
+      // Fetch live & ended auctions across the platform
+      fetchLiveAuctions(connection).then((allAuctions) => {
+        if (!isMounted) return;
+        setAllLiveAuctions(allAuctions);
+
+        // Build auction map from fetched auctions without extra RPC spam
+        const map: Record<string, Auction> = {};
+        allAuctions.forEach((a) => {
+          map[a.id] = a;
+          if (a.nftMint) map[a.nftMint] = a;
+        });
+        setAuctionMap((prev) => ({ ...prev, ...map }));
+
+        // Filter out only auctions where current wallet is the SELLER and has actually sold the NFT
+        const settledSoldMints = allAuctions
+          .filter(
+            (a) =>
+              a.nftMint &&
+              isArtworkSoldBySeller(a.nftMint, walletStr)
+          )
+          .map((a) => a.nftMint)
+          .filter(Boolean) as string[];
+
+        if (settledSoldMints.length > 0) {
+          settledSoldMints.forEach((m) => deleteMintedArtwork(m, walletStr));
+          setArtworks((prev) =>
+            prev.filter((item) => !settledSoldMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr))
+          );
+        }
+      }).catch(() => {});
+
+      // Fetch SOL balance
+      connection.getBalance(walletKey).then((bal) => {
+        if (isMounted) setSolBalance(bal / 1e9);
+      }).catch(() => {});
+
+      // Query on-chain token accounts owned by the wallet
+      async function scanOnChainTokens() {
       try {
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(walletKey, {
           programId: TOKEN_PROGRAM_ID,
@@ -168,9 +178,10 @@ export default function PortfolioPage() {
       } finally {
         if (isMounted) setIsLoadingOnChain(false);
       }
-    }
+      }
 
-    scanOnChainTokens();
+      scanOnChainTokens();
+    })();
 
     return () => {
       isMounted = false;
