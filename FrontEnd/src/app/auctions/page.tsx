@@ -11,11 +11,12 @@ import { fetchLiveAuctions, type Auction } from "@/lib/data";
 import {
   getUserMintedArtworks,
   getHiddenMints,
+  hydrateArtworksForWallet,
   type MintedArtworkRecord,
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { useI18n } from "@/lib/i18n";
-import { getSavedBidSecret, getAllSavedBidsForAuction } from "@/lib/auction-crypto";
+import { getSavedBidSecret, getAllSavedBidsForAuction, hydrateAllBidSecrets } from "@/lib/auction-crypto";
 
 export default function AuctionsPage() {
   const { t } = useI18n();
@@ -36,6 +37,7 @@ export default function AuctionsPage() {
     let isMounted = true;
     async function load() {
       try {
+        await hydrateAllBidSecrets();
         const liveAuctions = await fetchLiveAuctions(connection);
         if (isMounted) setAuctions(liveAuctions);
       } catch (e) {
@@ -52,13 +54,21 @@ export default function AuctionsPage() {
 
   // Load user's portfolio vault artworks
   useEffect(() => {
+    let isMounted = true;
     if (publicKey) {
-      const hidden = getHiddenMints(publicKey.toBase58());
-      const all = getUserMintedArtworks(publicKey.toBase58());
-      setUserArtworks(all.filter((item) => !hidden.includes(item.mintAddress)));
+      const walletStr = publicKey.toBase58();
+      hydrateArtworksForWallet(walletStr).then(() => {
+        if (!isMounted) return;
+        const hidden = getHiddenMints(walletStr);
+        const all = getUserMintedArtworks(walletStr);
+        setUserArtworks(all.filter((item) => !hidden.includes(item.mintAddress)));
+      });
     } else {
       setUserArtworks([]);
     }
+    return () => {
+      isMounted = false;
+    };
   }, [publicKey, isCreateModalOpen]);
 
   function handleStartAuctionClick() {

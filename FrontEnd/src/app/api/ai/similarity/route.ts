@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   // Handle explicit indexing after on-chain minting
   if (body.action === "register") {
-    const registered = registerMintedArtwork(body.imageData, body.metadata);
+    const registered = await registerMintedArtwork(body.imageData, body.metadata);
     return NextResponse.json({
       success: registered,
       message: registered
@@ -49,6 +49,6 @@ export async function POST(request: Request) {
   }
 
   // Execute real-time Computer Vision & AI Similarity analysis without persisting
-  const result = analyzeArtwork(body.imageData, body.metadata);
+  const result = await analyzeArtwork(body.imageData, body.metadata);
   return NextResponse.json(result);
 }

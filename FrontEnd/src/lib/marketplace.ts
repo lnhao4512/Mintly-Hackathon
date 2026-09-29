@@ -297,11 +297,17 @@ export async function placeBidOnChain(
   amountLamports: number
 ): Promise<string> {
   const bidder = requireWallet(wallet);
-  const program = getMarketplaceProgram(connection, wallet);
+  const program = getMarketplaceProgram(connection, wallet) as any;
   const [configPda] = getConfigPda();
   const [bidPda] = getBidPda(auctionPda, bidder);
   const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
-  const bidderPaymentAccount = await wrapSol(connection, wallet, amountLamports);
+
+  const auctionAccount = await program.account.auction.fetch(auctionPda);
+  const prevBidder: PublicKey | null = auctionAccount.highestBidder ?? null;
+
+  // Program takes a flat 10% deposit (see place_bid.rs); only wrap what's actually needed.
+  const depositLamports = Math.floor((amountLamports * 10) / 100);
+  const bidderPaymentAccount = await wrapSol(connection, wallet, depositLamports);
   const escrowPayment = await resolveEscrowPaymentAccount(connection, escrowAuthority);
 
   const builder = program.methods.placeBid(new BN(amountLamports)).accounts({
@@ -319,6 +325,13 @@ export async function placeBidOnChain(
 
   if (escrowPayment.signer) {
     builder.signers([escrowPayment.signer]);
+  }
+
+  // The program refunds the previous highest bidder's deposit on-chain; it needs their
+  // WSOL account passed in as a remaining account (see place_bid.rs refund branch).
+  if (prevBidder && !prevBidder.equals(bidder)) {
+    const prevBidderPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, prevBidder, true);
+    builder.remainingAccounts([{ pubkey: prevBidderPaymentAccount, isWritable: true, isSigner: false }]);
   }
 
   return builder.rpc();
@@ -398,285 +411,148 @@ export async function payAuctionDeposit(
     .rpc();
 }
 
+/**
+ * Winner pays the remaining balance (current_bid - deposit_paid) and the program
+ * atomically settles fee + seller proceeds + NFT transfer, all via CPI (pay_balance.rs).
+ */
 export async function payAuctionBalance(
   connection: Connection,
   wallet: WalletContextState,
-  auctionPda: PublicKey,
-  nftMint: PublicKey,
-  seller: PublicKey,
-  balanceLamports: number,
-  secretStr?: string
+  auctionPda: PublicKey
 ): Promise<string> {
   const winner = requireWallet(wallet);
   const program = getMarketplaceProgram(connection, wallet) as any;
   const [configPda] = getConfigPda();
   const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
-  
-  let treasury = seller;
-  try {
-    const config = await program.account.marketplaceConfig.fetch(configPda);
-    if (config?.treasury) {
-      treasury = config.treasury as PublicKey;
-    }
-  } catch {}
 
-  const winnerNftAccount = getAssociatedTokenAddressSync(nftMint, winner);
+  const auctionAccount = await program.account.auction.fetch(auctionPda);
+  const nftMint: PublicKey = auctionAccount.nftMint;
+  const seller: PublicKey = auctionAccount.seller;
+  const currentBid: BN = auctionAccount.currentBid;
+  const depositPaid: BN = auctionAccount.depositPaid;
+  const remainingToPayLamports = currentBid.sub(depositPaid).toNumber();
 
-  const instructions: any[] = [];
+  const configAccount = await program.account.marketplaceConfig.fetch(configPda);
+  const treasury: PublicKey = configAccount.treasury;
 
-  // 1. Ensure winner NFT ATA exists
-  instructions.push(
-    createAssociatedTokenAccountIdempotentInstruction(
+  const winnerPaymentAccount = remainingToPayLamports > 0
+    ? await wrapSol(connection, wallet, remainingToPayLamports)
+    : await ensureAta(connection, wallet, WSOL_MINT, winner);
+  const winnerNftAccount = await ensureAta(connection, wallet, nftMint, winner);
+
+  const escrowPaymentAccount = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
+  const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
+  if (!escrowPaymentAccount || !escrowNftAccount) {
+    throw new Error("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.");
+  }
+
+  const treasuryPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, treasury, true);
+  const sellerPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, seller, true);
+
+  // amount = 0 lets the program fall back to auction.current_bid (see pay_balance.rs)
+  return program.methods
+    .payBalance(new BN(0))
+    .accounts({
       winner,
+      config: configPda,
+      auction: auctionPda,
+      winnerPaymentAccount,
+      escrowAuthority,
+      escrowPaymentAccount,
+      escrowNftAccount,
       winnerNftAccount,
-      winner,
+      treasuryPaymentAccount,
+      sellerPaymentAccount,
+      paymentMint: WSOL_MINT,
       nftMint,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
-  );
-
-  // 2. Direct SOL settlement: exactly balanceLamports (e.g. 1.30 SOL) deducted from winner
-  const feeLamports = Math.floor(balanceLamports * 0.025); // 2.5% marketplace fee
-  const sellerLamports = balanceLamports - feeLamports;
-
-  if (feeLamports > 0 && treasury.toBase58() !== winner.toBase58()) {
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: winner,
-        toPubkey: treasury,
-        lamports: feeLamports,
-      })
-    );
-  }
-
-  if (sellerLamports > 0 && seller.toBase58() !== winner.toBase58()) {
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: winner,
-        toPubkey: seller,
-        lamports: sellerLamports,
-      })
-    );
-  }
-
-  // 3. Execute 1 atomic transaction with fresh blockhash
-  const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-  const tx = new Transaction({
-    feePayer: winner,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-  });
-
-  instructions.forEach((ix) => tx.add(ix));
-
-  if (!wallet.signTransaction) {
-    throw new Error("Ví không hỗ trợ ký giao dịch");
-  }
-
-  const signedTx = await wallet.signTransaction(tx);
-  const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
-
-  await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    },
-    "confirmed"
-  );
-
-  return signature;
-}
-
-/**
- * Places bid and automatically deposits 10% into Escrow PDA.
- */
-export async function placeBidWithEscrowDeposit(
-  connection: Connection,
-  wallet: WalletContextState,
-  auctionPda: PublicKey,
-  totalBidSol: number
-): Promise<{ txHash: string; depositSol: number }> {
-  const bidder = requireWallet(wallet);
-  const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
-  const depositLamports = Math.max(1000, Math.floor(totalBidSol * 1e9 * 0.10)); // 10% deposit
-  const depositSol = depositLamports / 1e9;
-
-  const instructions: any[] = [];
-
-  // Transfer 10% deposit from bidder to Escrow PDA
-  instructions.push(
-    SystemProgram.transfer({
-      fromPubkey: bidder,
-      toPubkey: escrowAuthority,
-      lamports: depositLamports,
+      tokenProgram: TOKEN_PROGRAM_ID,
     })
-  );
-
-  const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-  const tx = new Transaction({
-    feePayer: bidder,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-  });
-
-  instructions.forEach((ix) => tx.add(ix));
-
-  if (!wallet.signTransaction) {
-    throw new Error("Ví không hỗ trợ ký giao dịch");
-  }
-
-  const signedTx = await wallet.signTransaction(tx);
-  const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
-
-  await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    },
-    "confirmed"
-  );
-
-  return { txHash: signature, depositSol };
+    .rpc();
 }
 
 /**
- * Winner pays remaining 90% and finalizes NFT settlement.
+ * Forfeits the winner's 10% escrow deposit to the configured forfeiture recipient
+ * when they fail to pay the remaining balance before the payment deadline (default_winner.rs).
  */
-export async function payAuctionRemainingBalance(
+export async function defaultWinnerOnChain(
   connection: Connection,
   wallet: WalletContextState,
-  auctionPda: PublicKey,
-  nftMint: PublicKey,
-  seller: PublicKey,
-  totalBidSol: number
+  auctionPda: PublicKey
 ): Promise<string> {
-  const winner = requireWallet(wallet);
+  requireWallet(wallet);
+  const program = getMarketplaceProgram(connection, wallet) as any;
   const [configPda] = getConfigPda();
-  
-  let treasury = seller;
-  try {
-    const program = getMarketplaceProgram(connection, wallet) as any;
-    const config = await program.account.marketplaceConfig.fetch(configPda);
-    if (config?.treasury) {
-      treasury = config.treasury as PublicKey;
-    }
-  } catch {}
+  const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
 
-  const winnerNftAccount = getAssociatedTokenAddressSync(nftMint, winner);
-  const instructions: any[] = [];
+  const configAccount = await program.account.marketplaceConfig.fetch(configPda);
+  const forfeitureRecipient: PublicKey = configAccount.forfeitureRecipient;
 
-  // 1. Ensure winner NFT ATA exists
-  instructions.push(
-    createAssociatedTokenAccountIdempotentInstruction(
-      winner,
-      winnerNftAccount,
-      winner,
-      nftMint,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
-  );
-
-  // 2. Winner pays the 90% remaining SOL balance (since 10% deposit was already locked in Escrow)
-  const remaining90Lamports = Math.floor(totalBidSol * 1e9 * 0.90);
-  const feeLamports = Math.floor(totalBidSol * 1e9 * 0.025); // 2.5% marketplace fee
-  const sellerDirect90Lamports = Math.max(0, remaining90Lamports - feeLamports);
-
-  if (feeLamports > 0 && treasury.toBase58() !== winner.toBase58()) {
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: winner,
-        toPubkey: treasury,
-        lamports: feeLamports,
-      })
-    );
+  const escrowPaymentAccount = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
+  if (!escrowPaymentAccount) {
+    throw new Error("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.");
   }
+  const forfeiturePaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, forfeitureRecipient, true);
 
-  if (sellerDirect90Lamports > 0 && seller.toBase58() !== winner.toBase58()) {
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: winner,
-        toPubkey: seller,
-        lamports: sellerDirect90Lamports,
-      })
-    );
-  }
-
-  const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-  const tx = new Transaction({
-    feePayer: winner,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-  });
-
-  instructions.forEach((ix) => tx.add(ix));
-
-  if (!wallet.signTransaction) {
-    throw new Error("Ví không hỗ trợ ký giao dịch");
-  }
-
-  const signedTx = await wallet.signTransaction(tx);
-  const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
-
-  await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    },
-    "confirmed"
-  );
-
-  return signature;
+  return program.methods
+    .defaultWinner()
+    .accounts({
+      config: configPda,
+      auction: auctionPda,
+      escrowAuthority,
+      escrowPaymentAccount,
+      forfeiturePaymentAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .rpc();
 }
 
 /**
- * Seller claims the 10% forfeited deposit when winner defaults.
+ * Seller cancels their own auction and gets the NFT back — only allowed while DRAFT/NO_BID,
+ * or LIVE with no bids yet (cancel_auction.rs).
  */
-export async function claimDefaultWinnerPenalty(
+export async function cancelAuctionOnChain(
   connection: Connection,
   wallet: WalletContextState,
-  auctionPda: PublicKey,
-  sellerPubkey: PublicKey
+  auctionPda: PublicKey
 ): Promise<string> {
   const seller = requireWallet(wallet);
-  const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-  const tx = new Transaction({
-    feePayer: seller,
-    blockhash: latestBlockhash.blockhash,
-    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-  });
+  const program = getMarketplaceProgram(connection, wallet) as any;
+  const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
 
-  if (!wallet.signTransaction) {
-    throw new Error("Ví không hỗ trợ ký giao dịch");
+  const auctionAccount = await program.account.auction.fetch(auctionPda);
+  const nftMint: PublicKey = auctionAccount.nftMint;
+
+  const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
+  if (!escrowNftAccount) {
+    throw new Error("Không tìm thấy tài khoản escrow NFT của phiên đấu giá này trên Solana.");
   }
+  const sellerNftAccount = await ensureAta(connection, wallet, nftMint, seller);
 
-  const signedTx = await wallet.signTransaction(tx);
-  const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
+  return program.methods
+    .cancelAuction()
+    .accounts({
+      seller,
+      auction: auctionPda,
+      escrowAuthority,
+      escrowNftAccount,
+      sellerNftAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .rpc();
+}
 
-  await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    },
-    "confirmed"
-  );
+/**
+ * Marketplace authority pauses/unpauses new listings & bids (pause_marketplace.rs / unpause_marketplace.rs).
+ */
+export async function setMarketplacePaused(
+  connection: Connection,
+  wallet: WalletContextState,
+  paused: boolean
+): Promise<string> {
+  const authority = requireWallet(wallet);
+  const program = getMarketplaceProgram(connection, wallet) as any;
+  const [configPda] = getConfigPda();
 
-  return signature;
+  const method = paused ? program.methods.pauseMarketplace() : program.methods.unpauseMarketplace();
+  return method.accounts({ authority, config: configPda }).rpc();
 }

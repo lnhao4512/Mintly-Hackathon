@@ -20,20 +20,10 @@ import {
   saveBidSecretLocally,
   getSavedBidSecret,
   getAllSavedBidsForAuction,
+  hydrateBidSecretsForAuction,
 } from "@/lib/auction-crypto";
-import {
-  commitBidOnChain,
-  revealBidOnChain,
-} from "@/lib/commitReveal";
-import {
-  payAuctionDeposit,
-  payAuctionBalance,
-  placeBidWithEscrowDeposit,
-  payAuctionRemainingBalance,
-  claimDefaultWinnerPenalty,
-} from "@/lib/marketplace";
-import { getMarketplaceProgram } from "@/utils/anchor";
-import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, updateSecondaryAuctionBid } from "@/lib/artworkCache";
+import { placeBidOnChain, payAuctionBalance, defaultWinnerOnChain, cancelAuctionOnChain } from "@/lib/marketplace";
+import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 
 type Phase =
@@ -82,7 +72,10 @@ export default function AuctionDetailPage({
       const [data, totalVol] = await Promise.all([
         fetchAuctionById(connection, id),
         fetchTotalAuctionBidsVolume(connection),
+        hydrateBidSecretsForAuction(id),
+        hydrateSales(),
       ]);
+      if (data?.id && data.id !== id) await hydrateBidSecretsForAuction(data.id);
       setAuction(data);
       setPlatformTotalBidsSol(totalVol);
 
@@ -193,16 +186,12 @@ export default function AuctionDetailPage({
       const { commitmentHex } = await computeCommitmentHash(amountLamports, secret);
 
       const auctionPubkey = new PublicKey(auction.id);
-      
-      // Transfer 10% deposit directly to Escrow PDA on-chain
-      const { txHash } = await placeBidWithEscrowDeposit(
-        connection,
-        wallet,
-        auctionPubkey,
-        amount
-      );
-      
-      // Save locally for Anonymous Realtime Leaderboard & History
+
+      // Real on-chain bid: transfers 10% deposit into the escrow PDA via the Anchor
+      // program and auto-refunds the previous highest bidder's deposit (place_bid.rs).
+      const txHash = await placeBidOnChain(connection, wallet, auctionPubkey, amountLamports);
+
+      // Keep a local record for the bid-history feed shown in the UI
       saveBidSecretLocally({
         auctionPda: auction.id,
         bidder: wallet.publicKey.toBase58(),
@@ -224,9 +213,6 @@ export default function AuctionDetailPage({
           timestamp: Date.now(),
         });
       }
-
-      updateSecondaryAuctionBid(auction.id, amount, wallet.publicKey.toBase58());
-      if (id) updateSecondaryAuctionBid(id, amount, wallet.publicKey.toBase58());
 
       setLastTxHash(txHash);
       setActionStatus(`✓ Đặt giá ${amount.toFixed(2)} SOL thành công! Đã nạp 10% cọc (${depositSol.toFixed(3)} SOL) an toàn vào Smart Contract Escrow.`);
@@ -263,17 +249,10 @@ export default function AuctionDetailPage({
 
     try {
       const auctionPubkey = new PublicKey(auction.id);
-      const nftMintPubkey = new PublicKey(auction.nftMint);
-      const sellerPubkey = new PublicKey(auction.seller);
 
-      const tx = await payAuctionRemainingBalance(
-        connection,
-        wallet,
-        auctionPubkey,
-        nftMintPubkey,
-        sellerPubkey,
-        currentBidNum
-      );
+      // Real on-chain settlement: transfers the remaining balance, splits fee/seller
+      // proceeds, and moves the NFT to the winner, all via CPI (pay_balance.rs).
+      const tx = await payAuctionBalance(connection, wallet, auctionPubkey);
 
       setLastTxHash(tx);
       
@@ -321,25 +300,44 @@ export default function AuctionDetailPage({
 
     setIsSubmitting(true);
     setActionError(null);
-    setActionStatus(`Đang xử phạt bùng kèo & rút ${penaltySol} SOL tiền cọc từ Escrow về ví Seller...`);
+    setActionStatus(`Đang xử phạt bùng kèo & rút ${penaltySol} SOL tiền cọc từ Escrow...`);
 
     try {
       const auctionPubkey = new PublicKey(auction.id);
-      const sellerPubkey = new PublicKey(auction.seller);
 
-      const tx = await claimDefaultWinnerPenalty(
-        connection,
-        wallet,
-        auctionPubkey,
-        sellerPubkey
-      );
+      // Forfeits the winner's deposit on-chain to the marketplace's configured
+      // forfeiture recipient (default_winner.rs) — not automatically to the seller.
+      const tx = await defaultWinnerOnChain(connection, wallet, auctionPubkey);
 
       setLastTxHash(tx);
-      setActionStatus(`✓ Xử phạt thành công! Đã thu hồi ${penaltySol} SOL tiền cọc bùng kèo từ Escrow về ví Seller.`);
+      setActionStatus(`✓ Xử phạt thành công! Đã thu hồi ${penaltySol} SOL tiền cọc bùng kèo từ Escrow vào quỹ xử phạt của sàn.`);
       await loadAuctionData();
     } catch (err: any) {
       console.error("Penalty claim error:", err);
       setActionError(err.message || "Xử phạt bùng kèo thất bại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Handler: Seller cancels their own auction (only allowed while no bids have been placed)
+  async function handleCancelAuction() {
+    if (!wallet.publicKey || !wallet.signTransaction || !auction) return;
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus("Đang hủy phiên đấu giá & rút NFT về ví của bạn...");
+
+    try {
+      const auctionPubkey = new PublicKey(auction.id);
+      const tx = await cancelAuctionOnChain(connection, wallet, auctionPubkey);
+
+      setLastTxHash(tx);
+      setActionStatus("✓ Đã hủy phiên đấu giá thành công! NFT đã được chuyển về ví của bạn.");
+      await loadAuctionData();
+    } catch (err: any) {
+      console.error("Cancel auction error:", err);
+      setActionError(err.message || "Hủy phiên đấu giá thất bại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -629,7 +627,7 @@ export default function AuctionDetailPage({
                   <div className="text-[11px] uppercase tracking-wider text-text-dim flex items-center gap-1.5">
                     <span>Giá Cao Nhất Hiện Tại (Realtime)</span>
                     <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-accent">
-                      🔒 Ẩn danh tính
+                      ⛓️ On-chain công khai
                     </span>
                   </div>
                   <div className="mt-1 font-display text-4xl text-text">
@@ -715,6 +713,17 @@ export default function AuctionDetailPage({
                       </>
                     )}
                   </button>
+
+                  {!hasBidsPlaced && wallet.publicKey && auction.seller && wallet.publicKey.toBase58().toLowerCase() === auction.seller.toLowerCase() && (
+                    <button
+                      type="button"
+                      onClick={handleCancelAuction}
+                      disabled={isSubmitting}
+                      className="w-full rounded-full border border-red-500/30 bg-red-500/5 py-3 text-xs font-semibold text-red-300 transition-all hover:bg-red-500/10 disabled:opacity-50"
+                    >
+                      Hủy Phiên Đấu Giá & Nhận Lại NFT
+                    </button>
+                  )}
                 </form>
               )}
 
@@ -790,7 +799,7 @@ export default function AuctionDetailPage({
                       className="w-full flex items-center justify-center gap-2 rounded-full bg-red-600 hover:bg-red-500 py-4 text-xs font-bold uppercase tracking-wider text-white shadow-[0_10px_35px_-5px_rgba(239,68,68,0.8)] disabled:opacity-50 transition-all cursor-pointer"
                     >
                       <span>⚠️</span>
-                      <span>Phạt Bùng Kèo: Thu Hồi 10% Cọc ({(effectiveHighestBidNum * 0.10).toFixed(3)} SOL) Về Ví Seller</span>
+                      <span>Phạt Bùng Kèo: Thu Hồi 10% Cọc ({(effectiveHighestBidNum * 0.10).toFixed(3)} SOL) Vào Quỹ Xử Phạt</span>
                     </button>
                   ) : (
                     <p className="text-center text-xs text-text-dim">
@@ -852,11 +861,11 @@ export default function AuctionDetailPage({
               )}
             </div>
 
-            {/* Bids History Feed (Anonymous / Ẩn danh tính with highlighted badge for current user) */}
+            {/* Bids History Feed (public — bid amounts are visible on-chain in realtime) */}
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-md space-y-4">
               <h3 className="font-display text-lg text-text flex items-center justify-between">
                 <span>Lịch Sử Đặt Giá ({allBidsList.length})</span>
-                <span className="text-xs font-mono text-accent">🔒 Ẩn danh tính</span>
+                <span className="text-xs font-mono text-accent">⛓️ On-chain công khai</span>
               </h3>
 
               {allBidsList.length === 0 ? (

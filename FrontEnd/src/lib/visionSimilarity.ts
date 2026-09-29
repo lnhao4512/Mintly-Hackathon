@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { saveFingerprint, getAllFingerprints, type ArtworkFingerprint } from "@/lib/db/fingerprints";
 
 export interface ArtworkCatalogItem {
   id: string;
@@ -153,38 +154,32 @@ const SITE_ARTWORKS_DEFINITIONS = [
   },
 ];
 
-export interface LiveMintItem {
-  title: string;
-  fingerprint: string;
-  vector: number[];
-  mint?: string;
-  dominantColors?: string[];
-}
-
-// In-memory indexed catalog of actual site assets
+// In-memory indexed catalog of actual site assets (static files on disk, safe to cache per server instance)
 let indexedCatalog: ArtworkCatalogItem[] | null = null;
-const LIVE_MINT_CACHE = new Map<string, LiveMintItem>();
 
 /**
  * Explicitly registers an artwork ONLY after it has been minted on-chain.
  * Unminted scans/drawings will never be saved into the registry.
+ * Persisted to MongoDB so the provenance registry survives restarts/redeploys
+ * and is shared across all server instances.
  */
-export function registerMintedArtwork(
+export async function registerMintedArtwork(
   imageData: string,
   metadata?: { name?: string; description?: string; mint?: string }
-): boolean {
+): Promise<boolean> {
   try {
     const rawBase64 = imageData.replace(/^data:[^;]+;base64,/, "");
     const buffer = Buffer.from(rawBase64, "base64");
     const sha256 = createHash("sha256").update(buffer).digest("hex");
     const { vector, dominantColors } = extractVisualFeatureVector(buffer);
 
-    LIVE_MINT_CACHE.set(sha256, {
-      title: metadata?.name || "Tác phẩm NFT đã Mint",
+    await saveFingerprint({
       fingerprint: sha256,
+      title: metadata?.name || "Tác phẩm NFT đã Mint",
       vector,
       mint: metadata?.mint || "",
       dominantColors,
+      createdAt: Date.now(),
     });
     return true;
   } catch (err) {
@@ -425,10 +420,10 @@ function computeSemanticOverlap(text: string, keywords: string[]): number {
 /**
  * Main AI Visual Similarity Engine comparing against the actual website data
  */
-export function analyzeArtwork(
+export async function analyzeArtwork(
   imageData: string,
   metadata?: { name?: string; description?: string }
-): SimilarityAnalysis {
+): Promise<SimilarityAnalysis> {
   const rawBase64 = imageData.replace(/^data:[^;]+;base64,/, "");
   const buffer = Buffer.from(rawBase64, "base64");
 
@@ -441,6 +436,10 @@ export function analyzeArtwork(
 
   // 3. Load actual marketplace artwork catalog on the website
   const catalog = getSiteArtworkCatalog();
+
+  // 3b. Load minted artwork fingerprints from MongoDB (shared across all server instances)
+  const mintedFingerprints = await getAllFingerprints();
+  const liveMintMatch = mintedFingerprints.find((f) => f.fingerprint === inputSha256);
 
   // 4. Exact duplicate check against all actual website assets
   const exactSiteMatch = catalog.find((c) => c.sha256 === inputSha256);
@@ -480,8 +479,7 @@ export function analyzeArtwork(
   }
 
   // 5. Exact duplicate check against live minted NFTs on-chain
-  if (LIVE_MINT_CACHE.has(inputSha256)) {
-    const cached = LIVE_MINT_CACHE.get(inputSha256)!;
+  if (liveMintMatch) {
     return {
       status: "HIGH_SIMILARITY",
       similarity: 99.9,
@@ -492,25 +490,25 @@ export function analyzeArtwork(
       semanticSimilarity: 100,
       dominantColors,
       complexityScore: complexity,
-      totalDatabaseItemsCompared: catalog.length + LIVE_MINT_CACHE.size,
+      totalDatabaseItemsCompared: catalog.length + mintedFingerprints.length,
       closestMatch: {
-        title: cached.title,
+        title: liveMintMatch.title,
         similarity: 99.9,
         category: "NFT Đã Mint Trên Chuỗi",
       },
       similarItems: [
         {
-          mint: cached.mint || "LIVE_MINT_DUP",
+          mint: liveMintMatch.mint || "LIVE_MINT_DUP",
           similarity: 99.9,
-          title: cached.title,
-          reason: `Trùng khớp 100% dữ liệu tệp với NFT "${cached.title}" đã được Mint thành công on-chain.`,
+          title: liveMintMatch.title,
+          reason: `Trùng khớp 100% dữ liệu tệp với NFT "${liveMintMatch.title}" đã được Mint thành công on-chain.`,
         },
       ],
       evidence: [
         { type: "artwork_sha256", value: inputSha256 },
         { type: "perceptual_hash", value: perceptualHash },
       ],
-      message: `Cảnh báo bản quyền: Tác phẩm này trùng khớp 100% với NFT "${cached.title}" đã được Mint thành công trước đó!`,
+      message: `Cảnh báo bản quyền: Tác phẩm này trùng khớp 100% với NFT "${liveMintMatch.title}" đã được Mint thành công trước đó!`,
       metadataAnalysis: "Trùng khớp dữ liệu nhị phân với NFT đã mint on-chain.",
       provenanceAnalysis: "Không đạt yêu cầu Độc bản 1/1 do đã có bản ghi tồn tại.",
     };
@@ -521,7 +519,7 @@ export function analyzeArtwork(
 
   const combinedCatalog: ArtworkCatalogItem[] = [
     ...catalog,
-    ...Array.from(LIVE_MINT_CACHE.values()).map((c) => ({
+    ...mintedFingerprints.map((c: ArtworkFingerprint) => ({
       id: c.mint || c.fingerprint,
       filename: c.fingerprint,
       title: c.title,

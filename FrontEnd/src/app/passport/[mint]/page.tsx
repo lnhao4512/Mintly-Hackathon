@@ -9,7 +9,7 @@ import { Footer } from "@/components/layout/Footer";
 import { SolanaIcon } from "@/components/ui/Icons";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useI18n } from "@/lib/i18n";
-import { getArtworkImage, getUserMintedArtworks } from "@/lib/artworkCache";
+import { getArtworkImage, getArtworkByMint, hydrateArtworkByMint, fetchSaleHistoryForMint, type SoldArtworkRecord } from "@/lib/artworkCache";
 import { sha256Hex } from "@/lib/proof";
 
 export default function PassportPage({ params }: { params: Promise<{ mint: string }> }) {
@@ -27,6 +27,8 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
   const [metadataHash, setMetadataHash] = useState<string | null>(null);
   const [artworkTitle, setArtworkTitle] = useState<string>("Tác phẩm NFT Độc bản");
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [originalCreator, setOriginalCreator] = useState<string | null>(null);
+  const [saleHistory, setSaleHistory] = useState<SoldArtworkRecord[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -34,8 +36,17 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
     async function loadPassport() {
       setLoading(true);
 
-      // 0. Compute Immediate Deterministic Cryptographic Fingerprint
+      // 0. Compute Immediate Deterministic Cryptographic Fingerprint + real provenance chain
       try {
+        const [, history] = await Promise.all([hydrateArtworkByMint(mint), fetchSaleHistoryForMint(mint)]);
+        if (!active) return;
+        setSaleHistory(history);
+
+        const art = getArtworkByMint(mint);
+        if (art?.title) setArtworkTitle(art.title);
+        // Original creator/minter is whoever created the artwork record before any sale happened
+        setOriginalCreator(history.length > 0 ? history[0].seller : art?.creator || null);
+
         const cachedImg = getArtworkImage(mint);
         if (cachedImg) {
           setArtworkImage(cachedImg);
@@ -242,17 +253,43 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
               </dl>
             </article>
 
-            {/* Provenance Trail */}
+            {/* Provenance Trail: real chain of owners across auction rounds, from /api/sales (MongoDB) */}
             <section className="glass-panel rounded-3xl p-6 sm:p-8">
               <p className="eyebrow text-accent-strong">{t("passport.provenance")}</p>
-              <div className="mt-4 border-l-2 border-accent/40 pl-5 text-sm space-y-2 text-text-dim">
-                <p className="text-text font-semibold flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-accent" />
-                  {valid ? "Tài khoản Token Mint đã được tạo và kích hoạt trên Solana Blockchain" : "Đang đồng bộ trạng thái tài khoản..."}
-                </p>
-                <p className="text-xs leading-5">
-                  Tài sản NFT này tuân thủ chuẩn SPL Token tiêu chuẩn (Decimals 0, Supply 1) và hoàn toàn tương thích với Smart Contract Marketplace của MINTLY.
-                </p>
+              <div className="mt-4 border-l-2 border-accent/40 pl-5 text-sm space-y-4 text-text-dim">
+                <div className="relative">
+                  <span className="absolute -left-[26px] mt-1 size-2.5 rounded-full bg-accent" />
+                  <p className="text-text font-semibold">
+                    {valid ? "Mint được tạo trên Solana Blockchain" : "Đang đồng bộ trạng thái tài khoản..."}
+                  </p>
+                  {originalCreator && (
+                    <p className="mt-0.5 font-mono text-xs text-text-dim break-all">
+                      Người tạo: {originalCreator}
+                    </p>
+                  )}
+                </div>
+
+                {saleHistory.map((sale, idx) => (
+                  <div key={`${sale.mintAddress}-${sale.soldAt}-${idx}`} className="relative">
+                    <span className="absolute -left-[26px] mt-1 size-2.5 rounded-full bg-green-400" />
+                    <p className="text-text font-semibold">
+                      Vòng đấu giá #{idx + 1}: đã chuyển nhượng
+                      {sale.priceSol ? ` với giá ${sale.priceSol.toFixed(2)} SOL` : ""}
+                    </p>
+                    <p className="mt-0.5 font-mono text-xs break-all">
+                      {sale.seller} <span className="text-accent">&rarr;</span> {sale.buyer}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-text-dim/70">
+                      {new Date(sale.soldAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                ))}
+
+                {saleHistory.length === 0 && (
+                  <p className="text-xs leading-5">
+                    Tác phẩm chưa được sang tay qua đấu giá — hiện vẫn thuộc quyền sở hữu của người tạo ban đầu.
+                  </p>
+                )}
               </div>
             </section>
           </div>

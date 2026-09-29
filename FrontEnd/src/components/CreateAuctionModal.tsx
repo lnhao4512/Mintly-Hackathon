@@ -18,7 +18,7 @@ import {
   getConfigPda,
   getTokenConfigPda,
 } from "@/lib/config";
-import { saveSecondaryAuction, type MintedArtworkRecord } from "@/lib/artworkCache";
+import type { MintedArtworkRecord } from "@/lib/artworkCache";
 import { clearBidsForAuction } from "@/lib/auction-crypto";
 
 interface CreateAuctionModalProps {
@@ -192,43 +192,11 @@ export function CreateAuctionModal({
         instructions.push(addTokenIx);
       }
 
-      // 3. Add createAuction instruction
+      // 3. Add createAuction instruction. The Anchor program supports re-initializing
+      // the same Auction PDA for a resale round as long as the previous round is
+      // SETTLED or CANCELLED (see create_auction.rs) — no client-side special-casing
+      // needed; a still-active previous round will legitimately fail on-chain below.
       instructions.push(ix);
-
-      // Check if auction PDA is already allocated on Devnet (secondary resale auction)
-      const existingAuctionInfo = await connection.getAccountInfo(auctionPda);
-      if (existingAuctionInfo && existingAuctionInfo.lamports > 0) {
-        // Clear previous round bids for this auction/mint
-        clearBidsForAuction(auctionPda.toBase58());
-        clearBidsForAuction(artwork.mintAddress);
-
-        // Activate secondary round seamlessly without throwing duplicate allocate error
-        saveSecondaryAuction({
-          id: auctionPda.toBase58(),
-          nftMint: artwork.mintAddress,
-          seller: seller.toBase58(),
-          startPrice: startPriceSol,
-          currentBid: startPriceSol,
-          minIncrement: minIncrementSol,
-          startTime,
-          endTime,
-          revealDeadline,
-          depositDeadline,
-          paymentDeadline,
-          status: "LIVE",
-          title: artwork.title,
-          image: artwork.imageUrl,
-          createdAt: Date.now(),
-        });
-
-        setSuccessTx("secondary-resale-" + Date.now().toString(36));
-        setAuctionAddress(auctionPda.toBase58());
-
-        setTimeout(() => {
-          router.push(`/auctions/${auctionPda.toBase58()}`);
-        }, 1200);
-        return;
-      }
 
       // 4. Fetch the freshest blockhash right before signing
       const latestBlockhash = await connection.getLatestBlockhash("confirmed");
@@ -259,24 +227,6 @@ export function CreateAuctionModal({
       clearBidsForAuction(auctionPda.toBase58());
       clearBidsForAuction(artwork.mintAddress);
 
-      saveSecondaryAuction({
-        id: auctionPda.toBase58(),
-        nftMint: artwork.mintAddress,
-        seller: seller.toBase58(),
-        startPrice: startPriceSol,
-        currentBid: startPriceSol,
-        minIncrement: minIncrementSol,
-        startTime,
-        endTime,
-        revealDeadline,
-        depositDeadline,
-        paymentDeadline,
-        status: "LIVE",
-        title: artwork.title,
-        image: artwork.imageUrl,
-        createdAt: Date.now(),
-      });
-
       setSuccessTx(signature);
       setAuctionAddress(auctionPda.toBase58());
 
@@ -284,42 +234,13 @@ export function CreateAuctionModal({
         router.push(`/auctions/${auctionPda.toBase58()}`);
       }, 1500);
     } catch (err: any) {
-      console.warn("Create auction notice:", err);
+      console.warn("Create auction error:", err);
       const errStr = String(err?.message || "") + " " + JSON.stringify(err?.logs || []) + " " + String(err);
-      
-      if (errStr.includes("already in use") || errStr.includes("custom program error: 0x0") || errStr.includes("unknown signer")) {
-        // Clear previous round bids for this auction/mint
-        clearBidsForAuction(auctionPda.toBase58());
-        clearBidsForAuction(artwork.mintAddress);
-
-        // Handle secondary auction seamlessly by activating a new round for the purchased NFT
-        saveSecondaryAuction({
-          id: auctionPda.toBase58(),
-          nftMint: artwork.mintAddress,
-          seller: seller.toBase58(),
-          startPrice: startPriceSol,
-          currentBid: startPriceSol,
-          minIncrement: minIncrementSol,
-          startTime,
-          endTime,
-          revealDeadline,
-          depositDeadline,
-          paymentDeadline,
-          status: "LIVE",
-          title: artwork.title,
-          image: artwork.imageUrl,
-          createdAt: Date.now(),
-        });
-        setSuccessTx("secondary-" + Date.now().toString(36));
-        setAuctionAddress(auctionPda.toBase58());
-        setTimeout(() => {
-          router.push(`/auctions/${auctionPda.toBase58()}`);
-        }, 1200);
-        return;
-      }
 
       let msg = err?.message || "Giao dịch tạo đấu giá thất bại. Vui lòng kiểm tra ví.";
-      if (errStr.includes("Blockhash not found")) {
+      if (errStr.includes("AuctionStillActive") || errStr.includes("6010")) {
+        msg = "Phiên đấu giá trước đó cho tác phẩm này vẫn chưa kết thúc/hủy trên Solana, chưa thể mở vòng đấu giá lại.";
+      } else if (errStr.includes("Blockhash not found")) {
         msg = "Phiên giao dịch đã hết hạn xác thực (Blockhash expired do để popup ví quá lâu). Vui lòng bấm '🚀 Kích Hoạt Phiên Đấu Giá' và bấm 'Xác nhận' trên ví trong vòng 60 giây.";
       } else if (errStr.includes("User rejected") || errStr.includes("WalletSignTransactionError")) {
         msg = "Bạn đã hủy yêu cầu ký giao dịch tạo đấu giá trên ví Phantom.";
