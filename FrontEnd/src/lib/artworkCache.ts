@@ -1,7 +1,8 @@
 /**
- * Client-side helpers backed by MongoDB (see /api/artworks, /api/sales, /api/auctions/secondary).
+ * Client-side helpers backed by MongoDB (see /api/artworks, /api/sales).
  * Data is persisted server-side; this module keeps an in-memory mirror hydrated via the
  * hydrate* functions so existing synchronous render/filter call sites keep working.
+ * Auction round data itself (price, status, resale rounds) lives on-chain — see lib/data.ts.
  */
 
 export interface MintedArtworkRecord {
@@ -25,27 +26,8 @@ export interface SoldArtworkRecord {
   priceSol?: number;
 }
 
-export interface CustomAuctionRecord {
-  id: string;
-  nftMint: string;
-  seller: string;
-  startPrice: string;
-  currentBid: string;
-  minIncrement: string;
-  startTime: number;
-  endTime: number;
-  revealDeadline: number;
-  depositDeadline: number;
-  paymentDeadline: number;
-  status: string;
-  title: string;
-  image: string;
-  createdAt: number;
-}
-
 let artworksCache: MintedArtworkRecord[] = [];
 let salesCache: SoldArtworkRecord[] = [];
-let secondaryAuctionsCache: CustomAuctionRecord[] = [];
 
 async function safeFetchJson<T>(url: string): Promise<T | null> {
   try {
@@ -94,17 +76,14 @@ export async function hydrateSales(): Promise<void> {
   if (data?.sales) salesCache = data.sales;
 }
 
-export async function hydrateSecondaryAuctions(): Promise<void> {
-  const data = await safeFetchJson<{ auctions: CustomAuctionRecord[] }>("/api/auctions/secondary");
-  if (data?.auctions) secondaryAuctionsCache = data.auctions;
+export async function fetchSaleHistoryForMint(mintAddress: string): Promise<SoldArtworkRecord[]> {
+  if (!mintAddress) return [];
+  const data = await safeFetchJson<{ sales: SoldArtworkRecord[] }>(`/api/sales?mint=${encodeURIComponent(mintAddress)}`);
+  return data?.sales || [];
 }
 
 export async function hydrateAllCaches(wallet?: string): Promise<void> {
-  await Promise.all([
-    wallet ? hydrateArtworksForWallet(wallet) : Promise.resolve(),
-    hydrateSales(),
-    hydrateSecondaryAuctions(),
-  ]);
+  await Promise.all([wallet ? hydrateArtworksForWallet(wallet) : Promise.resolve(), hydrateSales()]);
 }
 
 // ---- Artworks / portfolio ----
@@ -202,12 +181,6 @@ export function markArtworkAsSold(record: SoldArtworkRecord): void {
     category: "Đấu Giá Thắng Cuộc",
     rarity: art?.rarity || "collector",
   });
-
-  const secondary =
-    getSecondaryAuction(record.mintAddress) || (record.auctionPda ? getSecondaryAuction(record.auctionPda) : null);
-  if (secondary) {
-    saveSecondaryAuction({ ...secondary, status: "SETTLED" });
-  }
 }
 
 export function isArtworkSoldBySeller(mintAddress: string, walletAddress: string): boolean {
@@ -227,57 +200,9 @@ export function isArtworkSoldBySeller(mintAddress: string, walletAddress: string
   return false;
 }
 
-// ---- Secondary (resale) auctions ----
-
-export function saveSecondaryAuction(record: CustomAuctionRecord): void {
-  const idx = secondaryAuctionsCache.findIndex(
-    (x) => x.id.toLowerCase() === record.id.toLowerCase() || x.nftMint.toLowerCase() === record.nftMint.toLowerCase()
-  );
-  if (idx >= 0) secondaryAuctionsCache[idx] = record;
-  else secondaryAuctionsCache.unshift(record);
-  postJson("/api/auctions/secondary", record);
-}
-
-export function getSecondaryAuction(pdaOrMint: string): CustomAuctionRecord | null {
-  if (!pdaOrMint) return null;
-  const target = pdaOrMint.toLowerCase().trim();
-  return (
-    secondaryAuctionsCache.find(
-      (x) =>
-        x.id.toLowerCase().trim() === target ||
-        x.nftMint.toLowerCase().trim() === target ||
-        target.includes(x.id.toLowerCase().trim()) ||
-        target.includes(x.nftMint.toLowerCase().trim()) ||
-        x.id.toLowerCase().trim().includes(target) ||
-        x.nftMint.toLowerCase().trim().includes(target)
-    ) || null
-  );
-}
-
-export function updateSecondaryAuctionBid(pdaOrMint: string, highestBidSol: number, _highestBidder: string): void {
-  const found = getSecondaryAuction(pdaOrMint);
-  if (found) {
-    found.currentBid = highestBidSol.toFixed(2);
-  }
-  fetch("/api/auctions/secondary", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pdaOrMint, highestBidSol }),
-  }).catch((err) => console.warn("Failed to update secondary auction bid:", err));
-}
-
-export function getAllSecondaryAuctions(): CustomAuctionRecord[] {
-  return secondaryAuctionsCache;
-}
-
 export function isAuctionSettled(auctionPdaOrMint: string, minTimestampMs: number = 0): boolean {
   if (!auctionPdaOrMint) return false;
   const target = auctionPdaOrMint.toLowerCase().trim();
-
-  const secondary = getSecondaryAuction(target);
-  if (secondary) {
-    return secondary.status?.toUpperCase() === "SETTLED";
-  }
 
   return salesCache.some(
     (x) =>

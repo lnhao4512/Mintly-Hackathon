@@ -20,6 +20,7 @@ pub struct PayBalance<'info> {
     #[account(
         mut,
         constraint = (auction.status == AuctionStatus::LIVE || auction.status == AuctionStatus::PAYMENT_PENDING || auction.status == AuctionStatus::REVEAL_OPEN || auction.status == AuctionStatus::ENDED || auction.status == AuctionStatus::DEPOSIT_PENDING) @ MarketplaceError::InvalidAuctionState,
+        constraint = auction.highest_bidder == Some(winner.key()) @ MarketplaceError::UnauthorizedWinner,
     )]
     pub auction: Box<Account<'info, Auction>>,
 
@@ -77,23 +78,19 @@ pub struct PayBalance<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn handler(ctx: Context<PayBalance>, amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<PayBalance>, _amount: u64) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp;
     let auction = &mut ctx.accounts.auction;
-    
+
     require!(current_time <= auction.payment_deadline, MarketplaceError::PaymentDeadlinePassed);
     require!(ctx.accounts.payment_mint.key() == auction.payment_mint, MarketplaceError::InvalidPaymentToken);
     require!(ctx.accounts.nft_mint.key() == auction.nft_mint, MarketplaceError::InvalidNFTMint);
+    require!(auction.current_bid > 0, MarketplaceError::NoBidder);
 
-    let total_amount = if amount > 0 {
-        amount
-    } else if auction.current_bid > 0 {
-        auction.current_bid
-    } else {
-        auction.start_price
-    };
-
-    require!(total_amount >= auction.start_price, MarketplaceError::BidTooLow);
+    // The settlement amount is always the auction's own recorded highest bid —
+    // never a caller-supplied value — so a winner can no longer under/overpay
+    // their way into settling at a price different from what they actually won.
+    let total_amount = auction.current_bid;
 
     let remaining_to_pay = total_amount.saturating_sub(auction.deposit_paid);
 
@@ -109,8 +106,6 @@ pub fn handler(ctx: Context<PayBalance>, amount: u64) -> Result<()> {
         token::transfer(cpi_ctx, remaining_to_pay)?;
     }
 
-    auction.current_bid = total_amount;
-    auction.highest_bidder = Some(ctx.accounts.winner.key());
     auction.balance_paid = remaining_to_pay;
 
     // 2. Settle the funds (100% funds are in escrow)

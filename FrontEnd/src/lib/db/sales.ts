@@ -40,6 +40,15 @@ export async function getSalesForWallet(wallet: string): Promise<SoldArtworkReco
   return docs.map(stripId);
 }
 
+export async function getSalesForMint(mintAddress: string): Promise<SoldArtworkRecord[]> {
+  const col = await collection();
+  const docs = await col
+    .find({ mintAddress: { $regex: `^${escapeRegex(mintAddress)}$`, $options: "i" } })
+    .sort({ soldAt: 1 })
+    .toArray();
+  return docs.map(stripId);
+}
+
 export async function getLatestSaleForMint(mintAddress: string): Promise<SoldArtworkRecord | null> {
   const col = await collection();
   const doc = await col

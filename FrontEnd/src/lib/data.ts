@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import type { Artwork } from "@/components/explore/ArtworkCard";
-import { getArtworkImage, getSecondaryAuction, getAllSecondaryAuctions, hydrateSecondaryAuctions } from "@/lib/artworkCache";
+import { getArtworkImage } from "@/lib/artworkCache";
 
 export type Auction = {
   id: string;
@@ -174,7 +174,6 @@ let cachedLiveAuctions: Auction[] = [];
  */
 export async function fetchLiveAuctions(connection: Connection): Promise<Auction[]> {
   try {
-    await hydrateSecondaryAuctions();
     const program = getMarketplaceProgram(connection);
     const rawAuctions = await program.account.auction.all();
 
@@ -213,38 +212,6 @@ export async function fetchLiveAuctions(connection: Connection): Promise<Auction
       };
     });
 
-    const secondaries = getAllSecondaryAuctions();
-    const nowUnix = Math.floor(Date.now() / 1000);
-    for (const s of secondaries) {
-      const isLive = s.endTime ? nowUnix < s.endTime : true;
-      const existingIdx = parsed.findIndex(
-        (p: any) => p.id.toLowerCase() === s.id.toLowerCase() || p.nftMint?.toLowerCase() === s.nftMint.toLowerCase()
-      );
-      const secondaryItem = {
-        id: s.id,
-        title: s.title,
-        artist: formatPubkey(s.seller),
-        currentBid: s.currentBid,
-        startPrice: s.startPrice,
-        image: s.image,
-        highestBidder: null,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        revealDeadline: s.revealDeadline,
-        depositDeadline: s.depositDeadline,
-        paymentDeadline: s.paymentDeadline,
-        status: isLive ? "LIVE" : "PAYMENT_PENDING",
-        nftMint: s.nftMint,
-        seller: s.seller,
-        isLive,
-      };
-      if (existingIdx >= 0) {
-        parsed[existingIdx] = secondaryItem;
-      } else {
-        parsed.unshift(secondaryItem);
-      }
-    }
-
     cachedLiveAuctions = parsed;
     return parsed;
   } catch (error) {
@@ -252,27 +219,7 @@ export async function fetchLiveAuctions(connection: Connection): Promise<Auction
     if (!msg.includes("Failed to fetch") && !msg.includes("fetch failed") && !msg.includes("429")) {
       console.warn("Unable to fetch on-chain auctions:", error);
     }
-    const secondaries = getAllSecondaryAuctions();
-    const nowUnix = Math.floor(Date.now() / 1000);
-    const secondaryItems: Auction[] = secondaries.map((s) => ({
-      id: s.id,
-      title: s.title,
-      artist: formatPubkey(s.seller),
-      currentBid: s.currentBid,
-      startPrice: s.startPrice,
-      image: s.image,
-      highestBidder: null,
-      startTime: s.startTime,
-      endTime: s.endTime,
-      revealDeadline: s.revealDeadline,
-      depositDeadline: s.depositDeadline,
-      paymentDeadline: s.paymentDeadline,
-      status: s.endTime && nowUnix < s.endTime ? "LIVE" : "PAYMENT_PENDING",
-      nftMint: s.nftMint,
-      seller: s.seller,
-      isLive: s.endTime ? nowUnix < s.endTime : true,
-    }));
-    return cachedLiveAuctions.length > 0 ? cachedLiveAuctions : secondaryItems;
+    return cachedLiveAuctions;
   }
 }
 
@@ -371,31 +318,6 @@ export async function fetchAuctionById(
   id: string
 ): Promise<Auction | null> {
   try {
-    await hydrateSecondaryAuctions();
-    const secondary = getSecondaryAuction(id);
-    if (secondary) {
-      const now = Math.floor(Date.now() / 1000);
-      const isLive = secondary.endTime ? now < secondary.endTime : true;
-      return {
-        id: secondary.id,
-        title: secondary.title,
-        artist: formatPubkey(secondary.seller),
-        currentBid: secondary.currentBid,
-        startPrice: secondary.startPrice,
-        image: secondary.image,
-        highestBidder: null,
-        startTime: secondary.startTime,
-        endTime: secondary.endTime,
-        revealDeadline: secondary.revealDeadline,
-        depositDeadline: secondary.depositDeadline,
-        paymentDeadline: secondary.paymentDeadline,
-        status: isLive ? "LIVE" : "PAYMENT_PENDING",
-        nftMint: secondary.nftMint,
-        seller: secondary.seller,
-        isLive,
-      };
-    }
-
     const program = getMarketplaceProgram(connection);
     let pubkey: PublicKey;
     try {

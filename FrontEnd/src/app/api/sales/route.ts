@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordSale, getAllSales, getSalesForWallet } from "@/lib/db/sales";
+import { recordSale, getAllSales, getSalesForWallet, getSalesForMint } from "@/lib/db/sales";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const wallet = searchParams.get("wallet");
-  const sales = wallet ? await getSalesForWallet(wallet) : await getAllSales();
+  const mint = searchParams.get("mint");
+  const sales = mint ? await getSalesForMint(mint) : wallet ? await getSalesForWallet(wallet) : await getAllSales();
   return NextResponse.json({ sales });
 }
 
