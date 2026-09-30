@@ -4,7 +4,6 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
-  createCloseAccountInstruction,
   createSyncNativeInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
@@ -18,6 +17,7 @@ import {
 import { getMarketplaceProgram } from "@/utils/anchor";
 import {
   WSOL_MINT,
+  MARKETPLACE_FEE_BPS,
   getAuctionEscrowAuthorityPda,
   getAuctionPda,
   getBidPda,
@@ -26,7 +26,6 @@ import {
   getListingPda,
   getTokenConfigPda,
 } from "@/lib/config";
-import { normalizeSecretTo32Bytes } from "@/lib/auction-crypto";
 
 function requireWallet(wallet: WalletContextState): PublicKey {
   if (!wallet.publicKey || !wallet.signTransaction) {
@@ -154,12 +153,44 @@ export async function createListingOnChain(
     })
     .instruction();
 
+  const instructions: any[] = [];
+  const configInfo = await connection.getAccountInfo(configPda);
+  if (!configInfo) {
+    const initIx = await (program.methods as any)
+      .initializeMarketplace(seller, seller, MARKETPLACE_FEE_BPS)
+      .accounts({
+        authority: seller,
+        config: configPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    instructions.push(initIx);
+  }
+
+  const tokenConfigInfo = await connection.getAccountInfo(tokenConfigPda);
+  if (!tokenConfigInfo) {
+    const addTokenIx = await (program.methods as any)
+      .addToken(WSOL_MINT, 9)
+      .accounts({
+        authority: seller,
+        config: configPda,
+        tokenConfig: tokenConfigPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    instructions.push(addTokenIx);
+  }
+
+  instructions.push(ix);
+
   const latestBlockhash = await connection.getLatestBlockhash("confirmed");
   const tx = new Transaction({
     feePayer: seller,
     blockhash: latestBlockhash.blockhash,
     lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-  }).add(ix);
+  });
+
+  instructions.forEach((instruction) => tx.add(instruction));
 
   const signedTx = await wallet.signTransaction!(tx);
   signedTx.partialSign(escrowNftAccount);
@@ -232,7 +263,7 @@ export async function createAuctionOnChain(
   const configInfo = await connection.getAccountInfo(configPda);
   if (!configInfo) {
     const initIx = await (program.methods as any)
-      .initializeMarketplace(seller, seller, 250)
+      .initializeMarketplace(seller, seller, MARKETPLACE_FEE_BPS)
       .accounts({
         authority: seller,
         config: configPda,
@@ -288,6 +319,37 @@ export async function createAuctionOnChain(
   );
 
   return { signature, auctionPda: auctionPda.toBase58() };
+}
+
+export async function cancelListingOnChain(
+  connection: Connection,
+  wallet: WalletContextState,
+  listingPda: PublicKey
+): Promise<string> {
+  const seller = requireWallet(wallet);
+  const program = getMarketplaceProgram(connection, wallet) as any;
+  const [escrowAuthority] = getListingEscrowAuthorityPda(listingPda);
+
+  const listingAccount = await program.account.listing.fetch(listingPda);
+  const nftMint: PublicKey = listingAccount.nftMint;
+
+  const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
+  if (!escrowNftAccount) {
+    throw new Error("Không tìm thấy tài khoản escrow NFT của tin đăng này trên Solana.");
+  }
+  const sellerNftAccount = await ensureAta(connection, wallet, nftMint, seller);
+
+  return program.methods
+    .cancelListing()
+    .accounts({
+      seller,
+      listing: listingPda,
+      escrowAuthority,
+      escrowNftAccount,
+      sellerNftAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .rpc();
 }
 
 export async function placeBidOnChain(

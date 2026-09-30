@@ -12,6 +12,7 @@ import {
 import { Keypair, SystemProgram, Transaction } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import {
+  MARKETPLACE_FEE_BPS,
   WSOL_MINT,
   getAuctionEscrowAuthorityPda,
   getAuctionPda,
@@ -167,7 +168,7 @@ export function CreateAuctionModal({
       const configInfo = await connection.getAccountInfo(configPda);
       if (!configInfo) {
         const initIx = await (program.methods as any)
-          .initializeMarketplace(seller, seller, 250)
+          .initializeMarketplace(seller, seller, MARKETPLACE_FEE_BPS)
           .accounts({
             authority: seller,
             config: configPda,

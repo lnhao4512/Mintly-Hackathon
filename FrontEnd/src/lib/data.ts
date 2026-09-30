@@ -96,6 +96,14 @@ export type DirectListing = {
   status?: string;
 };
 
+export function parseListingStatus(rawStatus: any): string {
+  if (!rawStatus) return "ACTIVE";
+  if (typeof rawStatus === "string") return rawStatus.toUpperCase();
+  const key = Object.keys(rawStatus)[0];
+  if (!key) return "ACTIVE";
+  return key.replace(/([A-Z])/g, "_$1").toUpperCase();
+}
+
 function getVisualForMint(mintStr: string, index: number = 0) {
   const cached = getArtworkImage(mintStr);
   let hash = 0;
@@ -126,10 +134,7 @@ export async function fetchLiveListings(connection: Connection): Promise<Artwork
     const rawListings = await program.account.listing.all();
 
     return rawListings
-      .filter((item: any) => {
-        const status = item.account.status;
-        return status.active !== undefined || status === "ACTIVE";
-      })
+      .filter((item: any) => parseListingStatus(item.account.status) === "ACTIVE")
       .map((item: any, idx: number) => {
         const nftMint = item.account.nftMint.toBase58();
         const seller = item.account.seller.toBase58();
@@ -480,7 +485,7 @@ export async function fetchListingById(
     const seller = listingAccount.seller.toBase58();
     const priceLamports = listingAccount.price.toNumber();
     const visual = getVisualForMint(nftMint, 0);
-    const statusKey = Object.keys(listingAccount.status || {})[0]?.toUpperCase() || "ACTIVE";
+    const statusKey = parseListingStatus(listingAccount.status);
 
     return {
       id: listingPda.toBase58(),
@@ -497,6 +502,48 @@ export async function fetchListingById(
   } catch (error) {
     console.error("Failed to fetch listing by id:", error);
     return null;
+  }
+}
+
+export async function fetchSellerListings(
+  connection: Connection,
+  seller: PublicKey
+): Promise<DirectListing[]> {
+  try {
+    const program = getMarketplaceProgram(connection);
+    const rawListings = await program.account.listing.all([
+      {
+        memcmp: {
+          offset: 8,
+          bytes: seller.toBase58(),
+        },
+      },
+    ]);
+
+    return rawListings
+      .map((item: any, idx: number) => {
+        const nftMint = item.account.nftMint.toBase58();
+        const sellerStr = item.account.seller.toBase58();
+        const priceLamports = item.account.price.toNumber();
+        const visual = getVisualForMint(nftMint, idx);
+
+        return {
+          id: item.publicKey.toBase58(),
+          title: visual.title,
+          artist: formatPubkey(sellerStr),
+          image: visual.image,
+          price: `${(priceLamports / 1e9).toFixed(2)} SOL`,
+          priceLamports,
+          nftMint,
+          seller: sellerStr,
+          expiry: item.account.expiry.toNumber(),
+          status: parseListingStatus(item.account.status),
+        } satisfies DirectListing;
+      })
+      .sort((a: DirectListing, b: DirectListing) => (b.expiry || 0) - (a.expiry || 0));
+  } catch (error) {
+    console.error("Failed to fetch seller listings:", error);
+    return [];
   }
 }
 
