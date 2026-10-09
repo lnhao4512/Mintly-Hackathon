@@ -174,7 +174,7 @@ export default function PortfolioPage() {
             if (existsLocally) continue;
 
             const existingArt = getArtworkByMint(mint);
-            const cachedImage = getArtworkImage(mint) || existingArt?.imageUrl || "/assets/messi-symphony.svg";
+            const cachedImage = getArtworkImage(mint) || existingArt?.imageUrl || "/assets/hero-artwork.png";
 
             onChainMints.push({
               mintAddress: mint,
@@ -265,7 +265,7 @@ export default function PortfolioPage() {
   const activeSellerListings = sellerListings.filter((listing) => listing.status === "ACTIVE");
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="min-h-screen bg-[#0a0a09] text-text">
       <Navbar />
 
       <main className="mx-auto w-full max-w-[1240px] px-4 pb-24 pt-28 sm:px-8 sm:pt-32">
@@ -280,7 +280,7 @@ export default function PortfolioPage() {
         <section className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[rgba(26,26,26,0.8)] via-[rgba(18,18,18,0.9)] to-[rgba(10,10,10,0.95)] p-6 shadow-2xl backdrop-blur-xl sm:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-5 sm:items-center">
-              <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-accent/40 bg-accent/10 font-display text-2xl text-accent shadow-[0_0_30px_rgba(184,165,255,0.25)] sm:size-20 sm:text-3xl">
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-accent/40 bg-accent/10 font-display text-2xl text-accent shadow-[0_0_30px_rgba(255,77,31,0.25)] sm:size-20 sm:text-3xl">
                 🎨
               </div>
 
@@ -369,7 +369,7 @@ export default function PortfolioPage() {
             </p>
             <button
               onClick={() => setVisible(true)}
-              className="mt-6 rounded-full bg-accent px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-10px_rgba(184,165,255,0.8)]"
+              className="mt-6 rounded-full bg-accent px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-10px_rgba(255,77,31,0.8)]"
             >
               {t("nav.connect")}
             </button>
@@ -394,7 +394,7 @@ export default function PortfolioPage() {
                   onClick={() => setActiveFilter("selling")}
                   className={`rounded-full px-4 py-2 text-xs font-semibold transition-all flex items-center gap-1.5 ${
                     activeFilter === "selling"
-                      ? "bg-[#8ef7c0] text-black font-bold shadow-[0_0_20px_rgba(142,247,192,0.35)]"
+                      ? "bg-[#c8ff3d] text-black font-bold shadow-[0_0_20px_rgba(200,255,61,0.35)]"
                       : "text-text-dim hover:bg-white/5 hover:text-text"
                   }`}
                 >
@@ -405,7 +405,7 @@ export default function PortfolioPage() {
                   onClick={() => setActiveFilter("bidding")}
                   className={`rounded-full px-4 py-2 text-xs font-semibold transition-all flex items-center gap-1.5 ${
                     activeFilter === "bidding"
-                      ? "bg-accent text-black font-bold shadow-[0_0_20px_rgba(184,165,255,0.4)]"
+                      ? "bg-accent text-black font-bold shadow-[0_0_20px_rgba(255,77,31,0.4)]"
                       : "text-text-dim hover:bg-white/5 hover:text-text"
                   }`}
                 >
@@ -416,7 +416,7 @@ export default function PortfolioPage() {
 
               <Link
                 href="/create"
-                className="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_8px_30px_-6px_rgba(184,165,255,0.6)]"
+                className="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_8px_30px_-6px_rgba(255,77,31,0.6)]"
               >
                 <span>+</span>
                 <span>{t("portfolio.createNow")}</span>
@@ -448,7 +448,7 @@ export default function PortfolioPage() {
                     {activeSellerListings.map((listing) => (
                       <article
                         key={listing.id}
-                        className="group overflow-hidden rounded-3xl border border-[#8ef7c0]/25 bg-[rgba(19,29,25,0.78)] shadow-[0_18px_50px_-30px_rgba(142,247,192,0.28)] transition-all hover:-translate-y-1 hover:border-[#8ef7c0]/45"
+                        className="group overflow-hidden rounded-3xl border border-[#c8ff3d]/25 bg-[rgba(19,29,25,0.78)] shadow-[0_18px_50px_-30px_rgba(200,255,61,0.28)] transition-all hover:-translate-y-1 hover:border-[#c8ff3d]/45"
                       >
                         <div className="relative aspect-square overflow-hidden bg-[#111]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -457,7 +457,7 @@ export default function PortfolioPage() {
                             alt={listing.title}
                             className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
                           />
-                          <div className="absolute left-3 top-3 rounded-full border border-[#8ef7c0]/40 bg-[#8ef7c0]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#8ef7c0] backdrop-blur-md">
+                          <div className="absolute left-3 top-3 rounded-full border border-[#c8ff3d]/40 bg-[#c8ff3d]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#c8ff3d] backdrop-blur-md">
                             Đang bán
                           </div>
                         </div>
@@ -475,7 +475,7 @@ export default function PortfolioPage() {
                             </div>
                             <div className="mt-2 flex items-center justify-between text-xs">
                               <span className="text-text-dim">Phí sàn 5%</span>
-                              <span className="font-mono text-[#8ef7c0]">
+                              <span className="font-mono text-[#c8ff3d]">
                                 {(listing.priceLamports * 0.05 / 1e9).toFixed(3)} SOL
                               </span>
                             </div>
@@ -484,7 +484,7 @@ export default function PortfolioPage() {
                           <div className="mt-4 grid grid-cols-2 gap-2">
                             <Link
                               href={`/listings/${listing.id}`}
-                              className="rounded-xl bg-[#8ef7c0] px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a]"
+                              className="rounded-xl bg-[#c8ff3d] px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a09]"
                             >
                               Xem tin
                             </Link>
@@ -521,7 +521,7 @@ export default function PortfolioPage() {
                     </p>
                     <Link
                       href="/auctions"
-                      className="mt-6 rounded-full bg-accent px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-[#0a0a0a]"
+                      className="mt-6 rounded-full bg-accent px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-[#0a0a09]"
                     >
                       Khám Phá Sàn Đấu Giá
                     </Link>
@@ -533,7 +533,7 @@ export default function PortfolioPage() {
                       const nowUnix = Math.floor(Date.now() / 1000);
                       const isSettled = auction?.status?.toUpperCase() === "SETTLED";
                       const isEnded = isSettled || (auction?.endTime ? nowUnix >= auction.endTime : false);
-                      const artworkImage = auction?.image || (auction?.nftMint ? getArtworkImage(auction.nftMint) : null) || "/assets/messi-symphony.svg";
+                      const artworkImage = auction?.image || (auction?.nftMint ? getArtworkImage(auction.nftMint) : null) || "/assets/hero-artwork.png";
 
                       const savedBids = getAllSavedBidsForAuction(bid.auctionPda);
                       const topSaved = savedBids.length > 0 ? savedBids[0].bidAmountSol : 0;
@@ -554,7 +554,7 @@ export default function PortfolioPage() {
                               ? "border-green-500/30 bg-[rgba(16,24,18,0.85)] opacity-85 hover:opacity-100 hover:border-green-400 shadow-[0_0_25px_rgba(74,222,128,0.15)]"
                               : isEnded
                               ? "border-white/10 bg-[rgba(18,18,20,0.85)] opacity-70 hover:opacity-100 hover:border-white/20 shadow-none"
-                              : "border-accent/40 bg-[rgba(20,20,20,0.85)] shadow-[0_0_25px_rgba(184,165,255,0.15)] hover:border-accent hover:shadow-[0_0_35px_rgba(184,165,255,0.3)]"
+                              : "border-accent/40 bg-[rgba(20,20,20,0.85)] shadow-[0_0_25px_rgba(255,77,31,0.15)] hover:border-accent hover:shadow-[0_0_35px_rgba(255,77,31,0.3)]"
                           }`}
                         >
                           {/* Image Thumbnail with Overlay Banner */}
@@ -682,7 +682,7 @@ export default function PortfolioPage() {
                     </p>
                     <Link
                       href="/create"
-                      className="mt-6 rounded-full bg-accent px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong"
+                      className="mt-6 rounded-full bg-accent px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-[#0a0a09] transition-all hover:bg-accent-strong"
                     >
                       {t("portfolio.createNow")}
                     </Link>
@@ -717,8 +717,8 @@ export default function PortfolioPage() {
                           key={item.mintAddress || idx}
                           className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-[rgba(20,20,20,0.85)] p-4 shadow-lg transition-all duration-300 ${
                             activeAuction
-                              ? "border-purple-500/40 shadow-[0_0_25px_rgba(184,165,255,0.2)]"
-                              : "border-white/10 hover:border-accent/40 hover:shadow-[0_15px_45px_-15px_rgba(184,165,255,0.2)]"
+                              ? "border-accent/40 shadow-[0_0_25px_rgba(255,77,31,0.2)]"
+                              : "border-white/10 hover:border-accent/40 hover:shadow-[0_15px_45px_-15px_rgba(255,77,31,0.2)]"
                           }`}
                         >
                       {/* Image Frame */}
@@ -732,7 +732,7 @@ export default function PortfolioPage() {
 
                         {/* Rarity & Format Pill or Live Auction Pill */}
                         {activeAuction ? (
-                          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-purple-500/40 bg-purple-950/85 px-2.5 py-1 text-[10px] font-bold text-accent backdrop-blur-md shadow-lg">
+                          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-accent/40 bg-ink/90 px-2.5 py-1 text-[10px] font-bold text-accent backdrop-blur-md shadow-lg">
                             <span>🔥</span>
                             <span>Đang Đấu Giá Trên Sàn</span>
                           </div>
@@ -815,7 +815,7 @@ export default function PortfolioPage() {
                           {activeAuction ? (
                             <Link
                               href={`/auctions/${activeAuction.id}`}
-                              className="flex items-center justify-center gap-2 rounded-xl bg-purple-600/20 border border-purple-500/40 px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-accent transition-all hover:bg-accent hover:text-[#0a0a0a] shadow-[0_0_20px_rgba(184,165,255,0.3)]"
+                              className="flex items-center justify-center gap-2 rounded-xl bg-accent/20 border border-accent/40 px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-accent transition-all hover:bg-accent hover:text-[#0a0a09] shadow-[0_0_20px_rgba(255,77,31,0.3)]"
                             >
                               <span>🔥</span>
                               <span>Đang Trên Sàn Đấu Giá (Xem Ngay) ↗</span>
@@ -827,7 +827,7 @@ export default function PortfolioPage() {
                                   setSelectedArtworkForListing(item);
                                   setIsListingModalOpen(true);
                                 }}
-                                className="flex items-center justify-center rounded-xl bg-[#8ef7c0] px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:shadow-[0_8px_25px_-5px_rgba(142,247,192,0.45)]"
+                                className="flex items-center justify-center rounded-xl bg-[#c8ff3d] px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a09] transition-all hover:shadow-[0_8px_25px_-5px_rgba(200,255,61,0.45)]"
                               >
                                 Đăng bán giá cứng
                               </button>
@@ -836,7 +836,7 @@ export default function PortfolioPage() {
                                   setSelectedArtworkForAuction(item);
                                   setIsAuctionModalOpen(true);
                                 }}
-                                className="flex items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_8px_25px_-5px_rgba(184,165,255,0.7)]"
+                                className="flex items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_8px_25px_-5px_rgba(255,77,31,0.7)]"
                               >
                                 Đấu giá
                               </button>
@@ -846,7 +846,7 @@ export default function PortfolioPage() {
                           <div className="grid grid-cols-2 gap-2">
                             <Link
                               href={`/passport/${item.mintAddress}`}
-                              className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-center text-xs font-semibold text-accent transition-all hover:bg-accent hover:text-[#0a0a0a]"
+                              className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-center text-xs font-semibold text-accent transition-all hover:bg-accent hover:text-[#0a0a09]"
                             >
                               {t("portfolio.viewPassport")}
                             </Link>

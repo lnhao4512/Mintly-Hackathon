@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageHero } from "@/components/layout/PageHero";
 
 interface Session {
   creator: string;
@@ -34,23 +35,25 @@ export default function LiveIndexPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-bg text-text">
       <Navbar />
-      <main className="mx-auto w-full max-w-[900px] px-5 pb-24 pt-32 sm:px-8">
-        <p className="eyebrow text-accent-strong">MINTLY / LIVE</p>
-        <h1 className="mt-3 font-display text-5xl sm:text-6xl">Đang vẽ trực tiếp</h1>
-        <p className="mt-4 max-w-2xl text-text-dim">Xem nghệ sĩ vẽ theo thời gian thực. Khi tác phẩm xong, đặt giá ngay trong phiên đấu giá của họ.</p>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {sessions === null && <p className="text-text-dim">Đang tải...</p>}
-          {sessions?.length === 0 && <p className="text-text-dim">Hiện chưa có ai phát trực tiếp. Vào Studio và bấm &quot;Phát trực tiếp&quot; để bắt đầu.</p>}
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
+        <PageHero
+          eyebrow="Live"
+          index="04 / Live"
+          lines={["Drawing", <em key="n">now</em>]}
+          description="Xem nghệ sĩ vẽ theo thời gian thực. Khi tác phẩm xong, đặt giá ngay trong phiên đấu giá của họ."
+        />
+        <div className="grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          {sessions === null && <p className="bg-bg p-8 text-text-dim">Đang tải...</p>}
+          {sessions?.length === 0 && <p className="bg-bg p-8 text-text-dim-2 sm:col-span-2 lg:col-span-3">Hiện chưa có ai phát trực tiếp. Vào Studio và bấm &quot;Phát trực tiếp&quot; để bắt đầu.</p>}
           {sessions?.map((s) => (
-            <Link key={s.creator} href={`/live/${s.creator}`} className="glass-panel rounded-2xl p-5 transition-transform hover:-translate-y-1">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-300">
-                <span className="size-2 animate-pulse rounded-full bg-red-400" /> LIVE
+            <Link key={s.creator} href={`/live/${s.creator}`} data-cursor className="group bg-bg p-8 transition-colors hover:bg-bg-elevated">
+              <span className="inline-flex items-center gap-2 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-accent">
+                <span className="size-1.5 animate-pulse rounded-full bg-accent" /> Live
               </span>
-              <p className="mt-2 font-display text-2xl">{s.title}</p>
-              <p className="mt-1 font-mono text-xs text-text-dim">{s.creator.slice(0, 6)}…{s.creator.slice(-6)}</p>
+              <p className="mt-6 font-display text-3xl font-light tracking-[-0.03em] transition-colors group-hover:text-accent">{s.title}</p>
+              <p className="mt-2 font-mono-ui text-[11px] text-text-dim">{s.creator.slice(0, 6)}…{s.creator.slice(-6)}</p>
             </Link>
           ))}
         </div>

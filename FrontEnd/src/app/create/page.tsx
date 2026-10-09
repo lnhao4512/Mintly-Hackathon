@@ -308,29 +308,29 @@ export default function CreatorStudioPage() {
   }, [actions]);
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden">
+    <div className="relative flex h-[calc(100svh-30px)] flex-col overflow-hidden">
       <Navbar />
 
       <main className="flex flex-1 gap-8 overflow-y-auto px-4 pb-8 pt-28 md:px-8 md:pt-32">
         {!connected ? (
-          <section className="rainbow-border flex flex-1 items-center justify-center rounded-2xl bg-[rgba(18,18,18,0.72)] p-8 text-center backdrop-blur-xl">
-            <div className="glass-panel flex w-full max-w-md flex-col items-center gap-5 rounded-2xl p-8">
-              <div className="flex size-14 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-2xl text-accent">
-                +
-              </div>
-              <div>
-                <h1 className="font-display text-3xl text-text">{t("create.connectTitle")}</h1>
-                <p className="mt-3 text-sm leading-6 text-text-dim">
-                  {t("create.connectText")}
-                </p>
-              </div>
-              <button
-                onClick={() => setVisible(true)}
-                className="rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)]"
-              >
-                {t("create.connectPhantom")}
+          <section className="relative flex flex-1 flex-col justify-between overflow-hidden border border-line p-6 sm:p-10">
+            <div className="flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              <span className="flex items-center gap-2 text-accent"><span className="size-1.5 rounded-full bg-accent" />Studio</span>
+              <span>03 / Create</span>
+            </div>
+            <div>
+              <h1 className="mega text-[clamp(3rem,10vw,10rem)]">
+                {t("create.connectTitle")}
+              </h1>
+              <p className="mt-6 max-w-md text-[15px] leading-relaxed text-text-dim-2">{t("create.connectText")}</p>
+              <button onClick={() => setVisible(true)} className="btn mt-8">
+                {t("create.connectPhantom")} <span aria-hidden>→</span>
               </button>
             </div>
+            <i className="reg left-3 top-3" />
+            <i className="reg right-3 top-3" />
+            <i className="reg bottom-3 left-3" />
+            <i className="reg bottom-3 right-3" />
           </section>
         ) : (
           <>
@@ -578,8 +578,8 @@ export default function CreatorStudioPage() {
                         aiCheck.status === "LOW_SIMILARITY"
                           ? "bg-gradient-to-r from-emerald-400 to-accent"
                           : aiCheck.status === "MODERATE_SIMILARITY"
-                            ? "bg-gradient-to-r from-amber-400 to-orange-400"
-                            : "bg-gradient-to-r from-red-500 to-pink-500"
+                            ? "bg-gradient-to-r from-amber-400 to-accent-strong"
+                            : "bg-gradient-to-r from-red-500 to-accent"
                       }`}
                       style={{ width: `${aiCheck.originalityScore ?? 100 - (aiCheck.similarity ?? 0)}%` }}
                     />
@@ -678,7 +678,7 @@ export default function CreatorStudioPage() {
               </p>
               <button
                 onClick={() => setVisible(true)}
-                className="mt-3 w-full rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)]"
+                className="mt-3 w-full rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)]"
               >
                 {t("nav.connect")}
               </button>
@@ -710,7 +710,7 @@ export default function CreatorStudioPage() {
             </div>
             <button
               onClick={handleOpenMint}
-              className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)] disabled:opacity-40 disabled:pointer-events-none"
+              className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)] disabled:opacity-40 disabled:pointer-events-none"
             >
               {t("create.mintArtifact")}
             </button>
@@ -748,7 +748,7 @@ export default function CreatorStudioPage() {
               <button
                 onClick={confirmAttestation}
                 disabled={!attestChecked}
-                className="flex-1 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a0a] disabled:opacity-40"
+                className="flex-1 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a09] disabled:opacity-40"
               >
                 Ký & tiếp tục
               </button>

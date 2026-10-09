@@ -94,7 +94,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="min-h-screen bg-[#0a0a09] text-text">
       <Navbar />
       <main className="mx-auto w-full max-w-[720px] px-4 pb-24 pt-28 sm:px-8 sm:pt-32">
         <h1 className="font-display text-3xl text-text">Quản Trị Sàn MINTLY</h1>
@@ -137,7 +137,7 @@ export default function AdminPage() {
                   onClick={handleTogglePause}
                   disabled={submitting}
                   className={`w-full rounded-full py-3 text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${
-                    paused ? "bg-accent text-[#0a0a0a] hover:bg-accent-strong" : "bg-red-600 text-white hover:bg-red-500"
+                    paused ? "bg-accent text-[#0a0a09] hover:bg-accent-strong" : "bg-red-600 text-white hover:bg-red-500"
                   }`}
                 >
                   {submitting ? "Đang xử lý..." : paused ? "Mở Lại Sàn" : "Tạm Dừng Sàn"}

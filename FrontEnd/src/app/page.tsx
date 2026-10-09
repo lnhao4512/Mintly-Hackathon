@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ArtworkCard, type Artwork } from "@/components/explore/ArtworkCard";
+import { ProcessVisual } from "@/components/explore/ProcessVisual";
+import { FadeUp, LineReveal, Marquee, Parallax } from "@/components/motion/Reveal";
+import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchLiveListings,
@@ -16,26 +19,73 @@ import {
   type MarketplaceStats,
 } from "@/lib/data";
 
-const reasons = [
-  {
-    title: "home.onChainProvenance",
-    text: "home.onChainProvenanceText",
+const copy = {
+  en: {
+    meta: "Solana Devnet — 1/1 art auction house",
+    h1: ["Art that", <>can <em>prove</em></>, "itself."],
+    lede: "Drawn by hand, checked for originality, escrowed on-chain. Every bid carries a 10% deposit — and if a winner walks away, the artist is paid.",
+    cta1: "Enter the auctions",
+    cta2: "Start drawing",
+    stats: ["Live auctions", "Direct listings", "Highest bid", "Settled volume"],
+    specimen: "Specimen",
+    scanned: "Scanning originality…",
+    marquee: ["Proven by hand", "Escrowed on Solana", "10% deposit", "No-show insured", "Anti-sniping", "1 of 1"],
+    processEyebrow: "How a work earns its price",
+    process: [
+      { t: "Draw", d: "The Studio records your strokes as a time-lapse. Not a screenshot — the making of it." },
+      { t: "Prove", d: "AI compares it with everything already minted. The time-lapse hash is anchored on-chain through the SPL Memo program." },
+      { t: "Auction", d: "Bids are public and realtime. Each one locks 10% in an escrow PDA; the outbid get it back instantly. Late bids extend the clock." },
+      { t: "Settle", d: "Winner pays the remaining 90% and the NFT moves in the same transaction. Walk away, and 70% of the deposit goes to the artist." },
+    ],
+    galleryEyebrow: "On the wall now",
+    galleryTitle: ["Live", "listings"],
+    viewAll: "All auctions",
+    loading: "Reading the Solana program…",
+    emptyTitle: "The wall is empty.",
+    emptyText: "Be the first to mint a piece and hang it here.",
+    manifestoEyebrow: "The rule",
+    manifesto:
+      "Back out of a bid and your deposit does not vanish into a fund. It is paid to the artist whose work you walked away from.",
+    ctaTitle: ["Make something", "worth proving."],
+    ctaButton: "Open the Studio",
   },
-  {
-    title: "home.builtForCreators",
-    text: "home.builtForCreatorsText",
+  vi: {
+    meta: "Solana Devnet — nhà đấu giá nghệ thuật 1/1",
+    h1: ["Nghệ thuật", "biết tự", <><em>chứng minh.</em></>],
+    lede: "Vẽ bằng tay, kiểm tra nguyên bản, ký quỹ on-chain. Mỗi lượt đặt giá khóa 10% tiền cọc — và nếu người thắng bùng kèo, nghệ sĩ được bồi thường.",
+    cta1: "Vào phòng đấu giá",
+    cta2: "Bắt đầu vẽ",
+    stats: ["Đấu giá đang mở", "Đang bán", "Giá cao nhất", "Đã thanh toán"],
+    specimen: "Mẫu vật",
+    scanned: "Đang quét nguyên bản…",
+    marquee: ["Vẽ bằng tay", "Ký quỹ trên Solana", "Cọc 10%", "Bảo hiểm bùng kèo", "Chống bid phút chót", "Độc bản 1/1"],
+    processEyebrow: "Một tác phẩm xứng đáng với giá của nó thế nào",
+    process: [
+      { t: "Vẽ", d: "Studio ghi lại từng nét thành time-lapse. Không phải ảnh chụp màn hình — mà là quá trình làm ra nó." },
+      { t: "Chứng minh", d: "AI so với mọi tác phẩm đã mint. Mã băm time-lapse được neo on-chain qua chương trình SPL Memo." },
+      { t: "Đấu giá", d: "Giá công khai, realtime. Mỗi lượt khóa 10% vào escrow PDA; người bị vượt được hoàn ngay. Bid phút chót sẽ gia hạn đồng hồ." },
+      { t: "Thanh toán", d: "Người thắng trả 90% còn lại và NFT chuyển trong cùng một giao dịch. Bùng kèo thì 70% tiền cọc thuộc về nghệ sĩ." },
+    ],
+    galleryEyebrow: "Đang treo trên tường",
+    galleryTitle: ["Tác phẩm", "đang bán"],
+    viewAll: "Tất cả đấu giá",
+    loading: "Đang đọc chương trình Solana…",
+    emptyTitle: "Bức tường còn trống.",
+    emptyText: "Hãy là người đầu tiên mint và treo tác phẩm ở đây.",
+    manifestoEyebrow: "Luật chơi",
+    manifesto:
+      "Bùng kèo thì tiền cọc không biến mất vào một quỹ nào đó. Nó thuộc về người nghệ sĩ mà bạn vừa quay lưng.",
+    ctaTitle: ["Hãy làm điều gì đó", "đáng được chứng minh."],
+    ctaButton: "Mở Studio",
   },
-  {
-    title: "home.everyDevice",
-    text: "home.everyDeviceText",
-  },
-];
+} as const;
 
 export default function ExplorePage() {
-  const { t } = useI18n();
+  const { locale } = useI18n();
+  const c = copy[locale];
   const { connection } = useConnection();
   const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [featuredAuction, setFeaturedAuction] = useState<Auction | null>(null);
+  const [featured, setFeatured] = useState<Auction | null>(null);
   const [stats, setStats] = useState<MarketplaceStats>({
     totalListings: 0,
     activeAuctions: 0,
@@ -45,6 +95,11 @@ export default function ExplorePage() {
     uniqueSellers: 0,
   });
   const [loading, setLoading] = useState(true);
+
+  const heroRef = useRef<HTMLElement>(null);
+  const processRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const manifestoRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,15 +111,11 @@ export default function ExplorePage() {
           fetchLiveAuctions(connection),
           fetchSettledVolumeSol(),
         ]);
-
         if (!isMounted) return;
 
         setArtworks(listings);
-        if (auctions.length > 0) {
-          setFeaturedAuction(auctions[0]);
-        }
+        if (auctions.length > 0) setFeatured(auctions[0]);
 
-        // Compute stats directly from fetched on-chain listings & auctions
         let highestBid = 0;
         let floorPrice = Infinity;
         const sellers = new Set<string>();
@@ -74,7 +125,6 @@ export default function ExplorePage() {
           if (!isNaN(price) && price < floorPrice) floorPrice = price;
           sellers.add(l.artist);
         }
-
         for (const a of auctions) {
           const bid = parseFloat(a.currentBid);
           const start = parseFloat(a.startPrice || "0");
@@ -82,7 +132,6 @@ export default function ExplorePage() {
           if (!isNaN(start) && start > 0 && start < floorPrice) floorPrice = start;
           if (a.artist) sellers.add(a.artist);
         }
-
         if (floorPrice === Infinity) floorPrice = 0;
 
         setStats({
@@ -108,230 +157,298 @@ export default function ExplorePage() {
     };
   }, [connection]);
 
-  const [large, ...small] = artworks;
+  // ---------------- Motion ----------------
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const mm = gsap.matchMedia();
 
-  const highlightCards = [
-    { label: t("home.activeAuctions"), value: `${stats.activeAuctions}` },
-    { label: t("home.directListings"), value: `${stats.totalListings}` },
-    { label: t("home.highestBid"), value: stats.highestBidSol },
+    // Hero: headline drifts up and fades as you leave; plate moves slower (depth)
+    const heroCtx = gsap.context(() => {
+      gsap.to("[data-hero-title]", {
+        yPercent: -22,
+        opacity: 0.15,
+        ease: "none",
+        scrollTrigger: { trigger: heroRef.current, start: "top top", end: "bottom top", scrub: true },
+      });
+      gsap.fromTo(
+        "[data-hero-plate]",
+        { clipPath: "inset(100% 0 0 0)" },
+        { clipPath: "inset(0% 0 0 0)", duration: 1.6, ease: "expo.inOut", delay: 0.35 }
+      );
+      gsap.from("[data-hero-in]", { y: 24, opacity: 0, duration: 1.2, ease: "expo.out", stagger: 0.1, delay: 0.9 });
+    }, heroRef);
+
+    // Process: pin the section and slide the track sideways (desktop only)
+    mm.add("(min-width: 1024px)", () => {
+      const track = trackRef.current;
+      const section = processRef.current;
+      if (!track || !section) return;
+      const distance = () => track.scrollWidth - window.innerWidth;
+      const tween = gsap.to(track, {
+        x: () => -distance(),
+        ease: "none",
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: () => `+=${distance()}`,
+          pin: true,
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+          anticipatePin: 1,
+        },
+      });
+      // Each numeral "draws" in as its panel arrives
+      gsap.utils.toArray<HTMLElement>("[data-panel]").forEach((panel) => {
+        gsap.from(panel.querySelectorAll("[data-panel-in]"), {
+          y: 60,
+          opacity: 0,
+          duration: 1,
+          ease: "expo.out",
+          stagger: 0.08,
+          scrollTrigger: { trigger: panel, containerAnimation: tween, start: "left 80%", toggleActions: "play none none reverse" },
+        });
+      });
+    });
+
+    // Manifesto: words light up as you scroll
+    const words = manifestoRef.current?.querySelectorAll<HTMLElement>("[data-word]");
+    if (words && words.length) {
+      gsap.fromTo(
+        words,
+        { opacity: 0.14 },
+        {
+          opacity: 1,
+          ease: "none",
+          stagger: 0.12,
+          scrollTrigger: { trigger: manifestoRef.current, start: "top 78%", end: "bottom 45%", scrub: true },
+        }
+      );
+    }
+
+    // Layout shifts (data arriving) need a refresh so pin distances stay right
+    const refresh = setTimeout(() => ScrollTrigger.refresh(), 800);
+
+    return () => {
+      clearTimeout(refresh);
+      heroCtx.revert();
+      mm.revert();
+    };
+  }, [locale]);
+
+  const heroImage = featured?.image ?? "/assets/hero-artwork.png";
+  const statValues = [
+    loading ? "—" : `${stats.activeAuctions}`,
+    loading ? "—" : `${stats.totalListings}`,
+    loading ? "—" : stats.highestBidSol,
+    loading ? "—" : stats.totalVolumeSol,
   ];
 
   return (
-    <div id="top" className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#0a0b0d] text-text">
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-[640px] bg-[radial-gradient(circle_at_top,_rgba(184,165,255,0.2),_transparent_38%),radial-gradient(circle_at_20%_20%,_rgba(59,130,246,0.15),_transparent_28%),radial-gradient(circle_at_80%_12%,_rgba(34,211,238,0.12),_transparent_32%)]" />
-      </div>
+    <div id="top" className="relative flex min-h-screen flex-col overflow-x-clip bg-bg text-text">
       <Navbar />
 
-      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-16 px-4 pb-20 pt-24 sm:px-6 md:gap-24 md:px-10 md:pt-32 lg:px-16">
-        {/* Highlight metrics derived directly from Solana smart contract */}
-        <section className="grid gap-4 sm:grid-cols-3">
-          {highlightCards.map(({ label, value }) => (
-            <div
-              key={label}
-              className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_10px_30px_-20px_rgba(0,0,0,0.9)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 hover:border-white/20"
-            >
-              <div className="eyebrow text-text-dim">{label}</div>
-              <div className="mt-2 font-display text-3xl leading-none text-text">
-                {loading ? "..." : value}
-              </div>
-            </div>
-          ))}
-        </section>
+      <main className="flex-1">
+        {/* ============ HERO ============ */}
+        <section ref={heroRef} className="relative flex min-h-[100svh] flex-col justify-between px-5 pb-14 pt-28 sm:px-8 lg:px-12">
+          <div data-hero-in className="flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
+            <span className="flex items-center gap-2">
+              <span className="size-1.5 animate-pulse rounded-full bg-accent" />
+              {c.meta}
+            </span>
+            <span className="hidden sm:block">N° 001 / 2026</span>
+          </div>
 
-        {/* Hero & Featured Auction Banner */}
-        <section className="rainbow-border relative overflow-hidden rounded-[36px] bg-[rgba(18,18,18,0.76)] p-4 shadow-[0_35px_90px_-42px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-6 lg:p-10">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(255,126,182,0.18),_transparent_28%),radial-gradient(circle_at_80%_25%,_rgba(111,231,255,0.14),_transparent_22%),radial-gradient(circle_at_40%_80%,_rgba(183,165,255,0.12),_transparent_24%)]" />
-          <div className="grid items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="flex flex-col gap-6">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-text-dim">
-                <span className="size-2 rounded-full bg-[radial-gradient(circle,_#8ef7c0,_#6fe7ff)] shadow-[0_0_12px_rgba(142,247,192,0.9)]" />
-                {t("home.liveSolana")} · Program ID: Cp7n...3XdRq
-              </div>
-
-              <div className="space-y-4">
-                <h1 className="max-w-[760px] font-display text-[clamp(3rem,7vw,7.4rem)] leading-[0.88] tracking-[-0.06em] text-text">
-                  {t("home.heroTitle")}
-                  <span className="rainbow-text block">
-                    {t("home.heroTitleAccent")}
-                  </span>
-                </h1>
-                <p className="max-w-xl text-base leading-7 text-text-dim sm:text-lg">
-                  {t("home.heroDescription")}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/auctions"
-                  className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent-strong hover:shadow-[0_12px_40px_-10px_rgba(184,165,255,0.7)]"
-                >
-                  {t("home.exploreAuctions")}
-                </Link>
-                <Link
-                  href="/create"
-                  className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-text transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.08]"
-                >
-                  {t("home.createArtwork")}
-                </Link>
-              </div>
-
-              <div className="flex flex-wrap gap-3 pt-2 text-[10px] uppercase tracking-[0.18em] text-text-dim">
-                {[t("home.decentralized"), t("home.verifiedEscrow"), t("home.instantSettlement")].map((chip) => (
-                  <span key={chip} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
-                    {chip}
-                  </span>
-                ))}
-              </div>
-
-              {/* Dynamic on-chain metrics instead of hardcoded fake numbers */}
-              <div className="grid gap-3 pt-2 sm:grid-cols-3">
-                {[
-                  [loading ? "..." : stats.floorPriceSol, t("home.floorPrice")],
-                  [loading ? "..." : stats.totalVolumeSol, t("home.marketVolume")],
-                  [loading ? "..." : `${stats.uniqueSellers}`, t("home.activeSellers")],
-                ].map(([value, label], index) => (
-                  <div
-                    key={label}
-                    className={`rounded-[22px] border p-4 shadow-[0_10px_30px_-25px_rgba(0,0,0,0.8)] backdrop-blur-sm ${
-                      index === 0
-                        ? "border-[#ffb86b]/25 bg-[#ffb86b]/8"
-                        : index === 1
-                          ? "border-[#c7b7ff]/25 bg-[#c7b7ff]/8"
-                          : "border-[#8ef7c0]/25 bg-[#8ef7c0]/8"
-                    }`}
-                  >
-                    <div className="font-display text-3xl leading-none text-text">{value}</div>
-                    <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-text-dim">{label}</div>
-                  </div>
-                ))}
-              </div>
+          <div className="relative mx-auto grid w-full max-w-[1600px] flex-1 items-center py-10 lg:grid-cols-12">
+            <div data-hero-title className="relative z-10 lg:col-span-9 lg:col-start-1">
+              <LineReveal
+                as="h1"
+                lines={c.h1 as unknown as React.ReactNode[]}
+                delay={0.25}
+                stagger={0.12}
+                className="mega text-[clamp(3.6rem,17.5vw,6.5rem)] md:text-[clamp(5rem,13.4vw,15rem)]"
+              />
             </div>
 
-            {featuredAuction ? (
-              <div className="relative">
-                <Link href={`/auctions/${featuredAuction.id}`} className="group block">
-                  <div className="rainbow-border relative overflow-hidden rounded-[30px] bg-[rgba(20,20,20,0.82)] p-2 shadow-[0_30px_80px_-35px_rgba(0,0,0,0.85)]">
-                    <div className="relative aspect-[4/5] overflow-hidden rounded-[24px]">
-                      <Image
-                        src={featuredAuction.image}
-                        alt={featuredAuction.title}
-                        fill
-                        priority
-                        sizes="(max-width:1024px) 100vw, 40vw"
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#08090b]/80 via-transparent to-transparent" />
-                      <div className="absolute right-4 top-4 rounded-full border border-white/15 bg-[rgba(10,12,14,0.65)] px-3 py-1.5 backdrop-blur-sm">
-                        <span className="eyebrow text-accent-strong">{t("home.liveOnChain")}</span>
-                      </div>
-                    </div>
-
-                    <div className="absolute inset-x-4 bottom-4 rounded-full border border-white/10 bg-[rgba(16,18,24,0.75)] px-4 py-3 backdrop-blur-md md:inset-x-6 md:px-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="eyebrow text-text-dim">{t("home.featuredAuction")}</div>
-                          <div className="mt-1 font-display text-xl text-text">{featuredAuction.title}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="eyebrow text-text-dim">{t("home.currentBid")}</div>
-                          <div className="font-sans text-lg font-bold text-text">{featuredAuction.currentBid} SOL</div>
-                        </div>
-                      </div>
+            {/* Specimen plate */}
+            <div className="relative mt-10 w-full max-w-[420px] justify-self-end lg:absolute lg:right-0 lg:top-[2%] lg:mt-0 lg:w-[27%] lg:max-w-none">
+              <Parallax speed={-0.12}>
+                <Link href={featured ? `/auctions/${featured.id}` : "/auctions"} data-cursor className="block">
+                  <div data-hero-plate className="relative aspect-[4/5] overflow-hidden bg-bg-elevated scan">
+                    <Image src={heroImage} alt={featured?.title ?? "Specimen"} fill priority sizes="(max-width:1024px) 80vw, 30vw" className="object-cover" />
+                    <i className="reg left-3 top-3" />
+                    <i className="reg right-3 top-3" />
+                    <i className="reg bottom-3 left-3" />
+                    <i className="reg bottom-3 right-3" />
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-ink/90 to-transparent px-4 pb-3 pt-10 font-mono-ui text-[9px] uppercase tracking-[0.16em]">
+                      <span className="text-accent">● {c.scanned}</span>
+                      <span className="text-text-dim-2">{c.specimen}</span>
                     </div>
                   </div>
+                  <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">
+                    <span className="font-display text-lg font-light tracking-[-0.02em]">{featured?.title ?? "—"}</span>
+                    <span className="font-mono-ui text-xs text-text-dim-2">{featured ? `${featured.currentBid} SOL` : ""}</span>
+                  </div>
+                </Link>
+              </Parallax>
+            </div>
+          </div>
+
+          <div data-hero-in className="mx-auto grid w-full max-w-[1600px] gap-8 pt-10 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-5">
+              <p className="max-w-md text-[15px] leading-relaxed text-text-dim-2">{c.lede}</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/auctions" className="btn">
+                  {c.cta1} <span aria-hidden>→</span>
+                </Link>
+                <Link href="/create" className="btn btn-ghost">
+                  {c.cta2}
                 </Link>
               </div>
-            ) : (
-              <div className="flex aspect-[4/5] items-center justify-center rounded-[30px] border border-white/10 bg-white/[0.02] p-6 text-center text-text-dim">
-                {loading ? t("home.loadingAuction") : t("home.noAuctions")}
-              </div>
-            )}
+            </div>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-4 sm:grid-cols-4 lg:col-span-7 lg:col-start-6">
+              {c.stats.map((label, i) => (
+                <div key={label}>
+                  <dd className="font-display text-[clamp(1.5rem,2.6vw,2.4rem)] font-light leading-none tracking-[-0.03em]">{statValues[i]}</dd>
+                  <dt className="eyebrow mt-2">{label}</dt>
+                </div>
+              ))}
+            </dl>
           </div>
         </section>
 
-        {/* Live On-chain Listings */}
-        <section className="flex flex-col gap-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="eyebrow mb-2 text-accent-strong">{t("home.inventoryEyebrow")}</p>
-              <h2 className="font-display text-3xl leading-tight text-text sm:text-4xl">
-                {t("home.inventoryTitle")}
-              </h2>
-            </div>
-            <Link href="/auctions" className="eyebrow inline-flex border-b border-line pb-[5px] transition-colors hover:text-text">
-              {t("home.viewAll")} &rarr;
-            </Link>
-          </div>
+        {/* ============ MARQUEE ============ */}
+        <section className="border-y border-ink bg-bone py-5 text-ink" aria-hidden>
+          <Marquee
+            items={c.marquee.map((m) => (
+              <span key={m} className="flex items-center gap-12 font-display text-[clamp(1.8rem,4vw,3.6rem)] font-light italic leading-none tracking-[-0.03em]">
+                {m}
+                <span className="font-mono-ui text-sm not-italic text-accent">✱</span>
+              </span>
+            ))}
+          />
+        </section>
 
-          {loading ? (
-            <div className="rainbow-border rounded-[30px] bg-[rgba(18,18,18,0.72)] p-10 text-center backdrop-blur-xl">
-              <p className="font-display text-2xl text-text animate-pulse">{t("home.syncing")}</p>
-            </div>
-          ) : artworks.length === 0 ? (
-            <div className="rainbow-border rounded-[30px] bg-[rgba(18,18,18,0.72)] p-10 text-center backdrop-blur-xl">
-              <div className="rainbow-text font-display text-5xl">{t("home.noListings")}</div>
-              <p className="mt-3 text-text-dim">{t("home.firstToMint")}</p>
-              <Link
-                href="/create"
-                className="mt-6 inline-flex rounded-full bg-accent px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313]"
+        {/* ============ PROCESS (pinned horizontal) ============ */}
+        <section ref={processRef} className="relative overflow-hidden border-b border-line lg:h-screen">
+          <div className="px-5 pt-20 sm:px-8 lg:absolute lg:left-12 lg:top-12 lg:z-10 lg:px-0 lg:pt-0">
+            <p className="eyebrow text-accent">{c.processEyebrow}</p>
+          </div>
+          <div ref={trackRef} className="flex flex-col lg:h-full lg:w-max lg:flex-row">
+            {c.process.map((step, i) => (
+              <article
+                key={step.t}
+                data-panel
+                className="relative flex min-h-[80svh] w-full flex-col justify-end border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-[78vw] lg:shrink-0 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
               >
-                {t("home.createArtwork")}
+                <span
+                  data-panel-in
+                  className="pointer-events-none absolute right-6 top-16 select-none font-display text-[clamp(10rem,24vw,26rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:right-10 lg:top-[10%]"
+                  style={{ WebkitTextStroke: "1px rgba(236,231,218,0.3)" }}
+                >
+                  0{i + 1}
+                </span>
+                <div data-panel-in className="mb-10 lg:absolute lg:bottom-20 lg:right-16 lg:mb-0 lg:w-[34%]">
+                  <ProcessVisual step={i as 0 | 1 | 2 | 3} />
+                </div>
+                <div className="relative max-w-2xl lg:max-w-[46%]">
+                  <h3 data-panel-in className="mega text-[clamp(3.5rem,9vw,9rem)]">
+                    {step.t}
+                    <em>.</em>
+                  </h3>
+                  <p data-panel-in className="mt-6 max-w-lg text-lg leading-relaxed text-text-dim-2">
+                    {step.d}
+                  </p>
+                  <div data-panel-in className="mt-8 h-px w-full bg-line">
+                    <div className="h-px w-1/4 bg-accent" style={{ width: `${(i + 1) * 25}%` }} />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ============ GALLERY ============ */}
+        <section className="px-5 py-28 sm:px-8 lg:px-12">
+          <div className="mx-auto max-w-[1600px]">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="eyebrow mb-5 text-accent">{c.galleryEyebrow}</p>
+                <LineReveal as="h2" lines={[...c.galleryTitle].map((l, i) => (i === 1 ? <em key={l}>{l}</em> : l))} className="mega text-[clamp(3.2rem,9vw,9rem)]" />
+              </div>
+              <Link href="/auctions" className="link-draw w-fit font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim-2 hover:text-text">
+                {c.viewAll} →
               </Link>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-              {large && (
-                <div className="lg:col-span-7">
-                  <ArtworkCard artwork={large} />
+
+            <div className="mt-16">
+              {loading ? (
+                <p className="font-display text-3xl font-light italic text-text-dim animate-pulse">{c.loading}</p>
+              ) : artworks.length === 0 ? (
+                <div className="border border-line px-6 py-24 text-center">
+                  <p className="mega text-[clamp(2.5rem,7vw,6rem)]">{c.emptyTitle}</p>
+                  <p className="mt-4 text-text-dim-2">{c.emptyText}</p>
+                  <Link href="/create" className="btn mt-8">
+                    {c.cta2}
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid gap-x-10 gap-y-20 md:grid-cols-12">
+                  {artworks.slice(0, 7).map((art, i) => {
+                    const layout = [
+                      "md:col-span-7",
+                      "md:col-span-5 md:mt-40",
+                      "md:col-span-4",
+                      "md:col-span-4 md:mt-24",
+                      "md:col-span-4 md:mt-8",
+                      "md:col-span-6",
+                      "md:col-span-6 md:mt-28",
+                    ][i];
+                    const speed = [0.04, -0.06, 0.03, -0.05, 0.05, -0.03, 0.06][i];
+                    return (
+                      <div key={art.id} className={layout}>
+                        <Parallax speed={speed}>
+                          <FadeUp>
+                            <ArtworkCard artwork={{ ...art, size: i === 0 || i === 5 ? "large" : "small" }} index={i} />
+                          </FadeUp>
+                        </Parallax>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              <div className="flex flex-col gap-8 lg:col-span-5">
-                {small.map((art) => (
-                  <ArtworkCard key={art.id} artwork={art} />
-                ))}
-              </div>
             </div>
-          )}
+          </div>
         </section>
 
-        <section className="grid gap-5 md:grid-cols-3">
-          {reasons.map((reason, idx) => (
-            <div
-              key={reason.title}
-              className="rounded-[28px] border border-line-subtle bg-[rgba(18,18,18,0.78)] p-6 shadow-[0_18px_35px_-25px_rgba(0,0,0,0.9)] transition-transform duration-300 hover:-translate-y-1 hover:border-white/15"
-            >
-              <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-full border border-accent/30 bg-[rgba(184,165,255,0.12)] text-sm font-bold text-accent-strong">
-                0{idx + 1}
-              </div>
-              <h3 className="font-display text-2xl leading-tight text-text">{t(reason.title as "home.onChainProvenance")}</h3>
-              <p className="mt-3 text-base leading-7 text-text-dim">{t(reason.text as "home.onChainProvenanceText")}</p>
-            </div>
-          ))}
+        {/* ============ MANIFESTO (inverted) ============ */}
+        <section className="relative bg-bone px-5 py-32 text-ink sm:px-8 lg:px-12 lg:py-48">
+          <div className="mx-auto max-w-[1400px]">
+            <p className="eyebrow mb-10 !text-ink/55">{c.manifestoEyebrow}</p>
+            <p ref={manifestoRef} className="font-display text-[clamp(2rem,5.6vw,5.6rem)] font-light leading-[1.04] tracking-[-0.035em]">
+              {c.manifesto.split(" ").map((w, i) => (
+                <span key={i} data-word className="inline-block pr-[0.22em]">
+                  {w}
+                </span>
+              ))}
+            </p>
+          </div>
         </section>
 
-        <section className="rounded-[32px] border border-line-glass bg-[radial-gradient(circle_at_top,_rgba(184,165,255,0.15),_transparent_32%),rgba(18,18,18,0.82)] p-5 shadow-[0_18px_60px_-28px_rgba(0,0,0,0.7)] sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="eyebrow text-accent-strong">{t("home.smartContractVerified")}</p>
-              <h2 className="mt-2 font-display text-3xl leading-tight text-text sm:text-4xl">
-                {t("home.readyToMint")}
-              </h2>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/create"
-                className="inline-flex items-center justify-center rounded-full bg-accent px-5 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-transform duration-300 hover:-translate-y-0.5 hover:bg-accent-strong"
-              >
-                {t("home.mintYourWork")}
-              </Link>
-              <Link
-                href="/auctions"
-                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-text transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08]"
-              >
-                {t("home.exploreAuctions")}
-              </Link>
-            </div>
+        {/* ============ FINAL CTA ============ */}
+        <section className="px-5 py-32 sm:px-8 lg:px-12 lg:py-48">
+          <div className="mx-auto max-w-[1600px]">
+            <LineReveal
+              as="h2"
+              lines={[c.ctaTitle[0], <em key="x">{c.ctaTitle[1]}</em>]}
+              className="mega text-[clamp(3.2rem,11vw,11.5rem)]"
+            />
+            <Link href="/create" className="group mt-14 inline-flex items-center gap-6" data-cursor>
+              <span className="flex size-20 items-center justify-center rounded-full bg-accent text-3xl text-ink transition-transform duration-700 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:rotate-[-45deg] group-hover:scale-110">
+                →
+              </span>
+              <span className="link-draw font-mono-ui text-sm uppercase tracking-[0.18em]">{c.ctaButton}</span>
+            </Link>
           </div>
         </section>
       </main>

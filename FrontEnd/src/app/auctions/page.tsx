@@ -7,6 +7,8 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageHero } from "@/components/layout/PageHero";
+import { FadeUp } from "@/components/motion/Reveal";
 import { fetchLiveAuctions, type Auction } from "@/lib/data";
 import {
   getUserMintedArtworks,
@@ -94,78 +96,44 @@ export default function AuctionsPage() {
   ];
 
   return (
-    <div id="top" className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#0a0b0d] text-text">
+    <div id="top" className="relative flex min-h-screen flex-col overflow-x-clip bg-bg text-text">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-[1440px] px-4 pb-20 pt-24 sm:px-6 md:px-10 md:pt-32 lg:px-16">
-        <header className="mb-10 flex flex-col justify-between gap-6 md:mb-14 md:flex-row md:items-end">
-          <div>
-            <span className="eyebrow text-accent-strong">{t("auctions.eyebrow")}</span>
-            <h1 className="font-display font-normal uppercase leading-[0.92] tracking-[-0.05em] text-text [font-size:clamp(2.5rem,6vw,5.4rem)]">
-              {t("auctions.title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-base text-text-dim">
-              {t("auctions.description")}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleStartAuctionClick}
-              className="flex items-center gap-2 rounded-full bg-accent px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_35px_-5px_rgba(184,165,255,0.7)]"
-            >
-              <span>🔨</span>
-              <span>Tạo Đấu Giá Từ Kho Tác Phẩm</span>
-            </button>
-
-            <Link
-              href="/portfolio"
-              className="rounded-full border border-white/10 bg-white/5 px-5 py-3.5 text-xs font-semibold text-text-dim transition-all hover:bg-white/10 hover:text-white"
-            >
-              Vào Kho Tác Phẩm ↗
-            </Link>
-          </div>
-        </header>
-
-        {/* Real dynamic metrics */}
-        <div className="mb-8 grid gap-3 sm:grid-cols-3">
-          {headerStats.map(({ label, value }) => (
-            <div key={label} className="rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-              <div className="eyebrow text-text-dim">{label}</div>
-              <div className="mt-2 font-display text-2xl text-text">
-                {loading ? "..." : value}
-              </div>
-            </div>
-          ))}
-        </div>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
+        <PageHero
+          eyebrow={t("auctions.eyebrow")}
+          index="02 / Auctions"
+          lines={["Live", <em key="a">auctions</em>]}
+          description={t("auctions.description")}
+          actions={
+            <>
+              <button onClick={handleStartAuctionClick} className="btn">
+                Tạo đấu giá từ kho <span aria-hidden>→</span>
+              </button>
+              <Link href="/portfolio" className="btn btn-ghost">
+                Kho tác phẩm
+              </Link>
+            </>
+          }
+          stats={headerStats.map(({ label, value }) => ({ label, value: loading ? "—" : value }))}
+        />
 
         {loading ? (
-          <div className="rainbow-border flex min-h-[360px] items-center justify-center rounded-[30px] bg-[rgba(18,18,18,0.72)] p-8 text-center backdrop-blur-xl">
-            <p className="font-display text-2xl text-text animate-pulse">{t("auctions.loading")}</p>
-          </div>
+          <p className="py-24 font-display text-4xl font-light italic text-text-dim animate-pulse">{t("auctions.loading")}</p>
         ) : auctions.length === 0 ? (
-          <section className="rainbow-border flex min-h-[360px] items-center justify-center rounded-[30px] bg-[rgba(18,18,18,0.72)] p-8 text-center backdrop-blur-xl">
-            <div className="max-w-lg">
-              <div className="rainbow-text font-display text-6xl leading-none">00</div>
-              <h2 className="mt-5 font-display text-3xl text-text">Chưa có phiên đấu giá</h2>
-              <p className="mt-3 text-base leading-7 text-text-dim">
-                Hãy chọn một tác phẩm độc bản từ kho cá nhân của bạn để khởi chạy phiên đấu giá on-chain đầu tiên!
-              </p>
-              
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <button
-                  onClick={handleStartAuctionClick}
-                  className="inline-flex items-center gap-2 rounded-full bg-accent px-8 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_35px_-5px_rgba(184,165,255,0.7)]"
-                >
-                  <span>🔨</span>
-                  <span>Chọn Tác Phẩm Từ Kho Đem Đi Đấu Giá</span>
-                </button>
-              </div>
-            </div>
+          <section className="border border-line px-6 py-28 text-center">
+            <p className="mega text-[clamp(4rem,12vw,10rem)] text-text-dim/40">00</p>
+            <h2 className="mt-6 font-display text-3xl font-light tracking-[-0.03em]">Chưa có phiên đấu giá</h2>
+            <p className="mx-auto mt-3 max-w-md text-text-dim-2">
+              Chọn một tác phẩm độc bản từ kho cá nhân để khởi chạy phiên đấu giá on-chain đầu tiên.
+            </p>
+            <button onClick={handleStartAuctionClick} className="btn mt-8">
+              Chọn tác phẩm từ kho →
+            </button>
           </section>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {auctions.map((auction) => {
+          <div className="grid gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
+            {auctions.map((auction, idx) => {
               const savedBids = getAllSavedBidsForAuction(auction.id);
               const myBid = publicKey ? getSavedBidSecret(auction.id, publicKey.toBase58()) : null;
               const effectiveHighestBid = Math.max(
@@ -177,103 +145,57 @@ export default function AuctionsPage() {
               const nowUnix = Math.floor(Date.now() / 1000);
               const isSettled = auction.status?.toUpperCase() === "SETTLED";
               const isEnded = isSettled || !auction.isLive || (auction.endTime ? nowUnix >= auction.endTime : false);
+              const state = isSettled ? "SOLD" : isEnded ? "CLOSED" : "LIVE";
 
               return (
-                <Link
-                  key={auction.id}
-                  href={`/auctions/${auction.id}`}
-                  className="group block"
-                >
-                  <div className={`rainbow-border relative w-full overflow-hidden rounded-[30px] bg-[#111315] transition-all duration-300 group-hover:-translate-y-1 aspect-[4/3] ${
-                    isSettled
-                      ? "opacity-85 ring-2 ring-green-500/40 shadow-[0_0_25px_rgba(74,222,128,0.2)]"
-                      : isEnded
-                      ? "opacity-75 grayscale-[0.25] hover:opacity-100 hover:grayscale-0"
-                      : myBid
-                      ? "ring-2 ring-accent shadow-[0_0_30px_rgba(184,165,255,0.25)]"
-                      : ""
-                  }`}>
-                    <Image
-                      src={auction.image}
-                      alt={auction.title}
-                      fill
-                      sizes="(max-width:768px) 100vw, 33vw"
-                      className={`object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06] ${
-                        isEnded && !isSettled ? "grayscale-[0.3]" : ""
-                      }`}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#090b0d]/90 via-[#090b0d]/30 to-transparent" />
+                <FadeUp key={auction.id} delay={(idx % 3) * 0.08}>
+                  <Link href={`/auctions/${auction.id}`} className="group block" data-cursor>
+                    <div className="relative aspect-[4/5] overflow-hidden bg-bg-elevated">
+                      <Image
+                        src={auction.image}
+                        alt={auction.title}
+                        fill
+                        sizes="(max-width:768px) 100vw, 33vw"
+                        className={`object-cover transition-transform duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07] ${
+                          isEnded && !isSettled ? "grayscale" : ""
+                        }`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent" />
+                      <i className="reg left-3 top-3" />
+                      <i className="reg right-3 top-3" />
+                      <i className="reg bottom-3 left-3" />
+                      <i className="reg bottom-3 right-3" />
 
-                    <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
-                      <span className={`rounded-full border px-3 py-1 backdrop-blur-sm ${
-                        isSettled
-                          ? "border-green-500/30 bg-green-950/70"
-                          : isEnded
-                          ? "border-white/20 bg-black/70"
-                          : "border-[#d9d0ff]/20 bg-[#12131a]/70"
-                      }`}>
-                        <span className={`eyebrow ${
-                          isSettled
-                            ? "text-green-300"
-                            : isEnded
-                            ? "text-text-dim"
-                            : "text-accent-strong"
-                        }`}>
-                          {isSettled ? "🏆 ĐÃ THÀNH CÔNG" : isEnded ? "🏁 ĐÃ KẾT THÚC" : t("auctions.liveBidding")}
+                      <span
+                        className={`absolute left-4 top-4 flex items-center gap-2 px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.16em] backdrop-blur-sm ${
+                          state === "LIVE" ? "bg-accent text-ink" : state === "SOLD" ? "bg-success text-ink" : "bg-ink/80 text-text-dim-2"
+                        }`}
+                      >
+                        {state === "LIVE" && <span className="size-1.5 animate-pulse rounded-full bg-ink" />}
+                        {state === "LIVE" ? t("auctions.liveBidding") : state === "SOLD" ? "Đã bán" : "Đã kết thúc"}
+                      </span>
+
+                      {myBid && (
+                        <span className="absolute inset-x-4 bottom-4 bg-ink/85 px-3 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text backdrop-blur-sm">
+                          {isSettled ? `Bạn thắng · ${myBid.bidAmountSol.toFixed(2)} SOL` : `Bạn đang dẫn · ${myBid.bidAmountSol.toFixed(2)} SOL`}
                         </span>
-                      </span>
-                      <span className="rounded-full border border-[#8ef7c0]/30 bg-[#8ef7c0]/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-[#8ef7c0]">
-                        {t("auctions.escrow")}
-                      </span>
+                      )}
                     </div>
 
-                    {/* Active User Bid Badge */}
-                    {myBid && (
-                      <div className="absolute inset-x-4 top-14 flex items-center gap-1.5">
-                        <span className={`rounded-full border px-3 py-1 text-[10px] font-bold backdrop-blur-md shadow-lg flex items-center gap-1.5 ${
-                          isSettled
-                            ? "border-green-500/50 bg-green-950/80 text-green-300"
-                            : isEnded
-                            ? "border-white/20 bg-black/80 text-text-dim"
-                            : "border-accent/50 bg-black/80 text-accent shadow-[0_0_20px_rgba(184,165,255,0.4)]"
-                        }`}>
-                          <span>{isSettled ? "🏆" : "🎯"}</span>
-                          <span>{isSettled ? `Đã Thắng: ${myBid.bidAmountSol.toFixed(2)} SOL` : `Bạn Đang Đấu Giá: ${myBid.bidAmountSol.toFixed(2)} SOL`}</span>
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Center Ended / Settled Banner */}
-                    {isSettled ? (
-                      <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-2xl border border-green-500/40 bg-green-950/90 p-2.5 text-center text-xs font-bold text-green-300 backdrop-blur-md shadow-2xl">
-                        🎉 ĐÃ ĐẤU GIÁ THÀNH CÔNG
-                      </div>
-                    ) : isEnded ? (
-                      <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-2xl border border-white/15 bg-black/85 p-2.5 text-center text-xs font-bold text-text-dim backdrop-blur-md shadow-2xl">
-                        🏁 PHIÊN ĐẤU GIÁ ĐÃ KẾT THÚC
-                      </div>
-                    ) : null}
-
-                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
-                      <div>
-                        <div className="font-display text-xl leading-none text-text sm:text-2xl">
-                          {auction.title}
-                        </div>
-                        <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-text-dim">
-                          {t("auctions.seller")}: {auction.artist}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-sans text-lg font-semibold ${isSettled ? "text-green-300" : isEnded ? "text-text-dim" : "text-accent"}`}>
-                          {effectiveHighestBid} SOL
-                        </div>
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim">
-                          {isSettled ? "Giá Chốt Deal" : isEnded ? "Giá Cuối Cùng" : t("auctions.currentBid")}
-                        </div>
-                      </div>
+                    <div className="mt-4 grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 border-t border-line pt-3">
+                      <span className="font-mono-ui text-[10px] tracking-[0.14em] text-text-dim">№ {String(idx + 1).padStart(2, "0")}</span>
+                      <h3 className="truncate font-display text-[clamp(1.3rem,2vw,1.9rem)] font-light leading-tight tracking-[-0.03em] transition-colors duration-500 group-hover:text-accent">
+                        {auction.title}
+                      </h3>
+                      <span className={`font-mono-ui text-sm ${state === "LIVE" ? "text-accent" : "text-text"}`}>{effectiveHighestBid} SOL</span>
+                      <span />
+                      <span className="eyebrow truncate">
+                        {t("auctions.seller")} {auction.artist}
+                      </span>
+                      <span className="eyebrow text-right">{isSettled ? "Giá chốt" : isEnded ? "Giá cuối" : t("auctions.currentBid")}</span>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </FadeUp>
               );
             })}
           </div>
@@ -283,7 +205,7 @@ export default function AuctionsPage() {
       {/* Select Artwork From Vault Modal */}
       {isSelectVaultModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121316] p-6 text-text shadow-2xl max-h-[85vh] flex flex-col">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-2xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <h3 className="font-display text-xl text-text">
@@ -307,7 +229,7 @@ export default function AuctionsPage() {
                   <p className="text-sm">Bạn chưa có tác phẩm nào trong kho.</p>
                   <Link
                     href="/portfolio"
-                    className="mt-4 inline-block rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase text-[#0a0a0a]"
+                    className="mt-4 inline-block rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase text-[#0a0a09]"
                   >
                     Xem Kho Tác Phẩm
                   </Link>

@@ -2,6 +2,8 @@
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageHero } from "@/components/layout/PageHero";
+import { FadeUp } from "@/components/motion/Reveal";
 import { useI18n } from "@/lib/i18n";
 
 const content = {
@@ -35,16 +37,23 @@ export default function LegalPage() {
   const { locale } = useI18n();
   const c = content[locale];
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0b0d] text-text">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-bg text-text">
       <Navbar />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-20 pt-28 sm:px-6">
-        <h1 className="font-display text-4xl">{c.title}</h1>
-        <div className="mt-8 space-y-6">
-          {c.sections.map(([h, p]) => (
-            <section key={h} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <h2 className="text-lg font-semibold">{h}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-text-dim">{p}</p>
-            </section>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
+        <PageHero
+          eyebrow="Fine print"
+          index="05 / Legal"
+          lines={[c.title.split(" & ")[0] + " &", <em key="r">{c.title.split(" & ")[1]}</em>]}
+        />
+        <div className="border-t border-line">
+          {c.sections.map(([h, p], i) => (
+            <FadeUp key={h}>
+              <section className="grid gap-4 border-b border-line py-8 md:grid-cols-12 md:gap-10 md:py-10">
+                <span className="font-mono-ui text-[11px] tracking-[0.16em] text-text-dim md:col-span-1">0{i + 1}</span>
+                <h2 className="font-display text-2xl font-light leading-tight tracking-[-0.03em] md:col-span-4 md:text-3xl">{h}</h2>
+                <p className="text-[15px] leading-relaxed text-text-dim-2 md:col-span-6 md:col-start-7">{p}</p>
+              </section>
+            </FadeUp>
           ))}
         </div>
       </main>

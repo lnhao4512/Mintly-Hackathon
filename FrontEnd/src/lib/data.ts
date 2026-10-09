@@ -51,36 +51,12 @@ export interface BidRecord {
 }
 
 const FALLBACK_ASSETS = [
-  {
-    title: "Messi: Symphony of Gold",
-    image: "/assets/messi-symphony.svg",
-    rarity: "rare" as const,
-  },
-  {
-    title: "Ronaldo: Dynasty Legacy",
-    image: "/assets/ronaldo-legacy.svg",
-    rarity: "collector" as const,
-  },
-  {
-    title: "Vietnam Rising: Golden Star",
-    image: "/assets/vietnam-rising.svg",
-    rarity: "trending" as const,
-  },
-  {
-    title: "Emerald Dash: 90th Minute",
-    image: "/assets/emerald-dash.svg",
-    rarity: "trending" as const,
-  },
-  {
-    title: "Final Whistle Drama",
-    image: "/assets/final-whistle.svg",
-    rarity: "collector" as const,
-  },
-  {
-    title: "Night Press",
-    image: "/assets/night-press.svg",
-    rarity: "rare" as const,
-  },
+  { title: "Concrete Solitude", image: "/assets/concrete-solitude.png", rarity: "rare" as const },
+  { title: "Digital Renaissance", image: "/assets/digital-renaissance.png", rarity: "collector" as const },
+  { title: "Silent Epoch", image: "/assets/silent-epoch.png", rarity: "trending" as const },
+  { title: "Synthetic Bloom", image: "/assets/synthetic-bloom.png", rarity: "trending" as const },
+  { title: "Void Geometry", image: "/assets/void-geometry.png", rarity: "collector" as const },
+  { title: "Prism Study", image: "/assets/hero-artwork.png", rarity: "rare" as const },
 ];
 
 export type DirectListing = {

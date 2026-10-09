@@ -114,7 +114,7 @@ function SettlementContent() {
     : "Wallet Disconnected";
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#0a0a0a]">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#0a0a09]">
       <div className="flex items-center justify-between px-6 pt-8 md:px-16">
         <Link href="/" className="font-display text-2xl tracking-[-1.2px] text-text">
           MINTLY
@@ -257,7 +257,7 @@ function SettlementContent() {
               <button
                 onClick={handlePayDeposit}
                 disabled={paying || !wallet.publicKey || !auction}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-accent py-4 text-xs font-bold uppercase tracking-[0.2em] text-[#141313] shadow-[0px_0px_20px_rgba(184,165,255,0.25)] transition-all hover:bg-accent-strong disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-accent py-4 text-xs font-bold uppercase tracking-[0.2em] text-[#0a0a09] shadow-[0px_0px_20px_rgba(255,77,31,0.25)] transition-all hover:bg-accent-strong disabled:opacity-50"
               >
                 <SolanaIcon className="size-4" width={16} height={16} />
                 {paying ? t("settlement.submitting") : t("settlement.secure")}
@@ -292,7 +292,7 @@ function SettlementContent() {
 
 export default function SettlementPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a09]" />}>
       <SettlementContent />
     </Suspense>
   );

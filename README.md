@@ -207,6 +207,13 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 
 ---
 
+## 7.1. Hệ thiết kế ("Proof of Hand")
+
+- Mực đen + giấy xương + một màu nhấn đỏ cam; chữ **Fraunces** (tiêu đề), **JetBrains Mono** (nhãn/số liệu), **Be Vietnam Pro** (nội dung, hỗ trợ tiếng Việt).
+- Chuyển động bằng **GSAP + ScrollTrigger** (hero reveal, cuộn ngang ghim, parallax, chữ sáng dần theo cuộn) và **Lenis** (cuộn mượt). Tôn trọng `prefers-reduced-motion`.
+- Thành phần dùng chung: `components/motion/*` (Reveal, Parallax, Marquee, Cursor), `components/layout/PageHero`, `ArtworkCard` (nhãn bảo tàng). Token màu và tiện ích (`.btn`, `.mega`, `.eyebrow`, `.reg`, `.scan`) nằm trong `src/app/globals.css`.
+- Lưu ý: nếu tab trình duyệt bị ẩn, hiệu ứng GSAP tạm dừng (trình duyệt ngừng `requestAnimationFrame`) và tiếp tục khi hiện lại.
+
 ## 8. Tài liệu bổ sung
 
 - [docs/ECONOMICS.md](docs/ECONOMICS.md) — kinh tế đơn vị, điểm hòa vốn.

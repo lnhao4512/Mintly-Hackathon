@@ -31,7 +31,7 @@ function VerifyContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="min-h-screen bg-[#0a0a09] text-text">
       <Navbar />
       <main className="mx-auto w-full max-w-[900px] px-5 pb-24 pt-32 sm:px-8">
         <p className="eyebrow text-accent-strong">MINTLY / EVIDENCE</p>
@@ -39,7 +39,7 @@ function VerifyContent() {
         <p className="mt-5 max-w-2xl text-lg leading-8 text-text-dim">{t("verify.subtitle")}</p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <input value={mint} onChange={(event) => setMint(event.target.value)} placeholder={t("verify.placeholder")} className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.05] px-5 py-4 font-mono text-sm text-text outline-none focus:border-accent" />
-          <button onClick={verify} disabled={status === "loading"} className="rounded-full bg-accent px-7 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[#141313] disabled:opacity-50">{status === "loading" ? t("common.loading") : t("verify.button")}</button>
+          <button onClick={verify} disabled={status === "loading"} className="rounded-full bg-accent px-7 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a09] disabled:opacity-50">{status === "loading" ? t("common.loading") : t("verify.button")}</button>
         </div>
 
         {status === "invalid" && <p className="mt-5 text-red-300">{t("verify.invalid")}</p>}
@@ -63,5 +63,5 @@ function VerifyContent() {
 }
 
 export default function VerifyPage() {
-  return <Suspense fallback={<div className="min-h-screen bg-[#0a0b0d]" />}><VerifyContent /></Suspense>;
+  return <Suspense fallback={<div className="min-h-screen bg-[#0a0a09]" />}><VerifyContent /></Suspense>;
 }

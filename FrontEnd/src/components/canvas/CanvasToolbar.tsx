@@ -123,12 +123,12 @@ function TrashGlyph() {
 }
 
 const SWATCHES = [
-  "#141313",
-  "#ff8ab6",
-  "#65e0ff",
-  "#8ef7c0",
-  "#ffb86b",
-  "#c7b7ff",
+  "#0a0a09",
+  "#ff4d1f",
+  "#ffb340",
+  "#c8ff3d",
+  "#ffb340",
+  "#ff4d1f",
   "#ff4757",
   "#ffffff",
   "#2ed573",
@@ -189,7 +189,7 @@ export function CanvasToolbar({
           aria-label={t("tool.pencil")}
           className={`flex size-11 items-center justify-center rounded-full transition-all ${
             state.tool === "pencil"
-              ? "bg-gradient-to-r from-[#ff8ab6] to-[#ffa8c8] text-[#0a0a0a] shadow-[0_0_20px_rgba(255,138,182,0.6)]"
+              ? "bg-gradient-to-r from-[#ff4d1f] to-[#ffa8c8] text-[#0a0a09] shadow-[0_0_20px_rgba(255,138,182,0.6)]"
               : "text-text-dim hover:bg-white/5 hover:text-text"
           }`}
         >
@@ -200,7 +200,7 @@ export function CanvasToolbar({
           aria-label={t("tool.eraser")}
           className={`flex size-11 items-center justify-center rounded-full transition-all ${
             state.tool === "eraser"
-              ? "bg-gradient-to-r from-[#c7b7ff] to-[#dcc8ff] text-[#0a0a0a] shadow-[0_0_20px_rgba(199,183,255,0.6)]"
+              ? "bg-gradient-to-r from-[#ff4d1f] to-[#dcc8ff] text-[#0a0a09] shadow-[0_0_20px_rgba(199,183,255,0.6)]"
               : "text-text-dim hover:bg-white/5 hover:text-text"
           }`}
         >
@@ -211,7 +211,7 @@ export function CanvasToolbar({
           aria-label={t("tool.text")}
           className={`flex size-11 items-center justify-center rounded-full transition-all ${
             state.tool === "text"
-              ? "bg-gradient-to-r from-[#8ef7c0] to-[#a3ffc8] text-[#0a0a0a] shadow-[0_0_20px_rgba(142,247,192,0.6)]"
+              ? "bg-gradient-to-r from-[#c8ff3d] to-[#a3ffc8] text-[#0a0a09] shadow-[0_0_20px_rgba(200,255,61,0.6)]"
               : "text-text-dim hover:bg-white/5 hover:text-text"
           }`}
         >
@@ -222,7 +222,7 @@ export function CanvasToolbar({
           aria-label={t("tool.fill")}
           className={`flex size-11 items-center justify-center rounded-full transition-all ${
             state.tool === "fill"
-              ? "bg-gradient-to-r from-[#65e0ff] to-[#88ebff] text-[#0a0a0a] shadow-[0_0_20px_rgba(101,224,255,0.6)]"
+              ? "bg-gradient-to-r from-[#ffb340] to-[#88ebff] text-[#0a0a09] shadow-[0_0_20px_rgba(101,224,255,0.6)]"
               : "text-text-dim hover:bg-white/5 hover:text-text"
           }`}
         >
@@ -233,7 +233,7 @@ export function CanvasToolbar({
           aria-label={t("tool.eyedropper")}
           className={`flex size-11 items-center justify-center rounded-full transition-all ${
             state.tool === "eyedropper"
-              ? "bg-gradient-to-r from-[#ffb86b] to-[#ffc688] text-[#0a0a0a] shadow-[0_0_20px_rgba(255,184,107,0.6)]"
+              ? "bg-gradient-to-r from-[#ffb340] to-[#ffc688] text-[#0a0a09] shadow-[0_0_20px_rgba(255,184,107,0.6)]"
               : "text-text-dim hover:bg-white/5 hover:text-text"
           }`}
         >
@@ -245,7 +245,7 @@ export function CanvasToolbar({
           title={t("tool.pixel")}
           className={`flex size-11 items-center justify-center rounded-full transition-all ${
             state.isPixelMode
-              ? "bg-gradient-to-r from-[#ffd4a8] to-[#ffe4c8] text-[#0a0a0a] shadow-[0_0_20px_rgba(255,212,168,0.6)]"
+              ? "bg-gradient-to-r from-[#ffd4a8] to-[#ffe4c8] text-[#0a0a09] shadow-[0_0_20px_rgba(255,212,168,0.6)]"
               : "text-text-dim hover:bg-white/5 hover:text-text"
           }`}
         >
@@ -256,7 +256,7 @@ export function CanvasToolbar({
           onClick={() => fileInputRef.current?.click()}
           aria-label={t("tool.upload")}
           title={t("tool.upload")}
-          className="flex size-11 items-center justify-center rounded-full text-text-dim transition-all hover:bg-accent/20 hover:text-accent hover:shadow-[0_0_20px_rgba(184,165,255,0.6)]"
+          className="flex size-11 items-center justify-center rounded-full text-text-dim transition-all hover:bg-accent/20 hover:text-accent hover:shadow-[0_0_20px_rgba(255,77,31,0.6)]"
         >
           <UploadGlyph />
         </button>
@@ -270,7 +270,7 @@ export function CanvasToolbar({
           value={state.textValue}
           onChange={(e) => actions.setTextValue(e.target.value)}
           placeholder={t("tool.text")}
-          className="w-24 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-text outline-none placeholder:text-text-dim focus:border-[#ff8ab6] focus:bg-white/8 transition-all"
+          className="w-24 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-text outline-none placeholder:text-text-dim focus:border-[#ff4d1f] focus:bg-white/8 transition-all"
         />
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
           <span className="text-[10px] uppercase tracking-[0.18em] text-text-dim">{t("tool.size")}</span>
@@ -281,7 +281,7 @@ export function CanvasToolbar({
             step={1}
             value={state.brushSize}
             onChange={(e) => actions.setBrushSize(Number(e.target.value))}
-            className="h-1.5 w-20 accent-[#ff8ab6]"
+            className="h-1.5 w-20 accent-[#ff4d1f]"
             aria-label={t("tool.size")}
           />
           <span className="min-w-4 text-center text-[10px] font-semibold text-text">{state.brushSize}</span>

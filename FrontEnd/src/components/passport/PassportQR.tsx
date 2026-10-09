@@ -9,7 +9,7 @@ export function PassportQR({ mint, title }: { mint: string; title?: string }) {
 
   useEffect(() => {
     const url = `${window.location.origin}/passport/${mint}`;
-    QRCode.toDataURL(url, { width: 480, margin: 2, errorCorrectionLevel: "M", color: { dark: "#0a0b0d", light: "#ffffff" } })
+    QRCode.toDataURL(url, { width: 480, margin: 2, errorCorrectionLevel: "M", color: { dark: "#0a0a09", light: "#ffffff" } })
       .then(setDataUrl)
       .catch(() => setDataUrl(null));
   }, [mint]);

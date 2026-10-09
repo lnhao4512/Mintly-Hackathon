@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { PageHero } from "@/components/layout/PageHero";
 import { useI18n } from "@/lib/i18n";
 import { analyzeArtworkSimilarity, type ArtworkSimilarityResult } from "@/lib/ai";
 
@@ -64,38 +65,52 @@ export default function OriginalityPage() {
   const score = result?.originalityScore ?? (result?.similarity != null ? 100 - result.similarity : null);
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-bg text-text">
       <Navbar />
-      <main className="mx-auto w-full max-w-[900px] px-5 pb-24 pt-32 sm:px-8">
-        <p className="eyebrow text-accent-strong">{c.eyebrow}</p>
-        <h1 className="mt-3 font-display text-5xl sm:text-6xl">{c.title}</h1>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-text-dim">{c.sub}</p>
-
-        <label className="mt-8 inline-flex cursor-pointer rounded-full bg-accent px-7 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[#141313]">
-          {c.pick}
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
-        </label>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
+        <PageHero
+          eyebrow={c.eyebrow}
+          index="04 / Proof"
+          lines={[locale === "vi" ? "Kiểm tra" : "Originality", <em key="x">{locale === "vi" ? "nguyên bản" : "check"}</em>]}
+          description={c.sub}
+          actions={
+            <label className="btn cursor-pointer">
+              {c.pick} <span aria-hidden>↑</span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+            </label>
+          }
+        />
 
         {preview && (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={preview} alt="preview" className="w-full rounded-2xl border border-white/10" />
-            <div className="glass-panel rounded-2xl p-5">
-              {busy && <p className="text-text-dim">{c.scanning}</p>}
+          <div className="grid gap-10 lg:grid-cols-12">
+            <div className="relative aspect-square overflow-hidden border border-line bg-bg-elevated lg:col-span-5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview} alt="preview" className="size-full object-contain" />
+              {busy && <div className="scan absolute inset-0" />}
+              <i className="reg left-3 top-3" />
+              <i className="reg right-3 top-3" />
+              <i className="reg bottom-3 left-3" />
+              <i className="reg bottom-3 right-3" />
+            </div>
+            <div className="lg:col-span-6 lg:col-start-7">
+              {busy && <p className="font-display text-3xl font-light italic text-text-dim animate-pulse">{c.scanning}</p>}
               {error && <p className="text-red-300">{c.err}</p>}
               {result && !busy && (
-                <>
+                <div className="border-t border-line pt-6">
                   <p className="eyebrow">{c.score}</p>
-                  <p className="mt-1 font-display text-5xl">{score != null ? `${Math.round(score)}%` : "—"}</p>
-                  <p className="eyebrow mt-5">{c.match}</p>
-                  <p className="mt-1 text-sm text-text-dim">
-                    {result.closestMatch
-                      ? `${result.closestMatch.title} — ${Math.round(result.closestMatch.similarity)}%`
-                      : c.none}
+                  <p className="mega mt-2 text-[clamp(5rem,14vw,12rem)]">
+                    {score != null ? Math.round(score) : "—"}
+                    <em>%</em>
                   </p>
-                  <p className="mt-5 text-xs text-text-dim">{result.message}</p>
-                  <p className="mt-3 text-xs text-amber">{c.note}</p>
-                </>
+                  <div className="mt-8 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 border-t border-line pt-4 text-sm">
+                    <span className="eyebrow">{c.match}</span>
+                    <span className="text-text-dim-2">
+                      {result.closestMatch ? `${result.closestMatch.title} — ${Math.round(result.closestMatch.similarity)}%` : c.none}
+                    </span>
+                  </div>
+                  <p className="mt-6 max-w-md text-xs leading-relaxed text-text-dim">{result.message}</p>
+                  <p className="mt-3 max-w-md text-xs text-amber">{c.note}</p>
+                </div>
               )}
             </div>
           </div>

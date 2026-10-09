@@ -58,7 +58,7 @@ export default function LiveViewerPage({ params }: { params: Promise<{ creator: 
   }, [connection, creator]);
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="min-h-screen bg-[#0a0a09] text-text">
       <Navbar />
       <main className="mx-auto w-full max-w-[900px] px-5 pb-24 pt-32 sm:px-8">
         <div className="flex items-center gap-3">

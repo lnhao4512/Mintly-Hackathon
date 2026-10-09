@@ -254,7 +254,7 @@ export function CreateAuctionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121316] p-6 text-text shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -544,7 +544,7 @@ export function CreateAuctionModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 rounded-full bg-accent px-8 py-3 text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_30px_-5px_rgba(184,165,255,0.7)] disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-accent px-8 py-3 text-xs font-bold uppercase tracking-wider text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_30px_-5px_rgba(255,77,31,0.7)] disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

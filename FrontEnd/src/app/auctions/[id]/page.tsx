@@ -308,7 +308,7 @@ export default function AuctionDetailPage({
           mintAddress: auction.nftMint,
           title: auction.title || `Tác phẩm Đấu Giá #${auction.nftMint.slice(0, 4)}`,
           description: `Tác phẩm NFT thắng cuộc từ phiên đấu giá MINTLY với mức giá ${currentBidNum.toFixed(2)} SOL (Đã cọc 10%: ${deposit10Num.toFixed(2)} SOL + thanh toán 90%: ${remaining90Num.toFixed(2)} SOL).`,
-          imageUrl: auction.image || "/assets/messi-symphony.svg",
+          imageUrl: auction.image || "/assets/hero-artwork.png",
           creator: wallet.publicKey.toBase58(),
           createdAt: Date.now(),
           category: "Đấu Giá Thắng Cuộc",
@@ -381,7 +381,7 @@ export default function AuctionDetailPage({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#0a0b0d] text-text">
+      <div className="flex min-h-screen flex-col bg-[#0a0a09] text-text">
         <Navbar />
         <main className="flex flex-1 items-center justify-center py-32">
           <div className="flex flex-col items-center gap-3">
@@ -398,17 +398,17 @@ export default function AuctionDetailPage({
 
   if (!auction) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#0a0b0d] text-text">
+      <div className="flex min-h-screen flex-col bg-[#0a0a09] text-text">
         <Navbar />
         <main className="flex flex-1 items-center justify-center px-6 py-32 text-center">
-          <section className="max-w-lg rounded-3xl border border-white/10 bg-[#121316] p-10 backdrop-blur-xl">
+          <section className="max-w-lg rounded-3xl border border-white/10 bg-[#121211] p-10 backdrop-blur-xl">
             <h1 className="font-display text-3xl text-text">Không Tìm Thấy Đấu Giá</h1>
             <p className="mt-3 text-sm text-text-dim">
               Phiên đấu giá này không tồn tại hoặc đã bị hủy trên Solana Devnet.
             </p>
             <Link
               href="/auctions"
-              className="mt-6 inline-flex rounded-full bg-accent px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#141313]"
+              className="mt-6 inline-flex rounded-full bg-accent px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#0a0a09]"
             >
               Về Danh Sách Đấu Giá
             </Link>
@@ -513,7 +513,7 @@ export default function AuctionDetailPage({
   const totalBidsCount = Math.max(allBidsList.length, commitments.length);
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-[#0a0b0d] text-text">
+    <div className="relative flex min-h-screen flex-col bg-[#0a0a09] text-text">
       <Navbar />
 
       <main className="mx-auto w-full max-w-[1440px] px-4 pb-24 pt-24 sm:px-6 md:px-10 md:pt-28 lg:px-16">
@@ -535,7 +535,7 @@ export default function AuctionDetailPage({
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
           {/* Left Column: Artwork Showcase & Provenance */}
           <div className="lg:col-span-6 space-y-6">
-            <div className="relative aspect-square w-full overflow-hidden rounded-3xl border border-white/15 bg-[#111315] shadow-[0_30px_90px_-30px_rgba(0,0,0,0.9)]">
+            <div className="relative aspect-square w-full overflow-hidden rounded-3xl border border-white/15 bg-[#121211] shadow-[0_30px_90px_-30px_rgba(0,0,0,0.9)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={auction.image}
@@ -606,7 +606,7 @@ export default function AuctionDetailPage({
               <span className="text-xs font-bold uppercase tracking-widest text-accent">
                 Đấu Giá Realtime Trực Tiếp
               </span>
-              <h1 className="mt-1 font-display text-4xl uppercase text-text sm:text-5xl">
+              <h1 className="mt-2 mega text-[clamp(2.8rem,6vw,5.6rem)] !leading-[0.92] text-text">
                 {auction.title}
               </h1>
               <p className="mt-2 text-xs text-text-dim">
@@ -616,7 +616,7 @@ export default function AuctionDetailPage({
 
             {/* USER PARTICIPATION GLOW CARD */}
             {myBidRecord && (
-              <div className="rounded-3xl border border-accent/50 bg-gradient-to-r from-accent/15 via-purple-500/10 to-accent/5 p-5 backdrop-blur-md shadow-[0_0_35px_rgba(184,165,255,0.2)]">
+              <div className="rounded-3xl border border-accent/50 bg-gradient-to-r from-accent/15 via-accent/10 to-accent/5 p-5 backdrop-blur-md shadow-[0_0_35px_rgba(255,77,31,0.2)]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div className="flex size-10 items-center justify-center rounded-2xl bg-accent/20 text-xl shadow-inner">
@@ -748,7 +748,7 @@ export default function AuctionDetailPage({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 rounded-full bg-accent py-4 text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_35px_-5px_rgba(184,165,255,0.7)] disabled:opacity-50 cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 rounded-full bg-accent py-4 text-xs font-bold uppercase tracking-wider text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_35px_-5px_rgba(255,77,31,0.7)] disabled:opacity-50 cursor-pointer"
                   >
                     {isSubmitting ? (
                       <>
@@ -779,13 +779,13 @@ export default function AuctionDetailPage({
               {/* PAYMENT PENDING PHASE (CHỐT DEAL & THANH TOÁN 90% CÒN LẠI) */}
               {currentPhase === "PAYMENT_PENDING" && (
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-5 text-xs text-purple-200 space-y-3">
-                    <div className="font-bold flex items-center gap-2 text-base text-purple-300">
+                  <div className="rounded-2xl border border-accent/30 bg-accent/10 p-5 text-xs text-accent-strong space-y-3">
+                    <div className="font-bold flex items-center gap-2 text-base text-accent-strong">
                       <span>🏆</span>
                       <span>Phiên Đấu Giá Đã Chốt Deal!</span>
                     </div>
 
-                    <div className="space-y-2 pt-2 border-t border-purple-500/20 font-mono text-xs">
+                    <div className="space-y-2 pt-2 border-t border-accent/20 font-mono text-xs">
                       <div className="flex justify-between text-text-dim">
                         <span>Giá Thắng Cuộc (100%):</span>
                         <span className="text-text text-sm font-bold">
@@ -827,7 +827,7 @@ export default function AuctionDetailPage({
                     <button
                       onClick={handlePayFullPaymentAndSettle}
                       disabled={isSubmitting}
-                      className="w-full flex items-center justify-center gap-2 rounded-full bg-accent py-4 text-xs font-bold uppercase tracking-wider text-[#0a0a0a] hover:bg-accent-strong shadow-[0_10px_35px_-5px_rgba(184,165,255,0.8)] disabled:opacity-50 transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 rounded-full bg-accent py-4 text-xs font-bold uppercase tracking-wider text-[#0a0a09] hover:bg-accent-strong shadow-[0_10px_35px_-5px_rgba(255,77,31,0.8)] disabled:opacity-50 transition-all cursor-pointer"
                     >
                       {isSubmitting ? (
                         <>
@@ -871,7 +871,7 @@ export default function AuctionDetailPage({
                   {auction.nftMint && (
                     <Link
                       href={`/passport/${auction.nftMint}`}
-                      className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#0a0a0a] hover:bg-accent-strong"
+                      className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#0a0a09] hover:bg-accent-strong"
                     >
                       <span>🛡️</span>
                       <span>Xem NFT Passport Mới Nhất</span>
@@ -926,7 +926,7 @@ export default function AuctionDetailPage({
                       key={idx}
                       className={`flex items-center justify-between rounded-xl border p-3 text-xs transition-all ${
                         c.isMe
-                          ? "border-accent/40 bg-accent/[0.08] shadow-[0_0_15px_rgba(184,165,255,0.1)]"
+                          ? "border-accent/40 bg-accent/[0.08] shadow-[0_0_15px_rgba(255,77,31,0.1)]"
                           : "border-white/5 bg-white/[0.02]"
                       }`}
                     >

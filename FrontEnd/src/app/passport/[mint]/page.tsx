@@ -104,7 +104,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="min-h-screen bg-[#0a0a09] text-text">
       <Navbar />
 
       <main className="mx-auto w-full max-w-[1180px] px-5 pb-24 pt-28 sm:px-8 sm:pt-32">
@@ -135,7 +135,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
               href={`https://explorer.solana.com/address/${mint}?cluster=devnet`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full bg-accent px-6 py-3.5 text-xs font-bold uppercase tracking-[0.12em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_35px_-8px_rgba(184,165,255,0.7)]"
+              className="rounded-full bg-accent px-6 py-3.5 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_35px_-8px_rgba(255,77,31,0.7)]"
             >
               Solana Explorer Devnet ↗
             </a>

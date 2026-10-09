@@ -1,61 +1,69 @@
-import Link from "next/link";
-import Image from "next/image";
-import { ArrowUpIcon } from "@/components/ui/Icons";
-import { useI18n, type TranslationKey } from "@/lib/i18n";
+"use client";
 
-const columns = [
-  { links: ["footer.provenance", "footer.manifesto"] },
-  { links: ["footer.support", "footer.privacy", "footer.terms", "footer.legal"] },
+import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
+import { LineReveal } from "@/components/motion/Reveal";
+
+const cols: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "Market",
+    links: [
+      { label: "Auctions", href: "/auctions" },
+      { label: "Fixed price", href: "/market" },
+      { label: "Live drawing", href: "/live" },
+    ],
+  },
+  {
+    title: "Proof",
+    links: [
+      { label: "Originality check", href: "/originality" },
+      { label: "Verify a mint", href: "/verify" },
+      { label: "Studio", href: "/create" },
+    ],
+  },
+  {
+    title: "Fine print",
+    links: [
+      { label: "Legal & risk", href: "/legal" },
+      { label: "Vault", href: "/portfolio" },
+    ],
+  },
 ];
 
 export function Footer() {
-  const { t } = useI18n();
-
+  const { t, locale } = useI18n();
   return (
-    <footer className="border-t border-[rgba(68,71,72,0.2)] bg-[#0a0d10] px-6 pb-20 pt-20 md:px-16">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-4 md:max-w-[320px]">
-          <div className="flex items-center gap-3">
-            <div className="relative size-10 overflow-hidden rounded-xl border border-white/15 bg-[#1f2b23] shadow-inner">
-              <Image
-                src="/logo.png"
-                alt="MINTLY Logo"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <p className="font-display text-[30px] leading-none text-text">MINTLY</p>
-          </div>
-          <p className="eyebrow leading-4 text-text-dim">
-            © 2026 MINTLY.
-            <br />
-            {t("footer.tagline")}
+    <footer className="relative mt-24 overflow-hidden border-t border-line px-5 pb-16 pt-16 sm:px-8 lg:px-12">
+      <div className="mx-auto w-full max-w-[1600px]">
+        <div className="grid gap-12 md:grid-cols-[1.2fr_2fr]">
+          <p className="max-w-sm font-display text-2xl font-light leading-snug tracking-[-0.02em] text-text-dim-2">
+            {t("footer.tagline")} <span className="text-text-dim">{locale === "vi" ? "Vẽ bằng tay. Chứng minh nguyên bản. Ký quỹ trên Solana." : "Drawn by hand. Proven original. Escrowed on Solana."}</span>
           </p>
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+            {cols.map((c) => (
+              <div key={c.title} className="flex flex-col gap-3">
+                <p className="eyebrow">{c.title}</p>
+                {c.links.map((l) => (
+                  <Link key={l.href} href={l.href} className="link-draw w-fit text-sm text-text-dim-2 hover:text-text">
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-          {columns.map((col, i) => (
-            <div key={i} className="flex flex-col gap-4">
-              {col.links.map((link) => (
-                <Link
-                  key={link}
-                  href={link === "footer.privacy" || link === "footer.terms" || link === "footer.legal" ? "/legal" : "#"}
-                  className="eyebrow transition-colors duration-300 hover:text-text"
-                >
-                  {t(link as TranslationKey)}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </div>
+        <LineReveal
+          as="div"
+          lines={["MINTLY"]}
+          className="mega mt-16 select-none text-[clamp(5rem,26vw,28rem)] !leading-[0.78] text-text"
+        />
 
-        <div className="flex items-start justify-start md:items-end md:justify-end">
-          <a
-            href="#top"
-            aria-label={t("footer.backToTop")}
-            className="flex size-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-text transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08]"
-          >
-            <ArrowUpIcon />
+        <div className="mt-10 flex flex-col gap-3 border-t border-line pt-6 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-text-dim sm:flex-row sm:justify-between">
+          <span>© 2026 Mintly — Mini Hackathon Solana</span>
+          <span>Devnet demo · not financial advice</span>
+          <a href="#top" className="link-draw w-fit text-text-dim-2 hover:text-text">
+            {t("footer.backToTop")} ↑
           </a>
         </div>
       </div>

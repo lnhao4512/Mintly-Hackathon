@@ -1,25 +1,28 @@
 @import "tailwindcss";
 
+/*
+ * MINTLY — "Proof of Hand"
+ * Ink + bone + one signal colour. Editorial type, hairlines, grain, almost no rounded corners.
+ */
 :root {
-  --bg: #0b0d10;
-  --bg-elevated: #12161b;
-  --surface: rgba(17, 20, 24, 0.8);
-  --text: #f2efe9;
-  --text-dim: #b9c0c8;
-  --text-dim-2: #d4d8db;
-  --accent: #c7b7ff;
-  --accent-strong: #d9ceff;
-  --accent-soft: rgba(199, 183, 255, 0.14);
-  --border: rgba(196, 202, 214, 0.14);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-glass: rgba(255, 255, 255, 0.09);
-  --success: #8ef7c0;
-  --amber: #f4d19b;
-  --rainbow-1: #ff7eb6;
-  --rainbow-2: #ffb86b;
-  --rainbow-3: #8ef7c0;
-  --rainbow-4: #6fe7ff;
-  --rainbow-5: #b7a5ff;
+  --bg: #0a0a09;
+  --bg-elevated: #121211;
+  --surface: rgba(236, 231, 218, 0.035);
+  --text: #ece7da;
+  --text-dim: #8f8b80;
+  --text-dim-2: #c4bfb1;
+  --accent: #ff4d1f;
+  --accent-strong: #ff7a50;
+  --accent-soft: rgba(255, 77, 31, 0.12);
+  --border: rgba(236, 231, 218, 0.14);
+  --border-subtle: rgba(236, 231, 218, 0.07);
+  --border-glass: rgba(236, 231, 218, 0.1);
+  --success: #c8ff3d;
+  --amber: #ffb340;
+  --bone: #ece7da;
+  --ink: #0a0a09;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
 }
 
 @theme inline {
@@ -37,9 +40,12 @@
   --color-line-glass: var(--border-glass);
   --color-success: var(--success);
   --color-amber: var(--amber);
+  --color-bone: var(--bone);
+  --color-ink: var(--ink);
 
-  --font-display: "Bricolage Grotesque", sans-serif;
-  --font-sans: "Be Vietnam Pro", sans-serif;
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 * {
@@ -48,41 +54,79 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 body {
-  background:
-    radial-gradient(circle at top, rgba(255, 126, 182, 0.14), transparent 25%),
-    radial-gradient(circle at 15% 20%, rgba(111, 231, 255, 0.12), transparent 26%),
-    radial-gradient(circle at 85% 12%, rgba(183, 165, 255, 0.16), transparent 24%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans), "Be Vietnam Pro", sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  padding-bottom: 30px; /* room for the devnet ticker */
 }
 
+/* Film grain over everything — kills the flat "digital" feel */
+body::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: -50%;
+  z-index: 9998;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain 1.2s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, 3%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ---------- Legacy classes re-skinned so every existing page inherits the new look ---------- */
 .rainbow-border {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(135deg, rgba(255, 126, 182, 0.12), rgba(183, 165, 255, 0.10), rgba(111, 231, 255, 0.08));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 20px 50px -30px rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: none;
 }
-
 .rainbow-text {
-  background: linear-gradient(90deg, #ffd4a8 0%, #ff8ab6 20%, #c7b7ff 45%, #65e0ff 70%, #aaf2c0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--accent);
+  font-style: italic;
+}
+.glass-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(6px);
 }
 
-.glass-panel {
-  background: linear-gradient(180deg, rgba(23, 25, 29, 0.82), rgba(12, 14, 18, 0.72));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
+/* Sharp, editorial corners: kill pill/rounded shapes on boxes & buttons, keep dots/avatars round */
+:where(a, button, input, textarea, select, section, article, div, label, dialog)[class*="rounded-["],
+:where(a, button, input, textarea, select, section, article, div, label)[class*="rounded-2xl"],
+:where(a, button, input, textarea, select, section, article, div, label)[class*="rounded-3xl"],
+:where(a, button, input, textarea, select, section, article, div, label)[class*="rounded-xl"],
+:where(a, button, input, textarea, select, section, article, div, label)[class*="rounded-lg"],
+:where(a, button, input, textarea, select, label)[class*="rounded-full"]:not([class*="size-"]):not([class*="h-10 w-10"]) {
+  border-radius: 2px;
+}
+:where(span)[class*="rounded-full"][class*="px-"] {
+  border-radius: 2px;
 }
 
 img {
@@ -90,42 +134,248 @@ img {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
+input,
+textarea,
+select {
+  color: var(--text);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-dim);
+}
+
 .eyebrow {
-  font-family: var(--font-sans), "Be Vietnam Pro", sans-serif;
-  font-weight: 700;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10.5px;
   line-height: 1.45;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
 
 .display {
-  font-family: var(--font-bricolage), "Bricolage Grotesque", sans-serif;
+  font-family: var(--font-display);
   color: var(--text);
 }
 
+/* ---------- New primitives ---------- */
+.font-mono-ui {
+  font-family: var(--font-mono);
+}
+
+.hairline {
+  border-top: 1px solid var(--border);
+}
+
+/* Big editorial headline */
+.mega {
+  font-family: var(--font-display);
+  font-weight: 340;
+  font-variation-settings: "opsz" 144;
+  letter-spacing: -0.045em;
+  line-height: 0.86;
+}
+.mega em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--accent);
+}
+
+/* Line/word reveal masks (animated by GSAP) */
+.mask {
+  overflow: hidden;
+  display: block;
+  /* room for Vietnamese diacritics above and descenders below, without changing layout */
+  padding: 0.14em 0 0.16em;
+  margin: -0.14em 0 -0.16em;
+}
+.mask > .mask-inner {
+  display: block;
+  will-change: transform;
+}
+
+/* Buttons: rectangular, fill slides in on hover */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  padding: 1rem 1.6rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  isolation: isolate;
+  transition: color 0.5s var(--ease-out-expo);
+}
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--bone);
+  transform: translateY(101%);
+  transition: transform 0.55s var(--ease-out-expo);
+}
+.btn:hover::before {
+  transform: translateY(0);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-ghost::before {
+  background: var(--text);
+}
+.btn-ghost:hover {
+  color: var(--ink);
+}
+
+/* Underline link that draws itself */
+.link-draw {
+  position: relative;
+  display: inline-block;
+}
+.link-draw::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: currentColor;
+  transform-origin: right;
+  transform: scaleX(1);
+  transition: transform 0.6s var(--ease-out-expo);
+}
+.link-draw:hover::after {
+  transform-origin: left;
+  animation: draw 0.6s var(--ease-out-expo);
+}
+@keyframes draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Marquee */
+.marquee {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+}
+.marquee-track {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 100%;
+  align-items: center;
+  justify-content: space-around;
+  gap: 3rem;
+  padding-right: 3rem;
+  animation: marquee 38s linear infinite;
+}
+.marquee.reverse .marquee-track {
+  animation-direction: reverse;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to { transform: translateX(-100%); }
+}
+
+/* "Forensic scan" sweep over an artwork */
+.scan::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  top: 0;
+  background: var(--accent);
+  box-shadow: 0 0 24px 6px rgba(255, 77, 31, 0.55);
+  animation: scan 4.2s var(--ease-in-out-quart) infinite;
+}
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Registration crosshairs on frames */
+.reg {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+.reg::before,
+.reg::after {
+  content: "";
+  position: absolute;
+  background: var(--text-dim-2);
+}
+.reg::before { left: 6.5px; top: 0; width: 1px; height: 14px; }
+.reg::after { top: 6.5px; left: 0; height: 1px; width: 14px; }
+
+/* Custom cursor */
+.cursor-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9999;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 1px solid var(--bone);
+  border-radius: 999px;
+  pointer-events: none;
+  mix-blend-mode: difference;
+  transition: width 0.35s var(--ease-out-expo), height 0.35s var(--ease-out-expo), margin 0.35s var(--ease-out-expo), background 0.35s;
+}
+.cursor-ring.is-hover {
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  background: var(--bone);
+}
+@media (pointer: coarse) {
+  .cursor-ring { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+  .marquee-track, .scan::after { animation: none; }
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-  border: 2px solid var(--bg);
+  background: rgba(236, 231, 218, 0.18);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--accent);
 }
 
 ::selection {
   background: var(--accent);
-  color: var(--bg);
+  color: var(--ink);
 }
