@@ -197,7 +197,47 @@ textarea::placeholder {
 }
 .mask > .mask-inner {
   display: block;
+  transform: translateY(112%);
+  transition: transform 1.3s var(--ease-out-expo);
+  transition-delay: calc(var(--d, 0s) + var(--i, 0) * 0.11s);
   will-change: transform;
+}
+.is-in .mask > .mask-inner {
+  transform: none;
+}
+
+/* Fade + rise blocks */
+.fade-up {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 1.1s var(--ease-out-expo), transform 1.3s var(--ease-out-expo);
+  transition-delay: var(--d, 0s);
+}
+.fade-up.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Image plate wipe-in */
+.plate-wipe {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 1.6s var(--ease-in-out-quart);
+  transition-delay: var(--d, 0s);
+}
+.plate-wipe.is-in {
+  clip-path: inset(0 0 0 0);
+}
+
+/* No JS or reduced motion: never leave content hidden */
+@media (scripting: none) {
+  .mask > .mask-inner { transform: none; }
+  .fade-up { opacity: 1; transform: none; }
+  .plate-wipe { clip-path: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mask > .mask-inner { transform: none; transition: none; }
+  .fade-up { opacity: 1; transform: none; transition: none; }
+  .plate-wipe { clip-path: none; transition: none; }
 }
 
 /* Buttons: rectangular, fill slides in on hover */

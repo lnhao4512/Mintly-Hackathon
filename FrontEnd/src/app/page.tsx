@@ -8,7 +8,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ArtworkCard, type Artwork } from "@/components/explore/ArtworkCard";
 import { ProcessVisual } from "@/components/explore/ProcessVisual";
-import { FadeUp, LineReveal, Marquee, Parallax } from "@/components/motion/Reveal";
+import { FadeUp, LineReveal, Marquee, Parallax, useInView } from "@/components/motion/Reveal";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -100,6 +100,9 @@ export default function ExplorePage() {
   const processRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const manifestoRef = useRef<HTMLParagraphElement>(null);
+  const metaRef = useInView<HTMLDivElement>();
+  const introRef = useInView<HTMLDivElement>();
+  const plateRef = useInView<HTMLDivElement>();
 
   useEffect(() => {
     let isMounted = true;
@@ -171,12 +174,6 @@ export default function ExplorePage() {
         ease: "none",
         scrollTrigger: { trigger: heroRef.current, start: "top top", end: "bottom top", scrub: true },
       });
-      gsap.fromTo(
-        "[data-hero-plate]",
-        { clipPath: "inset(100% 0 0 0)" },
-        { clipPath: "inset(0% 0 0 0)", duration: 1.6, ease: "expo.inOut", delay: 0.35 }
-      );
-      gsap.from("[data-hero-in]", { y: 24, opacity: 0, duration: 1.2, ease: "expo.out", stagger: 0.1, delay: 0.9 });
     }, heroRef);
 
     // Process: pin the section and slide the track sideways (desktop only)
@@ -197,17 +194,6 @@ export default function ExplorePage() {
           invalidateOnRefresh: true,
           anticipatePin: 1,
         },
-      });
-      // Each numeral "draws" in as its panel arrives
-      gsap.utils.toArray<HTMLElement>("[data-panel]").forEach((panel) => {
-        gsap.from(panel.querySelectorAll("[data-panel-in]"), {
-          y: 60,
-          opacity: 0,
-          duration: 1,
-          ease: "expo.out",
-          stagger: 0.08,
-          scrollTrigger: { trigger: panel, containerAnimation: tween, start: "left 80%", toggleActions: "play none none reverse" },
-        });
       });
     });
 
@@ -251,7 +237,7 @@ export default function ExplorePage() {
       <main className="flex-1">
         {/* ============ HERO ============ */}
         <section ref={heroRef} className="relative flex min-h-[100svh] flex-col justify-between px-5 pb-14 pt-28 sm:px-8 lg:px-12">
-          <div data-hero-in className="flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
+          <div ref={metaRef} className="fade-up flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
             <span className="flex items-center gap-2">
               <span className="size-1.5 animate-pulse rounded-full bg-accent" />
               {c.meta}
@@ -274,7 +260,7 @@ export default function ExplorePage() {
             <div className="relative mt-10 w-full max-w-[420px] justify-self-end lg:absolute lg:right-0 lg:top-[2%] lg:mt-0 lg:w-[27%] lg:max-w-none">
               <Parallax speed={-0.12}>
                 <Link href={featured ? `/auctions/${featured.id}` : "/auctions"} data-cursor className="block">
-                  <div data-hero-plate className="relative aspect-[4/5] overflow-hidden bg-bg-elevated scan">
+                  <div ref={plateRef} style={{ "--d": "0.35s" } as React.CSSProperties} className="plate-wipe relative aspect-[4/5] overflow-hidden bg-bg-elevated scan">
                     <Image src={heroImage} alt={featured?.title ?? "Specimen"} fill priority sizes="(max-width:1024px) 80vw, 30vw" className="object-cover" />
                     <i className="reg left-3 top-3" />
                     <i className="reg right-3 top-3" />
@@ -294,7 +280,7 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          <div data-hero-in className="mx-auto grid w-full max-w-[1600px] gap-8 pt-10 lg:grid-cols-12 lg:items-end">
+          <div ref={introRef} style={{ "--d": "0.8s" } as React.CSSProperties} className="fade-up mx-auto grid w-full max-w-[1600px] gap-8 pt-10 lg:grid-cols-12 lg:items-end">
             <div className="lg:col-span-5">
               <p className="max-w-md text-[15px] leading-relaxed text-text-dim-2">{c.lede}</p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -342,24 +328,24 @@ export default function ExplorePage() {
                 className="relative flex min-h-[80svh] w-full flex-col justify-end border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-[78vw] lg:shrink-0 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
               >
                 <span
-                  data-panel-in
+                 
                   className="pointer-events-none absolute right-6 top-16 select-none font-display text-[clamp(10rem,24vw,26rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:right-10 lg:top-[10%]"
                   style={{ WebkitTextStroke: "1px rgba(236,231,218,0.3)" }}
                 >
                   0{i + 1}
                 </span>
-                <div data-panel-in className="mb-10 lg:absolute lg:bottom-20 lg:right-16 lg:mb-0 lg:w-[34%]">
+                <div className="mb-10 lg:absolute lg:bottom-20 lg:right-16 lg:mb-0 lg:w-[34%]">
                   <ProcessVisual step={i as 0 | 1 | 2 | 3} />
                 </div>
                 <div className="relative max-w-2xl lg:max-w-[46%]">
-                  <h3 data-panel-in className="mega text-[clamp(3.5rem,9vw,9rem)]">
+                  <h3 className="mega text-[clamp(3.5rem,9vw,9rem)]">
                     {step.t}
                     <em>.</em>
                   </h3>
-                  <p data-panel-in className="mt-6 max-w-lg text-lg leading-relaxed text-text-dim-2">
+                  <p className="mt-6 max-w-lg text-lg leading-relaxed text-text-dim-2">
                     {step.d}
                   </p>
-                  <div data-panel-in className="mt-8 h-px w-full bg-line">
+                  <div className="mt-8 h-px w-full bg-line">
                     <div className="h-px w-1/4 bg-accent" style={{ width: `${(i + 1) * 25}%` }} />
                   </div>
                 </div>

@@ -1,18 +1,48 @@
 "use client";
 
-import { useEffect, useRef, type ElementType, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ElementType, type ReactNode } from "react";
 import { gsap } from "@/lib/gsap";
+
+/** Adds `is-in` to the element once it enters the viewport (with a hard fallback so nothing stays hidden). */
+export function useInView<T extends HTMLElement>(options: { threshold?: number; rootMargin?: string } = {}) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const show = () => el.classList.add("is-in");
+    if (typeof IntersectionObserver === "undefined") {
+      show();
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          show();
+          io.disconnect();
+        }
+      },
+      { threshold: options.threshold ?? 0.05, rootMargin: options.rootMargin ?? "0px 0px -8% 0px" }
+    );
+    io.observe(el);
+    const fallback = window.setTimeout(show, 4000);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, [options.threshold, options.rootMargin]);
+  return ref;
+}
 
 /**
  * Headline split into lines that rise out of a mask. `lines` are provided explicitly so we control
- * the typographic rhythm (no brittle DOM measuring). Plays when scrolled into view.
+ * the typographic rhythm. Pure CSS transition triggered by IntersectionObserver — cannot get stuck mid-way.
  */
 export function LineReveal({
   lines,
   as: Tag = "h2",
   className = "",
   delay = 0,
-  stagger = 0.09,
+  stagger = 0.11,
 }: {
   lines: ReactNode[];
   as?: ElementType;
@@ -20,39 +50,12 @@ export function LineReveal({
   delay?: number;
   stagger?: number;
 }) {
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const inners = el.querySelectorAll<HTMLElement>(".mask-inner");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      gsap.set(inners, { yPercent: 0, rotate: 0 });
-      return;
-    }
-    gsap.set(inners, { yPercent: 110, rotate: 3 });
-    const tween = gsap.to(inners, {
-      yPercent: 0,
-      rotate: 0,
-      duration: 1.25,
-      ease: "expo.out",
-      stagger,
-      delay,
-      scrollTrigger: { trigger: el, start: "top 88%", once: true },
-    });
-    return () => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
-    };
-  }, [delay, stagger]);
-
+  const ref = useInView<HTMLElement>();
   return (
-    <Tag ref={ref} className={className}>
+    <Tag ref={ref} className={className} style={{ "--d": `${delay}s` } as CSSProperties}>
       {lines.map((line, i) => (
         <span key={i} className="mask">
-          {/* starts hidden in the SSR markup so there is no flash before GSAP takes over */}
-          <span className="mask-inner" style={{ transform: "translateY(110%)" }}>
+          <span className="mask-inner" style={{ "--i": i * (stagger / 0.11) } as CSSProperties}>
             {line}
           </span>
         </span>
@@ -63,30 +66,9 @@ export function LineReveal({
 
 /** Fade + rise for blocks. */
 export function FadeUp({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.set(el, { y: 0, opacity: 1 });
-      return;
-    }
-    gsap.set(el, { y: 40, opacity: 0 });
-    const tween = gsap.to(el, {
-      y: 0,
-      opacity: 1,
-      duration: 1.1,
-      delay,
-      ease: "expo.out",
-      scrollTrigger: { trigger: el, start: "top 90%", once: true },
-    });
-    return () => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
-    };
-  }, [delay]);
+  const ref = useInView<HTMLDivElement>();
   return (
-    <div ref={ref} className={className} style={{ opacity: 0 }}>
+    <div ref={ref} className={`fade-up ${className}`} style={{ "--d": `${delay}s` } as CSSProperties}>
       {children}
     </div>
   );
