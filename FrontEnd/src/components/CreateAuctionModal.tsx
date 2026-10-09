@@ -13,6 +13,7 @@ import {
 } from "@solana/spl-token";
 import { Keypair, SystemProgram, Transaction } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
+import { assertAuctionCanBeCreated } from "@/lib/marketplace";
 import {
   MARKETPLACE_FEE_BPS,
   WSOL_MINT,
@@ -132,6 +133,8 @@ export function CreateAuctionModal({
         return;
       }
 
+      await assertAuctionCanBeCreated(connection, nftMint);
+
       const program = getMarketplaceProgram(connection, wallet);
 
       const [configPda] = getConfigPda();
@@ -247,6 +250,8 @@ export function CreateAuctionModal({
         msg = L("Phiên đấu giá trước đó cho tác phẩm này vẫn chưa kết thúc/hủy trên Solana, chưa thể mở vòng đấu giá lại.", "The previous auction for this artwork has not ended or been cancelled on Solana, so a new round cannot open yet.");
       } else if (errStr.includes("Blockhash not found")) {
         msg = L("Phiên giao dịch đã hết hạn xác thực (Blockhash expired do để popup ví quá lâu). Vui lòng bấm 'Kích Hoạt Phiên Đấu Giá' và bấm 'Xác nhận' trên ví trong vòng 60 giây.", "The transaction expired (blockhash expired because the wallet popup stayed open too long). Press 'Activate auction' again and confirm in your wallet within 60 seconds.");
+      } else if (errStr.includes("already in use")) {
+        msg = err?.message;
       } else if (errStr.includes("User rejected") || errStr.includes("WalletSignTransactionError")) {
         msg = L("Bạn đã hủy yêu cầu ký giao dịch tạo đấu giá trên ví Phantom.", "You cancelled the auction signature in Phantom.");
       }

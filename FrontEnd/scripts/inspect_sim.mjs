@@ -16,6 +16,6 @@ const all = process.env.ALL ? await program.account.auction.all() : await progra
 for (const x of all) {
   const a = x.account;
   console.log(x.publicKey.toBase58().slice(0, 8), JSON.stringify(a.status), "bid", a.currentBid.toString(), "dep", a.depositPaid.toString(),
-    "end", new Date(a.endTime.toNumber() * 1000).toISOString(), "hb", a.highestBidder?.toBase58().slice(0, 6));
+    "mint", a.nftMint.toBase58().slice(0,8), "end", new Date(a.endTime.toNumber() * 1000).toISOString(), "hb", a.highestBidder?.toBase58().slice(0, 6));
 }
 console.log("now", new Date().toISOString());

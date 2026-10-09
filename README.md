@@ -199,6 +199,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 - Chưa có test suite tự động cho chương trình Anchor.
 - AI kiểm tra trùng lặp: chưa bắt được ảnh vừa lật vừa đổi màu, hoặc ảnh thêm viền dày; embedding do trình duyệt tính nên có thể bị giả mạo (chấp nhận được vì chỉ cảnh báo). So sánh đang duyệt tuyến tính — khi có hàng chục nghìn NFT nên chuyển sang MongoDB Atlas Vector Search. NFT mint trước bản nâng cấp chỉ khớp theo SHA-256.
 - Commit-reveal sealed-bid đã có sẵn on-chain nhưng chưa được tích hợp vào UI đấu giá (đang dùng mô hình đấu giá công khai kiểu English auction).
+- Hợp đồng deployed tạo PDA phiên đấu giá bằng `init` (không phải `init_if_needed` như mã nguồn), nên **mỗi NFT chỉ có một phiên duy nhất**: mint đã từng có phiên (mở, hủy hoặc chốt) không thể đấu giá lại, giao dịch thất bại với "account already in use" (Phantom báo "Unexpected error"). Frontend kiểm tra trước và báo rõ lý do; muốn đấu giá lại cần deploy hợp đồng mới.
 - Chặn người bán tự đặt giá vào phiên của mình: đã chặn ở frontend; ràng buộc on-chain (`SellerCannotBid` trong `place_bid.rs`) chỉ có hiệu lực sau khi deploy lại hợp đồng, nên gọi trực tiếp bản deployed vẫn bypass được.
 - Chưa có UI hủy listing (`cancel_listing`) — chỉ có hủy auction.
 - **Hợp đồng đã sửa nhưng chưa build/deploy** (bảo hiểm bùng kèo 70/30, chống bid sát giờ): cần `anchor build && anchor deploy`; tới khi đó nút xử lý bùng kèo trên frontend sẽ lỗi vì IDL đã thêm account `seller_payment_account`.
