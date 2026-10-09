@@ -34,7 +34,12 @@ export default function CreatorStudioPage() {
 
   // ---------------- drafts + leave guard ----------------
   const router = useRouter();
-  const [panelTab, setPanelTab] = useState<"draw" | "publish">("draw");
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  // small screens start with the publish panel folded away so the canvas gets the room
+  useEffect(() => {
+    if (window.innerWidth < 1440) setRightOpen(false);
+  }, []);
   const [metaDirty, setMetaDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -438,7 +443,7 @@ export default function CreatorStudioPage() {
     <div className="relative flex h-[calc(100svh-30px)] flex-col overflow-hidden">
       <Navbar />
 
-      <main className="flex flex-1 gap-8 overflow-y-auto px-4 pb-8 pt-28 md:px-8 md:pt-32">
+      <main className="flex min-h-0 flex-1 gap-3 overflow-hidden px-3 pb-4 pt-24 md:px-5 md:pt-24">
         {!connected ? (
           <section className="relative flex flex-1 flex-col justify-between overflow-hidden border border-line p-6 sm:p-10">
             <div className="flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
@@ -461,7 +466,25 @@ export default function CreatorStudioPage() {
           </section>
         ) : (
           <>
-            {/* Canvas area */}
+            {/* Left: drawing tools — brushes, colour, layers */}
+            {leftOpen && (
+              <aside
+                data-lenis-prevent
+                className="flex w-[300px] shrink-0 flex-col gap-6 overflow-y-auto overflow-x-hidden overscroll-contain border border-line bg-[rgba(18,18,17,0.7)] p-5 backdrop-blur-md max-lg:hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-2xl font-light tracking-[-0.03em]">{L("Dụng cụ", "Tools")}</h2>
+                  <button type="button" onClick={() => setLeftOpen(false)} title={L("Thu gọn", "Collapse")} aria-label="collapse tools" className="flex size-8 items-center justify-center border border-line text-text-dim transition-colors hover:border-text hover:text-text">
+                    ‹
+                  </button>
+                </div>
+                <BrushPanel state={state} actions={actions} />
+                <div className="border-t border-line" />
+                <LayersPanel state={state} actions={actions} />
+              </aside>
+            )}
+
+            {/* Canvas area (centre) */}
             <section 
               ref={fullscreenRef}
               onDragOver={(e) => {
@@ -482,7 +505,7 @@ export default function CreatorStudioPage() {
                   }
                 }
               }}
-              className="relative flex flex-1 items-center justify-center overflow-hidden border border-line bg-[#171716]"
+              className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden border border-line bg-[#171716]"
             >
               <div
                 className="absolute inset-0 pointer-events-none"
@@ -506,11 +529,11 @@ export default function CreatorStudioPage() {
               )}
 
               {/* Canvas artboard with Native Scroll for Panning */}
-              <div className="relative size-full overflow-y-auto flex items-center justify-center py-8">
+              <div className="relative size-full overflow-auto flex items-start justify-center pt-5 pb-24">
                 <div 
                   className="relative aspect-square shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.35)] transition-all duration-200 ease-out"
                   style={{
-                    height: `calc(80% * ${state.zoomScale})`,
+                    height: `calc((100% - 6.5rem) * ${state.zoomScale})`,
                     minHeight: `calc(320px * ${state.zoomScale})`,
                   }}
                 >
@@ -524,6 +547,26 @@ export default function CreatorStudioPage() {
                   />
                 </div>
               </div>
+
+              {/* handles for collapsed side panels */}
+              {!leftOpen && (
+                <button
+                  type="button"
+                  onClick={() => setLeftOpen(true)}
+                  className="absolute left-4 top-16 z-10 border border-line bg-ink/90 px-3 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text backdrop-blur-sm transition-colors hover:border-accent max-lg:hidden"
+                >
+                  › {L("Dụng cụ", "Tools")}
+                </button>
+              )}
+              {!rightOpen && (
+                <button
+                  type="button"
+                  onClick={() => setRightOpen(true)}
+                  className="absolute right-4 top-4 z-10 border border-line bg-ink/90 px-3 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text backdrop-blur-sm transition-colors hover:border-accent max-lg:hidden"
+                >
+                  {L("Xuất bản", "Publish")} ‹
+                </button>
+              )}
 
               {/* Canvas status pill */}
               <div className="absolute left-4 top-4 flex items-center gap-3 rounded-full border border-line-glass bg-[rgba(34,34,34,0.55)] px-4 py-2 backdrop-blur-md">
@@ -548,36 +591,18 @@ export default function CreatorStudioPage() {
               />
             </section>
 
-            {/* Metadata panel */}
-            <aside className="flex w-[382px] shrink-0 flex-col gap-8 overflow-auto rounded-2xl border border-line-glass bg-[rgba(34,34,34,0.4)] p-8 backdrop-blur-md max-lg:hidden">
-              <div className="-mb-2 flex border-b border-line">
-                {(
-                  [
-                    ["draw", L("Vẽ", "Draw")],
-                    ["publish", L("Xuất bản", "Publish")],
-                  ] as const
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setPanelTab(id)}
-                    className={`relative -mb-px flex-1 border-b-2 py-3 font-mono-ui text-[11px] uppercase tracking-[0.16em] transition-colors ${
-                      panelTab === id ? "border-accent text-text" : "border-transparent text-text-dim hover:text-text"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+            {/* Right: publish — metadata, AI originality check, draft + mint */}
+            {rightOpen && (
+            <aside
+              data-lenis-prevent
+              className="flex w-[340px] shrink-0 flex-col gap-6 overflow-y-auto overflow-x-hidden overscroll-contain border border-line bg-[rgba(18,18,17,0.7)] p-5 backdrop-blur-md max-lg:hidden"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-2xl font-light tracking-[-0.03em]">{L("Xuất bản", "Publish")}</h2>
+                <button type="button" onClick={() => setRightOpen(false)} title={L("Thu gọn", "Collapse")} aria-label="collapse publish" className="flex size-8 items-center justify-center border border-line text-text-dim transition-colors hover:border-text hover:text-text">
+                  ›
+                </button>
               </div>
-
-              {panelTab === "draw" ? (
-                <>
-                  <BrushPanel state={state} actions={actions} />
-                  <div className="border-t border-line" />
-                  <LayersPanel state={state} actions={actions} />
-                </>
-              ) : (
-                <>
 
               {/* Upload Image Option */}
               <div className="flex flex-col gap-2">
@@ -831,9 +856,6 @@ export default function CreatorStudioPage() {
             </div>
           </div>
 
-                </>
-              )}
-
           {/* Wallet guard + Actions */}
           {!connected && (
             <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
@@ -868,21 +890,21 @@ export default function CreatorStudioPage() {
               {savingDraft ? L("Đang lưu…", "Saving…") : L("Lưu nháp", "Save draft")}
             </button>
           </div>
-          <div className="flex gap-4 pt-4">
+          <div className="grid grid-cols-2 gap-2 pt-1">
             <button 
               onClick={handlePreview}
-              className="flex-1 rounded-full border border-white/10 px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-text transition-colors hover:border-text hover:bg-white/5"
+              className="border border-line px-3 py-3 font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-text transition-colors hover:border-text hover:bg-white/5"
             >
               {t("create.preview")}
             </button>
-            <div className="basis-full space-y-1">
+            <div className="space-y-1">
               <button
                 onClick={liveSessionId ? stopLive : startLive}
-                className={`w-full rounded-full border px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] transition-all ${
+                className={`h-full w-full border px-3 py-3 font-sans text-[10px] font-bold uppercase tracking-[0.14em] transition-all ${
                   liveSessionId ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-white/15 text-text hover:border-white/30"
                 }`}
               >
-                {liveSessionId ? L("● Đang phát trực tiếp — bấm để dừng", "● Live — click to stop") : L("Phát trực tiếp phiên vẽ", "Go live while drawing")}
+                {liveSessionId ? L("● Đang live — dừng", "● Live — stop") : L("Phát trực tiếp", "Go live")}
               </button>
               {liveSessionId && publicKey && (
                 <a href={`/live/${publicKey.toBase58()}`} target="_blank" rel="noopener noreferrer" className="block text-center text-[11px] text-accent hover:underline">
@@ -893,12 +915,13 @@ export default function CreatorStudioPage() {
             </div>
             <button
               onClick={handleOpenMint}
-              className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)] disabled:opacity-40 disabled:pointer-events-none"
+              className="col-span-2 bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)] disabled:opacity-40 disabled:pointer-events-none"
             >
               {t("create.mintArtifact")}
             </button>
           </div>
             </aside>
+            )}
           </>
         )}
       </main>
