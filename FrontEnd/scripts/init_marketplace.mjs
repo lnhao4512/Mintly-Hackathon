@@ -17,7 +17,7 @@ const wallet = new Wallet(payer);
 const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
 const idlPath = path.resolve(__dirname, "../src/idl/mintly_marketplace.json");
 const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
-const programId = new PublicKey("Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq");
+const programId = new PublicKey("6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA");
 const program = new Program(idl, provider);
 
 const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], programId);

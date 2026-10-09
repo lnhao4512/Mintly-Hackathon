@@ -15,7 +15,7 @@ function getAccDisc(name) {
 }
 
 const idl = {
-  address: "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq",
+  address: "6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA",
   metadata: {
     name: "mintly_marketplace",
     version: "0.1.0",

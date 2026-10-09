@@ -45,7 +45,7 @@ const EXPLORER = (sig) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`
 
 const conn = new Connection(RPC, "confirmed");
 const idl = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../src/idl/mintly_marketplace.json"), "utf-8"));
-const PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID || "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq");
+const PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID || "6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA");
 const WSOL = new PublicKey("So11111111111111111111111111111111111111112");
 const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID);
 const [tokenConfigPda] = PublicKey.findProgramAddressSync([Buffer.from("token"), configPda.toBuffer(), WSOL.toBuffer()], PROGRAM_ID);

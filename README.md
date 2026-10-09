@@ -133,7 +133,7 @@ MONGODB_URI="mongodb+srv://<user>:<password>@<cluster>.mongodb.net/MINTLY"
 MONGODB_DB="MINTLY"
 
 # Tuỳ chọn — mặc định đã trỏ tới devnet + program đã deploy sẵn
-NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID="Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq"
+NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID="6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA"
 NEXT_PUBLIC_PAYMENT_MINT="So11111111111111111111111111111111111111112"
 NEXT_PUBLIC_SOLANA_RPC_URL="https://api.devnet.solana.com"
 NEXT_PUBLIC_SOLANA_NETWORK="devnet"
@@ -160,7 +160,7 @@ anchor build
 anchor deploy         # deploy lên cluster khai báo trong Anchor.toml (mặc định: devnet)
 ```
 
-Chương trình đã deploy sẵn ở địa chỉ `Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq` trên Devnet — không cần deploy lại nếu chỉ chạy thử FrontEnd.
+Chương trình đã deploy sẵn ở địa chỉ `6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA` trên Devnet — không cần deploy lại nếu chỉ chạy thử FrontEnd.
 
 ### 5.1. Kiểm tra trùng lặp ảnh (AI Similarity)
 

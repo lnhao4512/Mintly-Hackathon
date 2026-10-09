@@ -9,5 +9,5 @@ exec solana-test-validator \
   --bind-address 0.0.0.0 \
   --rpc-port 8899 \
   --ledger /root/solana-ledger \
-  --bpf-program Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq /mnt/d/189/BackEnd/target/deploy/mintly_marketplace.so \
+  --bpf-program 6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA /mnt/d/189/BackEnd/target/deploy/mintly_marketplace.so \
   --reset

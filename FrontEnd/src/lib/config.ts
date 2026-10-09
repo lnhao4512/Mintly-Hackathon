@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID || "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq"
+  process.env.NEXT_PUBLIC_MARKETPLACE_PROGRAM_ID || "6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA"
 );
 
 export const WSOL_MINT = new PublicKey(

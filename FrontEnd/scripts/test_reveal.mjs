@@ -4,7 +4,7 @@ const { Program, AnchorProvider, BN } = pkg;
 import fs from 'fs';
 
 const conn = new Connection('https://api.devnet.solana.com', 'confirmed');
-const PROGRAM_ID = new PublicKey('Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq');
+const PROGRAM_ID = new PublicKey('6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA');
 const idl = JSON.parse(fs.readFileSync('d:/189/FrontEnd/src/idl/mintly_marketplace.json', 'utf8'));
 
 const winner = new PublicKey('EV7sZkb7DZzxPgQckP9y5MH9kz4j4LwfoEJycaN2fv8y');

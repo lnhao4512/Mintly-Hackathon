@@ -1,7 +1,7 @@
 // Greps the deployed program binary for strings, to see which repo features were actually deployed.
 import { Connection, PublicKey } from "@solana/web3.js";
 const conn = new Connection(process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com", "confirmed");
-const pid = new PublicKey("Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq");
+const pid = new PublicKey("6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA");
 const prog = await conn.getAccountInfo(pid);
 const pd = new PublicKey(prog.data.subarray(4, 36));
 const data = (await conn.getAccountInfo(pd)).data;

@@ -3,7 +3,7 @@ import anchorPkg from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 const { AnchorProvider, Program, Wallet } = anchorPkg;
 const conn = new Connection(process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com", "confirmed");
-const pid = new PublicKey("Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq");
+const pid = new PublicKey("6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA");
 const idl = await Program.fetchIdl(pid, new AnchorProvider(conn, new Wallet(Keypair.generate()), {}));
 if (!idl) { console.log("no on-chain IDL"); process.exit(0); }
 for (const n of ["default_winner", "place_bid", "pay_balance"]) {

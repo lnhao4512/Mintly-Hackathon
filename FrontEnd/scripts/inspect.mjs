@@ -2,7 +2,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 
 const conn = new Connection('https://api.devnet.solana.com', 'confirmed');
 const auctionPubkey = new PublicKey('7qXFPt1a4k2CdP51KA5aSbwo1GE7rcd2CqjC25N99283');
-const PROGRAM_ID = new PublicKey('Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq');
+const PROGRAM_ID = new PublicKey('6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA');
 
 async function main() {
   const acc = await conn.getAccountInfo(auctionPubkey);
