@@ -29,7 +29,7 @@ export function PageHero({
         {index && <span>{index}</span>}
       </div>
 
-      <LineReveal as="h1" lines={lines} className="mega mt-6 text-[clamp(3.2rem,10.5vw,11rem)]" />
+      <LineReveal as="h1" inline lines={lines} className="mega mt-6 text-[min(10.5vw,17vh)]" />
 
       <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:items-end">
         <FadeUp className="lg:col-span-5">

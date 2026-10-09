@@ -13,6 +13,7 @@ import { MARKETPLACE_FEE_BPS } from "@/lib/config";
 import { markArtworkAsSold } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 import { SolanaIcon } from "@/components/ui/Icons";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function ListingDetailPage({
   params,
@@ -94,7 +95,7 @@ export default function ListingDetailPage({
       <div className="flex min-h-screen flex-col bg-[#0a0a09] text-text">
         <Navbar />
         <main className="flex flex-1 items-center justify-center py-32">
-          <p className="font-display text-2xl animate-pulse">{t("common.loading")}</p>
+          <Loading label={t("common.loading")} />
         </main>
         <Footer />
       </div>

@@ -9,6 +9,7 @@ import { Footer } from "@/components/layout/Footer";
 import { ArtworkCard, type Artwork } from "@/components/explore/ArtworkCard";
 import { ProcessVisual } from "@/components/explore/ProcessVisual";
 import { Frame3D } from "@/components/explore/Frame3D";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 import { FadeUp, LineReveal, Marquee, Parallax, useInView } from "@/components/motion/Reveal";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useI18n } from "@/lib/i18n";
@@ -227,12 +228,9 @@ export default function ExplorePage() {
     };
   }, [locale]);
 
-    const statValues = [
-    loading ? "—" : `${stats.activeAuctions}`,
-    loading ? "—" : `${stats.totalListings}`,
-    loading ? "—" : stats.highestBidSol,
-    loading ? "—" : stats.totalVolumeSol,
-  ];
+    const statValues = loading
+    ? [0, 1, 2, 3].map((i) => <Skeleton key={i} className="w-[5ch]" />)
+    : [`${stats.activeAuctions}`, `${stats.totalListings}`, stats.highestBidSol, stats.totalVolumeSol];
 
   return (
     <div id="top" className="relative flex min-h-screen flex-col overflow-x-clip bg-bg text-text">
@@ -240,7 +238,7 @@ export default function ExplorePage() {
 
       <main className="flex-1">
         {/* ============ HERO ============ */}
-        <section ref={heroRef} className="relative flex min-h-[100svh] flex-col justify-between px-5 pb-14 pt-28 sm:px-8 lg:px-12">
+        <section ref={heroRef} className="relative flex min-h-[100svh] flex-col justify-between px-5 pb-10 pt-20 sm:px-8 lg:px-12">
           <div ref={metaRef} className="fade-up flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
             <span className="flex items-center gap-2">
               <span className="size-1.5 animate-pulse rounded-full bg-accent" />
@@ -249,27 +247,27 @@ export default function ExplorePage() {
             <span className="hidden sm:block">N° 001 / 2026</span>
           </div>
 
-          <div className="relative mx-auto grid w-full max-w-[1600px] flex-1 items-center py-10 lg:grid-cols-12">
+          <div className="relative mx-auto grid w-full max-w-[1600px] flex-1 items-center py-6 lg:grid-cols-12">
             <div data-hero-title className="relative z-10 lg:col-span-9 lg:col-start-1">
               <LineReveal
                 as="h1"
                 lines={c.h1 as unknown as React.ReactNode[]}
                 delay={0.25}
                 stagger={0.12}
-                className="mega text-[clamp(3.6rem,17.5vw,6.5rem)] md:text-[clamp(5rem,13.4vw,15rem)]"
+                className="mega text-[clamp(3.6rem,17.5vw,6.5rem)] md:text-[min(13.4vw,calc((100svh_-_395px)_/_2.9))]"
               />
             </div>
 
             {/* Specimen plate */}
-            <div className="relative mt-10 w-full max-w-[420px] justify-self-end lg:absolute lg:right-0 lg:top-[2%] lg:mt-0 lg:w-[27%] lg:max-w-none">
+            <div className="relative mt-10 w-full max-w-[420px] justify-self-end lg:absolute lg:right-0 lg:top-1/2 lg:-translate-y-1/2 lg:mt-0 lg:w-[min(27%,34vh)] lg:max-w-none">
               <Parallax speed={-0.08}>
                 <Link href="/auctions" data-cursor className="block" ref={plateRef}>
                   <div style={{ "--d": "0.35s" } as React.CSSProperties} className="plate-wipe-soft">
                     <Frame3D src="/assets/mona-lisa-frame.png" alt={c.plateTitle} />
                   </div>
                   <div className="mt-5 flex items-baseline justify-between border-t border-line pt-2">
-                    <span className="font-display text-lg font-light tracking-[-0.02em]">{c.plateTitle}</span>
-                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text-dim-2">{c.plateMeta}</span>
+                    <span className="whitespace-nowrap font-display text-lg font-light tracking-[-0.02em]">{c.plateTitle}</span>
+                    <span className="truncate pl-3 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text-dim-2">{c.plateMeta}</span>
                   </div>
                   <p className="mt-1 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-accent">● {c.scanned}</p>
                 </Link>
@@ -277,14 +275,14 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          <div ref={introRef} style={{ "--d": "0.8s" } as React.CSSProperties} className="fade-up mx-auto grid w-full max-w-[1600px] gap-8 pt-10 lg:grid-cols-12 lg:items-end">
+          <div ref={introRef} style={{ "--d": "0.8s" } as React.CSSProperties} className="fade-up mx-auto grid w-full max-w-[1600px] gap-8 pt-6 lg:grid-cols-12 lg:items-end">
             <div className="lg:col-span-5">
-              <p className="max-w-md text-[15px] leading-relaxed text-text-dim-2">{c.lede}</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/auctions" className="btn">
+              <p className="max-w-lg text-[15px] leading-relaxed text-text-dim-2">{c.lede}</p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/auctions" className="btn !py-3">
                   {c.cta1} <span aria-hidden>→</span>
                 </Link>
-                <Link href="/create" className="btn btn-ghost">
+                <Link href="/create" className="btn btn-ghost !py-3">
                   {c.cta2}
                 </Link>
               </div>
@@ -352,23 +350,23 @@ export default function ExplorePage() {
         </section>
 
         {/* ============ GALLERY ============ */}
-        <section className="px-5 py-28 sm:px-8 lg:px-12">
+        <section className="flex min-h-[100svh] flex-col justify-center px-5 py-16 sm:px-8 lg:px-12">
           <div className="mx-auto max-w-[1600px]">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="eyebrow mb-5 text-accent">{c.galleryEyebrow}</p>
-                <LineReveal as="h2" lines={[...c.galleryTitle].map((l, i) => (i === 1 ? <em key={l}>{l}</em> : l))} className="mega text-[clamp(3.2rem,9vw,9rem)]" />
+                <LineReveal as="h2" inline lines={[...c.galleryTitle].map((l, i) => (i === 1 ? <em key={l}>{l}</em> : l))} className="mega text-[min(9vw,15vh)]" />
               </div>
               <Link href="/auctions" className="link-draw w-fit font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim-2 hover:text-text">
                 {c.viewAll} →
               </Link>
             </div>
 
-            <div className="mt-16">
+            <div className="mt-10">
               {loading ? (
-                <p className="font-display text-3xl font-light italic text-text-dim animate-pulse">{c.loading}</p>
+                <Loading label={c.loading} />
               ) : artworks.length === 0 ? (
-                <div className="border border-line px-6 py-24 text-center">
+                <div className="border border-line px-6 py-14 text-center">
                   <p className="mega text-[clamp(2.5rem,7vw,6rem)]">{c.emptyTitle}</p>
                   <p className="mt-4 text-text-dim-2">{c.emptyText}</p>
                   <Link href="/create" className="btn mt-8">
@@ -405,10 +403,10 @@ export default function ExplorePage() {
         </section>
 
         {/* ============ MANIFESTO (inverted) ============ */}
-        <section className="relative bg-bone px-5 py-32 text-ink sm:px-8 lg:px-12 lg:py-48">
-          <div className="mx-auto max-w-[1400px]">
+        <section className="relative flex min-h-[100svh] items-center bg-bone px-5 py-24 text-ink sm:px-8 lg:px-12">
+          <div className="mx-auto w-full min-w-0 max-w-[1400px]">
             <p className="eyebrow mb-10 !text-ink/55">{c.manifestoEyebrow}</p>
-            <p ref={manifestoRef} className="font-display text-[clamp(2rem,5.6vw,5.6rem)] font-light leading-[1.04] tracking-[-0.035em]">
+            <p ref={manifestoRef} className="break-words font-display text-[clamp(1.8rem,min(5.2vw,9.5vh),5.6rem)] font-light leading-[1.06] tracking-[-0.035em]">
               {c.manifesto.split(" ").map((w, i) => (
                 <span key={i} data-word className="inline-block pr-[0.22em]">
                   {w}
@@ -419,12 +417,12 @@ export default function ExplorePage() {
         </section>
 
         {/* ============ FINAL CTA ============ */}
-        <section className="px-5 py-32 sm:px-8 lg:px-12 lg:py-48">
-          <div className="mx-auto max-w-[1600px]">
+        <section className="flex min-h-[100svh] items-center px-5 py-24 sm:px-8 lg:px-12">
+          <div className="mx-auto w-full max-w-[1600px]">
             <LineReveal
               as="h2"
               lines={[c.ctaTitle[0], <em key="x">{c.ctaTitle[1]}</em>]}
-              className="mega text-[clamp(3.2rem,11vw,11.5rem)]"
+              className="mega text-[min(11vw,19vh)]"
             />
             <Link href="/create" className="group mt-14 inline-flex items-center gap-6" data-cursor>
               <span className="flex size-20 items-center justify-center rounded-full bg-accent text-3xl text-ink transition-transform duration-700 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:rotate-[-45deg] group-hover:scale-110">

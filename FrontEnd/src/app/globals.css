@@ -76,7 +76,6 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  padding-bottom: 30px; /* room for the devnet ticker */
 }
 
 /* Film grain over everything — kills the flat "digital" feel */
@@ -208,6 +207,80 @@ textarea::placeholder {
 }
 .is-in .mask > .mask-inner {
   transform: none;
+}
+
+/* Manifesto words start dim so nothing flashes at full brightness before the scroll scrub attaches */
+[data-word] {
+  opacity: 0.14;
+}
+@media (scripting: none), (prefers-reduced-motion: reduce) {
+  [data-word] { opacity: 1; }
+}
+
+/* Loading indicator */
+.loader-bar {
+  height: 100%;
+  transform-origin: bottom;
+  animation: loader-bar 1s var(--ease-in-out-quart) infinite;
+  animation-delay: calc(var(--i, 0) * 0.12s);
+}
+@keyframes loader-bar {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(1); }
+}
+.shimmer-text {
+  background: linear-gradient(100deg, var(--text-dim) 20%, var(--text) 45%, var(--text-dim) 70%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -100% 0; }
+}
+.skeleton {
+  width: 4.5ch;
+  height: 0.8em;
+  background: linear-gradient(100deg, rgba(236, 231, 218, 0.07) 20%, rgba(236, 231, 218, 0.2) 45%, rgba(236, 231, 218, 0.07) 70%);
+  background-size: 250% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-bar, .shimmer-text, .skeleton { animation: none; }
+}
+
+/* Footer wordmark: picture shows inside the letters under the cursor */
+.wordmark {
+  --x: -400px;
+  --y: -400px;
+  --r: 0px;
+  font-family: var(--font-display);
+  font-weight: 340;
+  font-variation-settings: "opsz" 144;
+  letter-spacing: -0.045em;
+  line-height: 0.8;
+  font-size: min(26vw, 36vh);
+  white-space: nowrap;
+}
+.wordmark-base {
+  display: block;
+  color: var(--text);
+}
+.wordmark-picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: transparent;
+  background-size: cover;
+  background-position: center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 0;
+  -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 62%, transparent 100%);
+  mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 62%, transparent 100%);
+  pointer-events: none;
 }
 
 /* Fade + rise blocks */

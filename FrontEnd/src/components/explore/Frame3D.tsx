@@ -64,7 +64,7 @@ export function Frame3D({ src, alt, className = "" }: { src: string; alt: string
         {/* extrusion slices (back to front) */}
         {Array.from({ length: DEPTH_LAYERS }, (_, i) => {
           const z = -(DEPTH_LAYERS - i) * LAYER_GAP;
-          const shade = 0.34 + (i / DEPTH_LAYERS) * 0.4;
+          const shade = 0.2 + (i / DEPTH_LAYERS) * 0.28;
           return (
             // eslint-disable-next-line @next/next/no-img-element
             <img

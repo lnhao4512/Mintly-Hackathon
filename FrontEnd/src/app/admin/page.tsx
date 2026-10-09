@@ -8,6 +8,7 @@ import { getMarketplaceProgram } from "@/utils/anchor";
 import { getConfigPda } from "@/lib/config";
 import { setMarketplacePaused } from "@/lib/marketplace";
 import { useI18n } from "@/lib/i18n";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function AdminPage() {
   const { L } = useI18n();
@@ -106,7 +107,7 @@ export default function AdminPage() {
 
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 space-y-4">
           {loading ? (
-            <p className="text-sm text-text-dim">{L("Đang tải cấu hình...", "Loading configuration...")}</p>
+            <Loading label={L("Đang tải cấu hình...", "Loading configuration...")} compact />
           ) : !authority ? (
             <p className="text-sm text-amber-300">
               {L("Marketplace chưa được khởi tạo trên Solana (chưa có ai tạo đấu giá/listing đầu tiên).", "The marketplace has not been initialised on Solana yet (nobody has created the first auction or listing).")}

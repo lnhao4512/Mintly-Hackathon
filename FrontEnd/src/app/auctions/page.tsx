@@ -19,6 +19,7 @@ import {
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { useI18n } from "@/lib/i18n";
 import { getSavedBidSecret, getAllSavedBidsForAuction, hydrateAllBidSecrets } from "@/lib/auction-crypto";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function AuctionsPage() {
   const { t, L } = useI18n();
@@ -115,11 +116,11 @@ export default function AuctionsPage() {
               </Link>
             </>
           }
-          stats={headerStats.map(({ label, value }) => ({ label, value: loading ? "—" : value }))}
+          stats={headerStats.map(({ label, value }) => ({ label, value: loading ? <Skeleton className="w-[6ch]" /> : value }))}
         />
 
         {loading ? (
-          <p className="py-24 font-display text-4xl font-light italic text-text-dim animate-pulse">{t("auctions.loading")}</p>
+          <Loading label={t("auctions.loading")} />
         ) : auctions.length === 0 ? (
           <section className="border border-line px-6 py-28 text-center">
             <p className="mega text-[clamp(4rem,12vw,10rem)] text-text-dim/40">00</p>

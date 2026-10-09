@@ -11,6 +11,7 @@ import { FadeUp } from "@/components/motion/Reveal";
 import { fetchLiveListings, fetchLiveAuctions, type Auction } from "@/lib/data";
 import type { Artwork } from "@/components/explore/ArtworkCard";
 import { useI18n } from "@/lib/i18n";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function MarketPage() {
   const { L } = useI18n();
@@ -74,14 +75,14 @@ export default function MarketPage() {
             </>
           }
           stats={[
-            { label: L("Tin đang bán", "Listings"), value: loading ? "—" : `${listings.length}` },
-            { label: L("Giá sàn", "Floor price"), value: loading ? "—" : floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL" },
-            { label: L("Đấu giá live", "Live auctions"), value: loading ? "—" : `${auctions.length}` },
+            { label: L("Tin đang bán", "Listings"), value: loading ? <Skeleton /> : `${listings.length}` },
+            { label: L("Giá sàn", "Floor price"), value: loading ? <Skeleton className="w-[6ch]" /> : floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL" },
+            { label: L("Đấu giá live", "Live auctions"), value: loading ? <Skeleton /> : `${auctions.length}` },
           ]}
         />
 
         {loading ? (
-          <p className="py-24 font-display text-4xl font-light italic text-text-dim animate-pulse">{L("Đang đồng bộ listing từ Solana…", "Syncing listings from Solana…")}</p>
+          <Loading label={L("Đang đồng bộ listing từ Solana…", "Syncing listings from Solana…")} />
         ) : listings.length === 0 ? (
           <section className="border border-line px-6 py-28 text-center">
             <p className="mega text-[clamp(4rem,12vw,10rem)] text-text-dim/40">00</p>

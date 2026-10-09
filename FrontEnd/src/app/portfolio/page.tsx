@@ -34,6 +34,7 @@ import {
   type SavedBidSecret,
 } from "@/lib/auction-crypto";
 import { fetchLiveAuctions, fetchSellerListings, type Auction, type DirectListing } from "@/lib/data";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function PortfolioPage() {
   const { t, L } = useI18n();
@@ -431,7 +432,9 @@ export default function PortfolioPage() {
                   </div>
                 )}
 
-                {activeSellerListings.length === 0 ? (
+                {isLoadingOnChain ? (
+                  <Loading label={L("Đang đọc kho tranh từ Solana…", "Reading your vault from Solana…")} />
+                ) : activeSellerListings.length === 0 ? (
                   <section className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.01] py-20 text-center">
                     <div className="flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-4xl">
                       ◎
@@ -508,7 +511,9 @@ export default function PortfolioPage() {
             {/* Bidding Filter View */}
             {activeFilter === "bidding" && (
               <div className="mt-8">
-                {myActiveBids.length === 0 ? (
+                {isLoadingOnChain ? (
+                  <Loading label={L("Đang đọc các lượt đấu giá của bạn…", "Reading your bids…")} />
+                ) : myActiveBids.length === 0 ? (
                   <section className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.01] py-20 text-center">
                     <div className="flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-4xl">
                       🎯
@@ -669,7 +674,9 @@ export default function PortfolioPage() {
             {activeFilter === "all" && (
               <>
                 {/* Empty State */}
-                {artworks.length === 0 ? (
+                {isLoadingOnChain ? (
+                  <Loading label={L("Đang quét ví để tìm tác phẩm…", "Scanning your wallet for artworks…")} className="mt-12" />
+                ) : artworks.length === 0 ? (
                   <section className="mt-12 flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.01] py-20 text-center">
                     <div className="flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-4xl">
                       🖼️

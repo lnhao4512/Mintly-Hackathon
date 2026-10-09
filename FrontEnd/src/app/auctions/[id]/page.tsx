@@ -26,6 +26,7 @@ import { placeBidOnChain, payAuctionBalance, defaultWinnerOnChain, cancelAuction
 import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 import { ReputationBadge } from "@/components/auction/ReputationBadge";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 type Phase =
   | "LIVE"
@@ -384,12 +385,7 @@ export default function AuctionDetailPage({
       <div className="flex min-h-screen flex-col bg-[#0a0a09] text-text">
         <Navbar />
         <main className="flex flex-1 items-center justify-center py-32">
-          <div className="flex flex-col items-center gap-3">
-            <div className="size-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
-            <p className="font-display text-lg text-text animate-pulse">
-              {L("Đang tải dữ liệu đấu giá Realtime On-chain...", "Loading realtime on-chain auction data...")}
-            </p>
-          </div>
+          <Loading label={L("Đang tải dữ liệu đấu giá Realtime On-chain...", "Loading realtime on-chain auction data...")} />
         </main>
         <Footer />
       </div>

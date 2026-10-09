@@ -43,14 +43,33 @@ export function LineReveal({
   className = "",
   delay = 0,
   stagger = 0.11,
+  inline = false,
 }: {
   lines: ReactNode[];
   as?: ElementType;
   className?: string;
   delay?: number;
   stagger?: number;
+  /** Render every line on ONE row (wraps only if the viewport is too narrow). */
+  inline?: boolean;
 }) {
   const ref = useInView<HTMLElement>();
+  if (inline) {
+    return (
+      <Tag ref={ref} className={className} style={{ "--d": `${delay}s` } as CSSProperties}>
+        <span className="mask">
+          <span className="mask-inner" style={{ "--i": 0 } as CSSProperties}>
+            {lines.map((line, i) => (
+              <span key={i}>
+                {i > 0 ? " " : ""}
+                {line}
+              </span>
+            ))}
+          </span>
+        </span>
+      </Tag>
+    );
+  }
   return (
     <Tag ref={ref} className={className} style={{ "--d": `${delay}s` } as CSSProperties}>
       {lines.map((line, i) => (

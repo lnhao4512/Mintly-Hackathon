@@ -8,6 +8,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { gsap } from "@/lib/gsap";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
+import { NETWORK, PROGRAM_ID } from "@/lib/config";
 
 const primary = [
   { key: "nav.market", href: "/market" },
@@ -204,9 +205,14 @@ export function Navbar() {
           <button onClick={toggleLocale} className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-ink/60 hover:text-ink">
             {locale === "en" ? "Tiếng Việt" : "English"}
           </button>
-          <p className="max-w-xs font-mono-ui text-[10px] uppercase leading-relaxed tracking-[0.14em] text-ink/50">
-            Solana Devnet · Program Cp7n…3XdRq
-          </p>
+          <a
+            href={`https://explorer.solana.com/address/${PROGRAM_ID.toBase58()}${NETWORK === "mainnet-beta" ? "" : `?cluster=${NETWORK === "devnet" ? "devnet" : "custom"}`}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link-draw max-w-xs font-mono-ui text-[10px] uppercase leading-relaxed tracking-[0.14em] text-ink/60 hover:text-ink"
+          >
+            Solana {NETWORK} · Program {PROGRAM_ID.toBase58().slice(0, 4)}…{PROGRAM_ID.toBase58().slice(-5)} ↗
+          </a>
         </div>
       </div>
     </>

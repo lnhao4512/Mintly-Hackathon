@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageHero } from "@/components/layout/PageHero";
 import { useI18n } from "@/lib/i18n";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 interface Session {
   creator: string;
@@ -47,7 +48,11 @@ export default function LiveIndexPage() {
           description={L("Xem nghệ sĩ vẽ theo thời gian thực. Khi tác phẩm xong, đặt giá ngay trong phiên đấu giá của họ.", "Watch artists draw in realtime. When the piece is done, bid in their auction right away.")}
         />
         <div className="grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-          {sessions === null && <p className="bg-bg p-8 text-text-dim">{L("Đang tải...", "Loading...")}</p>}
+          {sessions === null && (
+            <div className="bg-bg p-8 sm:col-span-2 lg:col-span-3">
+              <Loading label={L("Đang tìm phiên vẽ...", "Looking for live sessions...")} compact />
+            </div>
+          )}
           {sessions?.length === 0 && <p className="bg-bg p-8 text-text-dim-2 sm:col-span-2 lg:col-span-3">{L("Hiện chưa có ai phát trực tiếp. Vào Studio và bấm \u201cPhát trực tiếp\u201d để bắt đầu.", "Nobody is live right now. Open the Studio and press \u201cGo live\u201d to start.")}</p>}
           {sessions?.map((s) => (
             <Link key={s.creator} href={`/live/${s.creator}`} data-cursor className="group bg-bg p-8 transition-colors hover:bg-bg-elevated">

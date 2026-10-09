@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { PageHero } from "@/components/layout/PageHero";
 import { useI18n } from "@/lib/i18n";
 import { analyzeArtworkSimilarity, type ArtworkSimilarityResult } from "@/lib/ai";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 const copy = {
   vi: {
@@ -93,7 +94,7 @@ export default function OriginalityPage() {
               <i className="reg bottom-3 right-3" />
             </div>
             <div className="lg:col-span-6 lg:col-start-7">
-              {busy && <p className="font-display text-3xl font-light italic text-text-dim animate-pulse">{c.scanning}</p>}
+              {busy && <Loading label={c.scanning} />}
               {error && <p className="text-red-300">{c.err}</p>}
               {result && !busy && (
                 <div className="border-t border-line pt-6">
