@@ -41,3 +41,16 @@
 - Nút xử lý bùng kèo lỗi: chưa deploy hợp đồng mới (IDL đã có account `seller_payment_account`).
 - Memo "không tìm thấy": NFT mint trước tính năng này, hoặc RPC công khai không trả giao dịch cũ.
 - Phantom không ký được message: dùng Phantom (ví hỗ trợ `signMessage`), không dùng ví chỉ ký giao dịch.
+
+## 4. Giao dịch mô phỏng trên Devnet (để làm dữ liệu thuyết trình)
+
+Script `FrontEnd/scripts/devnet_sim.mjs` chạy **giao dịch thật** trên Devnet với ví do script tự tạo (người dùng mô phỏng): mint NFT → tạo đấu giá → 3 lượt đặt giá (người bị vượt được hoàn cọc on-chain) → thanh toán 90%. Mỗi vòng ~11 giao dịch, 3 vòng ≈ 35 giao dịch. Mọi chữ ký xem được trên Solana Explorer.
+
+```bash
+cd FrontEnd
+npm run sim:devnet -- --auctions 3
+```
+
+- Cần ~1.5 SOL Devnet gửi vào địa chỉ **seller** mà script in ra (faucet.solana.com); script chia lại cho hai ví đặt giá. Hoặc đặt `FUNDER_KEYPAIR=<file json>`.
+- Nên dùng RPC riêng: `SOLANA_RPC_URL=<helius/quicknode>` (RPC công cộng giới hạn rất gắt).
+- Kết quả ghi vào `FrontEnd/scripts/sim-output/*.json` (kèm link Explorer) và, nếu app đang chạy, vào MongoDB với cờ `simulated: true`. **Khi thuyết trình phải nói rõ đây là dữ liệu mô phỏng, không phải traction.**

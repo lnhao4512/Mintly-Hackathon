@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "sim:devnet": "node scripts/devnet_sim.mjs",
     "fingerprints": "node --experimental-strip-types --no-warnings scripts/build-site-fingerprints.mjs"
   },
   "dependencies": {

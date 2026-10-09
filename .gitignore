@@ -24,3 +24,7 @@ FrontEnd/build/
 .DS_Store
 *.pem
 *.tsbuildinfo
+
+# Devnet simulation wallets & run logs (secret keys!)
+FrontEnd/scripts/.sim-wallets.json
+FrontEnd/scripts/sim-output/
