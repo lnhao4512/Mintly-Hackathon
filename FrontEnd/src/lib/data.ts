@@ -88,13 +88,21 @@ function formatPubkey(key: string): string {
 }
 
 /**
+ * Public lists only show works that have a stored, named record. Nameless on-chain items (bot/simulation runs,
+ * works whose record was deleted) stay out of every listing and statistic; they remain reachable by direct link.
+ */
+async function onlyNamed<T extends { account: { nftMint: PublicKey } }>(items: T[]): Promise<T[]> {
+  await hydrateArtworksByMints(items.map((i) => i.account.nftMint.toBase58()));
+  return items.filter((i) => getArtworkByMint(i.account.nftMint.toBase58())?.title?.trim());
+}
+
+/**
  * Fetches all active on-chain Listings from Mintly Marketplace smart contract.
  */
 export async function fetchLiveListings(connection: Connection): Promise<Artwork[]> {
   try {
     const program = getMarketplaceProgram(connection);
-    const rawListings = await program.account.listing.all();
-    await hydrateArtworksByMints(rawListings.map((i: any) => i.account.nftMint.toBase58()));
+    const rawListings = await onlyNamed(await program.account.listing.all());
 
     return rawListings
       .filter((item: any) => parseListingStatus(item.account.status) === "ACTIVE")
@@ -143,8 +151,7 @@ let cachedLiveAuctions: Auction[] = [];
 export async function fetchLiveAuctions(connection: Connection): Promise<Auction[]> {
   try {
     const program = getMarketplaceProgram(connection);
-    const rawAuctions = (await program.account.auction.all()).filter((a: any) => !SIMULATED_SELLERS.has(a.account.seller.toBase58()));
-    await hydrateArtworksByMints(rawAuctions.map((i: any) => i.account.nftMint.toBase58()));
+    const rawAuctions = await onlyNamed((await program.account.auction.all()).filter((a: any) => !SIMULATED_SELLERS.has(a.account.seller.toBase58())));
 
     const parsed: Auction[] = rawAuctions.map((item: any, idx: number) => {
       const nftMint = item.account.nftMint.toBase58();
@@ -215,8 +222,8 @@ export async function fetchMarketplaceStats(connection: Connection): Promise<Mar
   try {
     const program = getMarketplaceProgram(connection);
     const [listings, auctions, settled] = await Promise.all([
-      program.account.listing.all(),
-      program.account.auction.all().then((all: any[]) => all.filter((a) => !SIMULATED_SELLERS.has(a.account.seller.toBase58()))),
+      program.account.listing.all().then((all: any[]) => onlyNamed(all)),
+      program.account.auction.all().then((all: any[]) => onlyNamed(all.filter((a) => !SIMULATED_SELLERS.has(a.account.seller.toBase58())))),
       fetchSettledVolumeSol(),
     ]);
 
