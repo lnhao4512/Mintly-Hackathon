@@ -149,7 +149,8 @@ export default function CreatorStudioPage() {
           ]
         : [];
 
-      // Proof-of-creation: hash of the time-lapse trace goes into the Metaplex metadata; frames are stored off-chain.
+      // Proof-of-creation: the hash of the time-lapse trace is anchored on-chain via the SPL Memo program in the mint tx;
+      // the frames themselves are stored off-chain (MongoDB).
       const trace = actions.getCreationTrace();
       const proofHash = await hashCreationTrace(trace);
       const creationAttributes = [
@@ -170,7 +171,8 @@ export default function CreatorStudioPage() {
           creators: [{ address: publicKey.toBase58(), share: 100 }],
         },
         onProgress,
-        [...provenanceAttributes, ...creationAttributes]
+        [...provenanceAttributes, ...creationAttributes],
+        { hash: proofHash, method: trace.method }
       );
 
       // Only now index and store artwork fingerprint into AI registry for copyright protection
@@ -192,7 +194,7 @@ export default function CreatorStudioPage() {
         fetch("/api/proofs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...trace, mintAddress: result.mintAddress, creator: publicKey.toBase58(), proofHash }),
+          body: JSON.stringify({ ...trace, mintAddress: result.mintAddress, creator: publicKey.toBase58(), proofHash, signature: result.signature }),
         }).catch((err) => console.warn("Failed to store creation proof:", err));
 
         // 2. Register into AI similarity index

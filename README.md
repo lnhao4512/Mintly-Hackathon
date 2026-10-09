@@ -60,10 +60,10 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 | 8 | **Bảo hiểm bùng kèo** | ⚠️ Đã sửa code Rust, **chưa build/deploy** | `default_winner` chia cọc bị tịch thu: 70% cho seller (`SELLER_FORFEIT_BPS`), 30% cho quỹ sàn. Thêm account `seller_payment_account` (IDL + frontend đã cập nhật). Cần `anchor build && anchor deploy` mới dùng được |
 | 9 | **Chống bid sát giờ** | ⚠️ Đã sửa code Rust, **chưa build/deploy** | Bid trong 60s cuối đẩy `end_time` thành `now + 60s` (`place_bid.rs`) |
 | 10 | Đấu giá realtime | ✅ | `connection.onAccountChange` trên Auction PDA + thông báo gia hạn / bị vượt giá |
-| 11 | Proof-of-Creation | ✅ | Studio ghi time-lapse nét vẽ; SHA-256 của trace ghi vào thuộc tính Metaplex "Creation Proof"; passport replay + kiểm tra khớp mã băm. Chỉ là bằng chứng bổ sung, vẫn có thể dựng trace giả bằng kỹ thuật |
+| 11 | Proof-of-Creation | ✅ | Studio ghi time-lapse nét vẽ; SHA-256 của trace được neo on-chain bằng **SPL Memo** trong chính giao dịch mint; passport replay và đối chiếu mã băm với Memo đọc từ chain. Chỉ là bằng chứng bổ sung, vẫn có thể dựng trace giả bằng kỹ thuật |
 | 12 | Uy tín người mua | ✅ (hiển thị) | Đếm auction `DEFAULTED` đọc từ chain + giao dịch đã thanh toán. Chưa ép buộc on-chain (cọc thích ứng cần sửa hợp đồng) |
 | 13 | Nhãn nguyên bản + khiếu nại | ✅ | Điểm AI hiện trên passport; khiếu nại ký bằng ví (Ed25519 `signMessage`); admin xử lý bằng chữ ký của `authority` đọc từ MarketplaceConfig |
-| 14 | Royalty bán lại | ❌ Chưa làm | Cách đúng trên Solana: đọc `seller_fee_basis_points` + `creators` từ Metaplex Token Metadata trong `pay_balance`; cần sửa hợp đồng và test |
+| 14 | Royalty bán lại | ❌ Chưa làm | NFT hiện là SPL mint thường, **không có Metaplex Token Metadata** (metadata chỉ là data-URI giả, chưa lên IPFS/Arweave). Muốn có royalty đúng chuẩn Solana phải tạo Token Metadata (`seller_fee_basis_points`, `creators`) khi mint rồi đọc trong `pay_balance` |
 | 7 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?
@@ -164,7 +164,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 
 ## 6. Quy trình đấu giá (end-to-end)
 
-1. **Tạo tác phẩm** (`/create`): vẽ hoặc upload ảnh → AI quét trùng lặp → mint NFT lên Solana (Metaplex) → lưu metadata vào MongoDB.
+1. **Tạo tác phẩm** (`/create`): vẽ hoặc upload ảnh → AI quét trùng lặp → mint NFT lên Solana (SPL Token 1/1 + Memo bằng chứng sáng tác) → lưu metadata vào MongoDB.
 2. **Đưa lên đấu giá** (từ `/portfolio`): gọi `create_auction` — NFT bị khoá vào escrow PDA, tạo Auction on-chain, trạng thái `LIVE`.
 3. **Đặt giá** (`/auctions/[id]`): gọi `place_bid` — 10% giá đặt được chuyển vào escrow; người bị vượt giá trước đó được tự động hoàn 100% cọc ngay trong cùng transaction.
 4. **Hết giờ, người thắng thanh toán** (`pay_balance`): trả phần còn lại (giá thắng trừ cọc đã nạp) → sàn tự động chia phí (5%) cho treasury, phần còn lại cho seller, và chuyển NFT cho người thắng — tất cả trong 1 transaction.

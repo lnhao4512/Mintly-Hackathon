@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { hashCreationTrace } from "@/lib/proof";
+import { creationProofMemo } from "@/lib/mint";
 
 interface ProofResponse {
   proof: {
@@ -10,18 +12,21 @@ interface ProofResponse {
     durationMs: number;
     frames: string[];
     proofHash: string;
+    signature?: string;
   } | null;
 }
 
 /**
  * Proof-of-Creation: replays the time-lapse recorded in the Studio and re-hashes the trace so the
- * viewer can compare it with the "Creation Proof" attribute written into the NFT's Metaplex metadata.
+ * viewer can compare it with the SPL Memo anchored in the NFT's mint transaction.
  */
 export function CreationReplay({ mint }: { mint: string }) {
   const [proof, setProof] = useState<ProofResponse["proof"]>(null);
   const [recomputed, setRecomputed] = useState<string | null>(null);
   const [frame, setFrame] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const { connection } = useConnection();
+  const [onChain, setOnChain] = useState<"checking" | "match" | "mismatch" | "unavailable">("checking");
 
   useEffect(() => {
     let active = true;
@@ -34,6 +39,19 @@ export function CreationReplay({ mint }: { mint: string }) {
         if (data.proof) {
           const h = await hashCreationTrace(data.proof);
           if (active) setRecomputed(h);
+          // Verify the hash was anchored on-chain: read the Memo instruction from the mint transaction
+          if (data.proof.signature) {
+            try {
+              const tx = await connection.getParsedTransaction(data.proof.signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
+              const memos = (tx?.transaction.message.instructions ?? [])
+                .filter((ix) => "program" in ix && ix.program === "spl-memo")
+                .map((ix) => ("parsed" in ix ? String(ix.parsed) : ""));
+              const expected = creationProofMemo(mint, h, data.proof.method);
+              if (active) setOnChain(memos.length === 0 ? "unavailable" : memos.includes(expected) ? "match" : "mismatch");
+            } catch {
+              if (active) setOnChain("unavailable");
+            }
+          } else if (active) setOnChain("unavailable");
         }
       } catch {
         // no proof available
@@ -44,7 +62,7 @@ export function CreationReplay({ mint }: { mint: string }) {
     return () => {
       active = false;
     };
-  }, [mint]);
+  }, [mint, connection]);
 
   useEffect(() => {
     if (!proof || proof.frames.length < 2) return;
@@ -96,10 +114,16 @@ export function CreationReplay({ mint }: { mint: string }) {
           <p className={`text-xs ${intact ? "text-green-300" : "text-red-300"}`}>
             {intact ? "✔ Dữ liệu replay khớp mã băm đã lưu." : "✖ Dữ liệu replay KHÔNG khớp mã băm đã lưu."}
           </p>
+          <p className={`text-xs ${onChain === "match" ? "text-green-300" : onChain === "mismatch" ? "text-red-300" : "text-text-dim"}`}>
+            {onChain === "match" && "✔ Mã băm khớp Memo on-chain trong giao dịch mint (Solana)."}
+            {onChain === "mismatch" && "✖ Mã băm KHÔNG khớp Memo on-chain."}
+            {onChain === "checking" && "Đang đối chiếu Memo on-chain..."}
+            {onChain === "unavailable" && "Không tìm thấy Memo on-chain (NFT mint trước tính năng này, hoặc RPC không trả giao dịch cũ)."}
+          </p>
         </dl>
       </div>
       <p className="mt-4 text-[11px] leading-5 text-text-dim">
-        Mã băm này cũng được ghi trong thuộc tính &quot;Creation Proof&quot; của metadata NFT (Metaplex). Đây là bằng chứng bổ sung về quá trình sáng tác, không phải kết luận pháp lý về bản quyền.
+        Mã băm này được neo on-chain bằng SPL Memo trong giao dịch mint. Đây là bằng chứng bổ sung về quá trình sáng tác, không phải kết luận pháp lý về bản quyền.
       </p>
     </section>
   );

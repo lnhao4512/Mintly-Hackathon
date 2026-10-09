@@ -8,6 +8,7 @@ export interface CreationProofRecord {
   durationMs: number;
   frames: string[];
   proofHash: string;
+  signature?: string; // mint transaction carrying the on-chain Memo
   createdAt: number;
 }
 

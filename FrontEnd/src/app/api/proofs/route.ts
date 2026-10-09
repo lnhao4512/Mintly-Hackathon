@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     durationMs: Number(b.durationMs) || 0,
     frames: b.frames.filter((f: unknown) => typeof f === "string" && f.startsWith("data:image/")).slice(0, 60),
     proofHash: b.proofHash,
+    signature: typeof b.signature === "string" ? b.signature.slice(0, 100) : undefined,
     createdAt: Date.now(),
   });
   return NextResponse.json({ ok: true });
