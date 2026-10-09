@@ -23,6 +23,7 @@ import {
   getWonArtworksForBuyer,
   hydrateAllCaches,
   type MintedArtworkRecord,
+  NO_ARTWORK_IMAGE,
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { CreateListingModal } from "@/components/CreateListingModal";
@@ -175,7 +176,7 @@ export default function PortfolioPage() {
             if (existsLocally) continue;
 
             const existingArt = getArtworkByMint(mint);
-            const cachedImage = getArtworkImage(mint) || existingArt?.imageUrl || "/assets/hero-artwork.png";
+            const cachedImage = getArtworkImage(mint) || existingArt?.imageUrl || NO_ARTWORK_IMAGE;
 
             onChainMints.push({
               mintAddress: mint,
@@ -538,7 +539,7 @@ export default function PortfolioPage() {
                       const nowUnix = Math.floor(Date.now() / 1000);
                       const isSettled = auction?.status?.toUpperCase() === "SETTLED";
                       const isEnded = isSettled || (auction?.endTime ? nowUnix >= auction.endTime : false);
-                      const artworkImage = auction?.image || (auction?.nftMint ? getArtworkImage(auction.nftMint) : null) || "/assets/hero-artwork.png";
+                      const artworkImage = auction?.image || (auction?.nftMint ? getArtworkImage(auction.nftMint) : null) || NO_ARTWORK_IMAGE;
 
                       const savedBids = getAllSavedBidsForAuction(bid.auctionPda);
                       const topSaved = savedBids.length > 0 ? savedBids[0].bidAmountSol : 0;

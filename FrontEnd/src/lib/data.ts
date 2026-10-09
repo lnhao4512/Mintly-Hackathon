@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import type { Artwork } from "@/components/explore/ArtworkCard";
-import { getArtworkImage, hydrateArtworksByMints } from "@/lib/artworkCache";
+import { getArtworkByMint, hydrateArtworksByMints, NO_ARTWORK_IMAGE } from "@/lib/artworkCache";
 
 export type Auction = {
   id: string;
@@ -50,15 +50,6 @@ export interface BidRecord {
   timestamp: number;
 }
 
-const FALLBACK_ASSETS = [
-  { title: "Concrete Solitude", image: "/assets/concrete-solitude.png", rarity: "rare" as const },
-  { title: "Digital Renaissance", image: "/assets/digital-renaissance.png", rarity: "collector" as const },
-  { title: "Silent Epoch", image: "/assets/silent-epoch.png", rarity: "trending" as const },
-  { title: "Synthetic Bloom", image: "/assets/synthetic-bloom.png", rarity: "trending" as const },
-  { title: "Void Geometry", image: "/assets/void-geometry.png", rarity: "collector" as const },
-  { title: "Prism Study", image: "/assets/hero-artwork.png", rarity: "rare" as const },
-];
-
 export type DirectListing = {
   id: string;
   image: string;
@@ -80,21 +71,13 @@ export function parseListingStatus(rawStatus: any): string {
   return key.replace(/([A-Z])/g, "_$1").toUpperCase();
 }
 
-function getVisualForMint(mintStr: string, index: number = 0) {
-  const cached = getArtworkImage(mintStr);
-  let hash = 0;
-  for (let i = 0; i < mintStr.length; i++) {
-    hash = (hash << 5) - hash + mintStr.charCodeAt(i);
-    hash |= 0;
-  }
-  // index is intentionally ignored: the same mint must get the same fallback picture on every page
-  void index;
-  const assetIndex = Math.abs(hash) % FALLBACK_ASSETS.length;
-  const fallback = FALLBACK_ASSETS[assetIndex];
+/** Real metadata from MongoDB only. No stock art: a mint without a stored record gets a neutral tile. */
+function getVisualForMint(mintStr: string, _index: number = 0) {
+  const rec = getArtworkByMint(mintStr);
   return {
-    ...fallback,
-    title: cached ? "Minted Studio Work" : fallback.title,
-    image: cached || fallback.image,
+    title: rec?.title || `NFT ${mintStr.slice(0, 4)}…${mintStr.slice(-4)}`,
+    image: rec?.imageUrl || NO_ARTWORK_IMAGE,
+    rarity: (rec?.rarity || "collector") as "rare" | "collector" | "trending",
   };
 }
 

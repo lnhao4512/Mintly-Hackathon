@@ -27,6 +27,13 @@ export interface SoldArtworkRecord {
   priceSol?: number;
 }
 
+/** Neutral tile shown when an NFT has no stored artwork metadata — never a stock picture. */
+export const NO_ARTWORK_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#171716"/><rect x="40" y="40" width="320" height="320" fill="none" stroke="#3a3a37" stroke-width="1"/><path d="M40 40L360 360M360 40L40 360" stroke="#262624" stroke-width="1"/></svg>'
+  );
+
 let artworksCache: MintedArtworkRecord[] = [];
 let salesCache: SoldArtworkRecord[] = [];
 
@@ -129,7 +136,7 @@ export function getWonArtworksForBuyer(buyerWallet: string): MintedArtworkRecord
         description:
           art?.description ||
           `Tác phẩm NFT đã được thanh toán (${sale.priceSol ? `${sale.priceSol} SOL` : "90%"}) & ghi nhận quyền sở hữu on-chain trên ví của bạn.`,
-        imageUrl: art?.imageUrl || "/assets/hero-artwork.png",
+        imageUrl: art?.imageUrl || NO_ARTWORK_IMAGE,
         creator: sale.buyer,
         createdAt: sale.soldAt || Date.now(),
         category: "Đấu Giá Thắng Cuộc",
@@ -182,7 +189,7 @@ export function markArtworkAsSold(record: SoldArtworkRecord): void {
     mintAddress: record.mintAddress,
     title: art?.title || `Tác phẩm #${record.mintAddress.slice(0, 4)}`,
     description: art?.description || `Tác phẩm NFT đã được thanh toán & ghi nhận quyền sở hữu on-chain trên ví của bạn.`,
-    imageUrl: art?.imageUrl || "/assets/hero-artwork.png",
+    imageUrl: art?.imageUrl || NO_ARTWORK_IMAGE,
     creator: record.buyer,
     createdAt: record.soldAt || Date.now(),
     category: "Đấu Giá Thắng Cuộc",

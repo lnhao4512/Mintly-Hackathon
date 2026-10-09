@@ -23,7 +23,7 @@ import {
   hydrateBidSecretsForAuction,
 } from "@/lib/auction-crypto";
 import { placeBidOnChain, payAuctionBalance, defaultWinnerOnChain, cancelAuctionOnChain } from "@/lib/marketplace";
-import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales } from "@/lib/artworkCache";
+import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales, NO_ARTWORK_IMAGE } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 import { ReputationBadge } from "@/components/auction/ReputationBadge";
 import { Loading, Skeleton } from "@/components/ui/Loading";
@@ -309,7 +309,7 @@ export default function AuctionDetailPage({
           mintAddress: auction.nftMint,
           title: auction.title || L(`Tác phẩm Đấu Giá #${auction.nftMint.slice(0, 4)}`, `Auction artwork #${auction.nftMint.slice(0, 4)}`),
           description: L(`Tác phẩm NFT thắng cuộc từ phiên đấu giá MINTLY với mức giá ${currentBidNum.toFixed(2)} SOL (Đã cọc 10%: ${deposit10Num.toFixed(2)} SOL + thanh toán 90%: ${remaining90Num.toFixed(2)} SOL).`, `NFT won in a MINTLY auction at ${currentBidNum.toFixed(2)} SOL (10% deposit: ${deposit10Num.toFixed(2)} SOL + 90% payment: ${remaining90Num.toFixed(2)} SOL).`),
-          imageUrl: auction.image || "/assets/hero-artwork.png",
+          imageUrl: auction.image || NO_ARTWORK_IMAGE,
           creator: wallet.publicKey.toBase58(),
           createdAt: Date.now(),
           category: L("Đấu Giá Thắng Cuộc", "Auction won"),
