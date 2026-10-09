@@ -19,8 +19,11 @@ export function Cursor() {
       yTo(e.clientY);
     };
     const over = (e: MouseEvent) => {
-      const hit = (e.target as HTMLElement | null)?.closest("a, button, [data-cursor]");
-      el.classList.toggle("is-hover", Boolean(hit));
+      const target = e.target as HTMLElement | null;
+      const lens = Boolean(target?.closest('[data-cursor="lens"]'));
+      const hit = target?.closest("a, button, [data-cursor]");
+      el.classList.toggle("is-lens", lens);
+      el.classList.toggle("is-hover", !lens && Boolean(hit));
     };
 
     window.addEventListener("mousemove", move);

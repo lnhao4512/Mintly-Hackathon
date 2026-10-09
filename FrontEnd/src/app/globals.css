@@ -261,7 +261,7 @@ textarea::placeholder {
   font-variation-settings: "opsz" 144;
   letter-spacing: -0.045em;
   line-height: 0.8;
-  font-size: min(31vw, 36vh);
+  font-size: clamp(5rem, 26vw, 28rem);
   white-space: nowrap;
 }
 .wordmark-base {
@@ -278,9 +278,31 @@ textarea::placeholder {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-stroke: 0;
-  -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 62%, transparent 100%);
-  mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 62%, transparent 100%);
+  /* hard edge: the picture lives strictly inside the cursor lens */
+  -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 calc(var(--r) - 1px), transparent var(--r));
+  mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 calc(var(--r) - 1px), transparent var(--r));
   pointer-events: none;
+}
+
+/* Hero annotations: hairline leaders that draw toward the frame */
+.annot-line {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.5s var(--ease-out-expo);
+  transition-delay: calc(0.9s + var(--i, 0) * 0.18s);
+}
+.is-in .annot-line {
+  transform: none;
+}
+.seal {
+  animation: seal-spin 26s linear infinite;
+}
+@keyframes seal-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seal { animation: none; }
+  .annot-line { transform: none; transition: none; }
 }
 
 /* Fade + rise blocks */
@@ -483,6 +505,15 @@ textarea::placeholder {
   height: 84px;
   margin: -42px 0 0 -42px;
   background: var(--bone);
+}
+/* "lens": 2.5x the hover disc (210px), hollow, so what is inside stays visible */
+.cursor-ring.is-lens {
+  width: 210px;
+  height: 210px;
+  margin: -105px 0 0 -105px;
+  background: transparent;
+  mix-blend-mode: normal;
+  border-color: var(--bone);
 }
 @media (pointer: coarse) {
   .cursor-ring { display: none; }

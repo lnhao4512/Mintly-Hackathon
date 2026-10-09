@@ -33,6 +33,12 @@ const copy = {
     scanned: "Scanning originality…",
     plateTitle: "Mona Lisa",
     plateMeta: "Leonardo da Vinci · c. 1503",
+    seal: "PROOF OF HAND · 1/1 · SOLANA · ",
+    notes: [
+      { k: "Originality scan", v: "pHash · dHash · CLIP" },
+      { k: "Proof of creation", v: "Time-lapse · SPL Memo" },
+      { k: "Escrow deposit", v: "10% locked · 70/30 insured" },
+    ],
     marquee: ["Proven by hand", "Escrowed on Solana", "10% deposit", "No-show insured", "Anti-sniping", "1 of 1"],
     processEyebrow: "How a work earns its price",
     process: [
@@ -64,6 +70,12 @@ const copy = {
     scanned: "Đang quét nguyên bản…",
     plateTitle: "Mona Lisa",
     plateMeta: "Leonardo da Vinci · khoảng 1503",
+    seal: "VẼ BẰNG TAY · 1/1 · SOLANA · ",
+    notes: [
+      { k: "Quét nguyên bản", v: "pHash · dHash · CLIP" },
+      { k: "Bằng chứng sáng tác", v: "Time-lapse · SPL Memo" },
+      { k: "Cọc ký quỹ", v: "Khóa 10% · bảo hiểm 70/30" },
+    ],
     marquee: ["Vẽ bằng tay", "Ký quỹ trên Solana", "Cọc 10%", "Bảo hiểm bùng kèo", "Chống bid phút chót", "Độc bản 1/1"],
     processEyebrow: "Một tác phẩm xứng đáng với giá của nó thế nào",
     process: [
@@ -109,6 +121,7 @@ export default function ExplorePage() {
   const metaRef = useInView<HTMLDivElement>();
   const introRef = useInView<HTMLDivElement>();
   const plateRef = useInView<HTMLAnchorElement>();
+  const annotRef = useInView<HTMLDivElement>();
 
   useEffect(() => {
     let isMounted = true;
@@ -256,6 +269,37 @@ export default function ExplorePage() {
                 stagger={0.12}
                 className="mega text-[clamp(3.6rem,17.5vw,6.5rem)] md:text-[min(13.4vw,calc((100svh_-_395px)_/_2.9))]"
               />
+            </div>
+
+            {/* Centre column: what the platform does to a work, drawn as annotations pointing at the frame */}
+            <div
+              ref={annotRef}
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 hidden flex-col justify-center gap-8 lg:flex"
+              style={{ left: "47%", right: "calc(min(27%,34vh) + 1.25rem)" }}
+            >
+              <svg viewBox="0 0 120 120" className="seal hidden size-[104px] text-text-dim-2 [@media(min-height:780px)]:block">
+                <defs>
+                  <path id="seal-path" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" />
+                </defs>
+                <text fontSize="9.5" fill="currentColor" textLength="270" lengthAdjust="spacing" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>
+                  <textPath href="#seal-path">{c.seal}</textPath>
+                </text>
+                <circle cx="60" cy="60" r="4" fill="#ff4d1f" />
+              </svg>
+              <ul className="flex flex-col gap-7">
+                {c.notes.map((n, i) => (
+                  <li key={n.k} className="flex items-center gap-4" style={{ "--i": i } as React.CSSProperties}>
+                    <div className="shrink-0">
+                      <p className="eyebrow">{`0${i + 1} · ${n.k}`}</p>
+                      <p className="mt-1 font-display text-[clamp(1.05rem,1.6vw,1.5rem)] font-light tracking-[-0.02em] text-text">{n.v}</p>
+                    </div>
+                    <span className="annot-line relative h-px min-w-6 flex-1 bg-text-dim/60">
+                      <i className="absolute -right-[3px] -top-[3px] size-[7px] rounded-full bg-accent" />
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* Specimen plate */}
