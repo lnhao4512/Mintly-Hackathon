@@ -2,6 +2,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import type { Artwork } from "@/components/explore/ArtworkCard";
 import { getArtworkByMint, hydrateArtworksByMints, NO_ARTWORK_IMAGE } from "@/lib/artworkCache";
+import { SIMULATED_SELLERS } from "@/lib/config";
 
 export type Auction = {
   id: string;
@@ -142,7 +143,7 @@ let cachedLiveAuctions: Auction[] = [];
 export async function fetchLiveAuctions(connection: Connection): Promise<Auction[]> {
   try {
     const program = getMarketplaceProgram(connection);
-    const rawAuctions = await program.account.auction.all();
+    const rawAuctions = (await program.account.auction.all()).filter((a: any) => !SIMULATED_SELLERS.has(a.account.seller.toBase58()));
     await hydrateArtworksByMints(rawAuctions.map((i: any) => i.account.nftMint.toBase58()));
 
     const parsed: Auction[] = rawAuctions.map((item: any, idx: number) => {
@@ -215,7 +216,7 @@ export async function fetchMarketplaceStats(connection: Connection): Promise<Mar
     const program = getMarketplaceProgram(connection);
     const [listings, auctions, settled] = await Promise.all([
       program.account.listing.all(),
-      program.account.auction.all(),
+      program.account.auction.all().then((all: any[]) => all.filter((a) => !SIMULATED_SELLERS.has(a.account.seller.toBase58()))),
       fetchSettledVolumeSol(),
     ]);
 

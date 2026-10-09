@@ -4,6 +4,8 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
+  createBurnCheckedInstruction,
+  createCloseAccountInstruction,
   createSyncNativeInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
@@ -338,6 +340,29 @@ export async function createAuctionOnChain(
   );
 
   return { signature, auctionPda: auctionPda.toBase58() };
+}
+
+/**
+ * Burns the 1/1 NFT held by the connected wallet and closes its (now empty) token account, returning the
+ * rent. The mint account itself stays on-chain with supply 0. Returns null when the wallet holds none.
+ */
+export async function burnNftOnChain(
+  connection: Connection,
+  wallet: WalletContextState,
+  nftMint: PublicKey
+): Promise<string | null> {
+  const owner = requireWallet(wallet);
+  const ata = getAssociatedTokenAddressSync(nftMint, owner);
+  const bal = await connection.getTokenAccountBalance(ata).catch(() => null);
+  if (!bal || bal.value.amount === "0") return null;
+
+  const tx = new Transaction().add(
+    createBurnCheckedInstruction(ata, nftMint, owner, BigInt(bal.value.amount), bal.value.decimals),
+    createCloseAccountInstruction(ata, owner, owner)
+  );
+  const signature = await wallet.sendTransaction(tx, connection);
+  await connection.confirmTransaction(signature, "confirmed");
+  return signature;
 }
 
 export async function cancelListingOnChain(

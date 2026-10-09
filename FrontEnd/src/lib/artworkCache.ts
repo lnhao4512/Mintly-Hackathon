@@ -165,17 +165,21 @@ export function getUserMintedArtworks(walletAddress: string): MintedArtworkRecor
   return list;
 }
 
-/** Deletes the artwork record in MongoDB and hides the NFT for this wallet. Rejects if the server did not confirm. */
-export async function deleteMintedArtwork(mintAddress: string, walletAddress: string, hide = true): Promise<void> {
+/** Deletes the artwork record in MongoDB and hides the NFT for this wallet (wallet-signed). Rejects if the server did not confirm. */
+export async function deleteMintedArtwork(
+  mintAddress: string,
+  walletAddress: string,
+  auth: { ts: number; signature: string }
+): Promise<void> {
   const res = await fetch(
-    `/api/artworks/${encodeURIComponent(mintAddress)}?wallet=${encodeURIComponent(walletAddress)}${hide ? "" : "&hide=0"}`,
+    `/api/artworks/${encodeURIComponent(mintAddress)}?wallet=${encodeURIComponent(walletAddress)}&ts=${auth.ts}&sig=${encodeURIComponent(auth.signature)}`,
     { method: "DELETE" }
   );
   if (!res.ok) throw new Error("Delete failed");
   artworksCache = artworksCache.filter(
     (a) => !(a.mintAddress.toLowerCase() === mintAddress.toLowerCase() && a.creator.toLowerCase() === walletAddress.toLowerCase())
   );
-  if (hide && !hiddenMintsCache.includes(mintAddress)) hiddenMintsCache.push(mintAddress);
+  if (!hiddenMintsCache.includes(mintAddress)) hiddenMintsCache.push(mintAddress);
 }
 
 let hiddenMintsCache: string[] = [];
