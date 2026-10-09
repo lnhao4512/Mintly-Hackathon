@@ -86,6 +86,13 @@ function SettlementContent() {
         true
       );
 
+      // A finished auction stays LIVE on-chain until someone calls finalize_auction (permissionless);
+      // pay_deposit/pay_balance reject it before that.
+      const onChain = await (program.account as any).auction.fetch(auctionPubkey);
+      if (onChain.status.live !== undefined) {
+        await program.methods.finalizeAuction().accounts({ auction: auctionPubkey }).rpc();
+      }
+
       const tx = await program.methods
         .payDeposit()
         .accounts({

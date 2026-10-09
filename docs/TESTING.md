@@ -44,7 +44,7 @@
 
 ## 4. Giao dịch mô phỏng trên Devnet (để làm dữ liệu thuyết trình)
 
-Script `FrontEnd/scripts/devnet_sim.mjs` chạy **giao dịch thật** trên Devnet với ví do script tự tạo (người dùng mô phỏng): mint NFT → tạo đấu giá → 3 lượt đặt giá (người bị vượt được hoàn cọc on-chain) → thanh toán 90%. Mỗi vòng ~11 giao dịch, 3 vòng ≈ 35 giao dịch. Mọi chữ ký xem được trên Solana Explorer.
+Script `FrontEnd/scripts/devnet_sim.mjs` chạy **giao dịch thật** trên Devnet với ví do script tự tạo (người dùng mô phỏng): mint NFT → tạo đấu giá → đặt giá → `finalize_auction` → `pay_deposit` → `pay_balance`. Nếu bị gián đoạn, chạy `npm run sim:devnet -- --settle` để settle các phiên còn dở. Mỗi vòng ~11 giao dịch, 3 vòng ≈ 35 giao dịch. Mọi chữ ký xem được trên Solana Explorer.
 
 ```bash
 cd FrontEnd

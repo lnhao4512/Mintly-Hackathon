@@ -208,7 +208,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 - Proof-of-Creation chứng minh tính toàn vẹn của dữ liệu quá trình vẽ, không chống được việc dựng dữ liệu giả có chủ đích.
 - Số liệu hiển thị là **Devnet / dữ liệu thử nghiệm**, không phải traction thị trường.
 - **Chương trình đang chạy trên Devnet khác với mã nguồn trong repo** (phát hiện khi chạy `devnet_sim.mjs`): bản deployed thu cọc **100%** giá đặt (nguồn: 10%), chỉ cho **một lượt đặt giá mỗi phiên** (account escrow đòi chữ ký keypair → lỗi `ConstraintSigner` ở lượt thứ hai), `fee_bps` on-chain là 250 (2.5%) trong khi hằng số frontend/UI ghi 5%, và IDL `pay_balance` không có tham số. Frontend đã được chỉnh để tương thích (`placeBidOnChain` không yêu cầu escrow ký khi đã tồn tại; `payBalance()` không tham số). Muốn khớp hoàn toàn cần `anchor build && anchor deploy` lại từ mã nguồn.
-- Script mô phỏng `FrontEnd/scripts/devnet_sim.mjs`: mint, tạo phiên và đặt giá chạy được trên Devnet (xem [docs/TESTING.md](docs/TESTING.md) mục 4); bước `pay_balance`/`--settle` chưa xác nhận thành công (lần chạy cuối trả `InvalidAuctionState` ở phiên cũ). Dữ liệu mô phỏng luôn gắn `simulated: true`.
+- Script mô phỏng `FrontEnd/scripts/devnet_sim.mjs` chạy trọn vòng đời trên Devnet: mint → tạo phiên → đặt giá → `finalize_auction` → `pay_deposit` → `pay_balance` (8 phiên đã settle thật). Hợp đồng deployed bắt buộc `finalize_auction` trước khi thanh toán; trang `/settlement` đã tự gọi bước này. Dữ liệu mô phỏng luôn gắn `simulated: true`.
 - `FrontEnd/scripts/init_marketplace.mjs` chứa secret key ghi cứng của ví Devnet dùng để khởi tạo — chỉ dùng cho Devnet, không dùng cho Mainnet và nên thay bằng biến môi trường.
 
 ---

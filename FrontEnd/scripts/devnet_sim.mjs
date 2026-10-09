@@ -267,8 +267,27 @@ async function placeBid(bidder, auction, lamports) {
 async function payBalance(winner, auction, nftMint, seller) {
   const program = programFor(winner);
   const escrowAuthority = pda("escrow", auction);
-  const state = await retry("fetch-auction", () => program.account.auction.fetch(auction));
+  // The deployed program only accepts pay_balance after finalize_auction moved the auction out of LIVE.
+  const before = await retry("fetch-auction", () => program.account.auction.fetch(auction));
+  if (before.status.live !== undefined) {
+    const fsig = await retry("finalize_auction", () => program.methods.finalizeAuction().accounts({ auction }).rpc());
+    record("finalize_auction", fsig, { auction: short(auction) });
+  }
   const config = await retry("fetch-config", () => program.account.marketplaceConfig.fetch(configPda));
+  const mid = await retry("fetch-auction", () => program.account.auction.fetch(auction));
+  if (mid.status.depositPending !== undefined) {
+    const depLamports = Math.floor((mid.currentBid.toNumber() * config.depositBps) / 10_000) + 1000;
+    const depAcc = await wrap(winner, depLamports);
+    const escPay = (await retry("escrow-pay", () => conn.getParsedTokenAccountsByOwner(escrowAuthority, { mint: WSOL }))).value[0].pubkey;
+    const dsig = await retry("pay_deposit", () =>
+      program.methods
+        .payDeposit()
+        .accounts({ winner: winner.publicKey, config: configPda, auction, winnerPaymentAccount: depAcc, escrowAuthority, escrowPaymentAccount: escPay, paymentMint: WSOL, tokenProgram: TOKEN_PROGRAM_ID })
+        .rpc()
+    );
+    record("pay_deposit", dsig, { winner: short(winner.publicKey) });
+  }
+  const state = await retry("fetch-auction", () => program.account.auction.fetch(auction));
   const remaining = state.currentBid.sub(state.depositPaid).toNumber();
   const winnerPayment = remaining > 0 ? await wrap(winner, remaining) : getAssociatedTokenAddressSync(WSOL, winner.publicKey);
   const winnerNft = getAssociatedTokenAddressSync(nftMint, winner.publicKey);
@@ -317,7 +336,7 @@ async function settleAll() {
   const A = bidders[0];
   const program = programFor(A);
   const all = await retry("auctions", () => program.account.auction.all([{ memcmp: { offset: 8, bytes: seller.publicKey.toBase58() } }]));
-  const open = all.filter((x) => x.account.currentBid.gt(new BN(0)) && x.account.status.live !== undefined && x.account.highestBidder?.equals(A.publicKey));
+  const open = all.filter((x) => x.account.currentBid.gt(new BN(0)) && (x.account.status.live !== undefined || x.account.status.depositPending !== undefined || x.account.status.paymentPending !== undefined) && x.account.highestBidder?.equals(A.publicKey));
   console.log(`${open.length} open auction(s) with a bid to settle`);
   const images = ["/museum3.jpg", "/museum4.jpg", "/museum5.jpg", "/museum6.jpg"];
   let volume = 0;
