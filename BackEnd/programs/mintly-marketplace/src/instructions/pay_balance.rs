@@ -96,6 +96,8 @@ pub fn handler(ctx: Context<PayBalance>) -> Result<()> {
 
     let remaining_to_pay = total_amount.saturating_sub(auction.deposit_paid);
 
+    let cpi_program = ctx.accounts.token_program.to_account_info();
+
     // 1. Transfer remaining 90% (or total if no deposit) from winner to escrow
     if remaining_to_pay > 0 {
         let cpi_accounts = Transfer {
@@ -103,7 +105,6 @@ pub fn handler(ctx: Context<PayBalance>) -> Result<()> {
             to: ctx.accounts.escrow_payment_account.to_account_info(),
             authority: ctx.accounts.winner.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program.clone(), cpi_accounts);
         token::transfer(cpi_ctx, remaining_to_pay)?;
     }
