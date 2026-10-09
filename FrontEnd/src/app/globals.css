@@ -251,11 +251,8 @@ textarea::placeholder {
   .loader-bar, .shimmer-text, .skeleton { animation: none; }
 }
 
-/* Footer wordmark: picture shows inside the letters under the cursor */
+/* Footer wordmark: big type; the cursor becomes a photo lens while it hovers */
 .wordmark {
-  --x: -400px;
-  --y: -400px;
-  --r: 0px;
   font-family: var(--font-display);
   font-weight: 340;
   font-variation-settings: "opsz" 144;
@@ -267,21 +264,6 @@ textarea::placeholder {
 .wordmark-base {
   display: block;
   color: var(--text);
-}
-.wordmark-picture {
-  position: absolute;
-  inset: 0;
-  display: block;
-  color: transparent;
-  background-size: cover;
-  background-position: center;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-stroke: 0;
-  /* hard edge: the picture lives strictly inside the cursor lens */
-  -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 calc(var(--r) - 1px), transparent var(--r));
-  mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 calc(var(--r) - 1px), transparent var(--r));
-  pointer-events: none;
 }
 
 /* Hero annotations: hairline leaders that draw toward the frame */
@@ -506,12 +488,12 @@ textarea::placeholder {
   margin: -42px 0 0 -42px;
   background: var(--bone);
 }
-/* "lens": 2.5x the hover disc (210px), hollow, so what is inside stays visible */
+/* "lens": the hover disc doubled (84 -> 168px), showing the photo as a normal picture */
 .cursor-ring.is-lens {
-  width: 210px;
-  height: 210px;
-  margin: -105px 0 0 -105px;
-  background: transparent;
+  width: 168px;
+  height: 168px;
+  margin: -84px 0 0 -84px;
+  background: var(--ink) url("/museum.jpg") center / cover no-repeat;
   mix-blend-mode: normal;
   border-color: var(--bone);
 }

@@ -1,55 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { gsap } from "@/lib/gsap";
-
 /**
- * Giant wordmark. Hover it and a soft circle follows the cursor; inside the circle the letters are
- * filled with a painting ("picture inside text"). Pure CSS mask + background-clip:text, driven by two
- * smoothed custom properties.
+ * Giant wordmark. Hovering it turns the small cursor circle into a 2x lens that shows the museum
+ * photograph as a plain picture (styling lives on `.cursor-ring.is-lens`, toggled by Cursor).
  */
-export function FooterWordmark({ image = "/museum.jpg", className = "" }: { image?: string; className?: string }) {
-  const box = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = box.current;
-    if (!el || window.matchMedia("(pointer: coarse)").matches) return;
-    el.style.setProperty("--x", "-400px");
-    el.style.setProperty("--y", "-400px");
-    el.style.setProperty("--r", "0px");
-    // same duration/ease as the cursor ring so the picture stays locked inside the lens
-    const x = gsap.quickTo(el, "--x", { duration: 0.45, ease: "power3", unit: "px" } as gsap.TweenVars);
-    const y = gsap.quickTo(el, "--y", { duration: 0.45, ease: "power3", unit: "px" } as gsap.TweenVars);
-
-    const move = (e: MouseEvent) => {
-      const r = el.getBoundingClientRect();
-      x(e.clientX - r.left);
-      y(e.clientY - r.top);
-    };
-    // lens radius = half of the 210px cursor ring (84px hover disc x 2.5)
-    const enter = () => gsap.to(el, { "--r": "105px", duration: 0.35, ease: "expo.out" } as gsap.TweenVars);
-    const leave = () => gsap.to(el, { "--r": "0px", duration: 0.3, ease: "expo.inOut" } as gsap.TweenVars);
-
-    el.addEventListener("mousemove", move);
-    el.addEventListener("mouseenter", enter);
-    el.addEventListener("mouseleave", leave);
-    return () => {
-      el.removeEventListener("mousemove", move);
-      el.removeEventListener("mouseenter", enter);
-      el.removeEventListener("mouseleave", leave);
-    };
-  }, []);
-
+export function FooterWordmark({ className = "" }: { className?: string }) {
   return (
-    <div ref={box} data-cursor="lens" className={`wordmark relative select-none ${className}`} aria-label="MINTLY">
+    <div data-cursor="lens" className={`wordmark select-none ${className}`} aria-label="MINTLY">
       <span aria-hidden className="wordmark-base">MINTLY</span>
-      <span
-        aria-hidden
-        className="wordmark-picture"
-        style={{ backgroundImage: `url(${image})` }}
-      >
-        MINTLY
-      </span>
     </div>
   );
 }
