@@ -263,7 +263,7 @@ export function CreateAuctionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8 max-h-[90vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
         {/* Close Button */}
         <button
           onClick={onClose}

@@ -89,7 +89,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-line bg-[#fbfcff] p-6 text-text shadow-[0_24px_80px_-28px_rgba(15,23,42,0.45)] sm:p-7">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-line bg-[#fbfcff] max-h-[90vh] overflow-y-auto overscroll-contain p-6 text-text shadow-[0_24px_80px_-28px_rgba(15,23,42,0.45)] sm:p-7" data-lenis-prevent>
         <button
           type="button"
           onClick={onClose}
