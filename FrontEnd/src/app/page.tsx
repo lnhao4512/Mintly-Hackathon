@@ -186,6 +186,34 @@ export default function ExplorePage() {
     };
   }, [connection]);
 
+  // Process numerals: make each big number exactly as tall as its text cluster (eyebrow -> progress line)
+  useEffect(() => {
+    const apply = () => {
+      document.querySelectorAll<HTMLElement>("[data-panel]").forEach((panel) => {
+        const cluster = panel.querySelector<HTMLElement>("[data-step-cluster]");
+        const num = panel.querySelector<HTMLElement>("[data-step-num]");
+        if (!cluster || !num) return;
+        if (window.innerWidth < 1024) {
+          num.style.fontSize = "";
+          return;
+        }
+        // digit height is ~0.72em; cap the size so two digits never crowd the text out
+        const fs = Math.min(cluster.offsetHeight / 0.72, window.innerWidth * 0.3);
+        num.style.fontSize = `${fs}px`;
+      });
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    document.querySelectorAll("[data-step-cluster]").forEach((el) => ro.observe(el));
+    window.addEventListener("resize", apply);
+    const late = window.setTimeout(apply, 600); // after web fonts settle
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+      window.clearTimeout(late);
+    };
+  }, [locale]);
+
   // ---------------- Motion ----------------
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -433,12 +461,13 @@ export default function ExplorePage() {
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/60" />
 
                 <span
+                  data-step-num
                   className="pointer-events-none absolute right-5 top-16 select-none font-display text-[clamp(8rem,22vw,24rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:relative lg:right-auto lg:top-auto lg:shrink-0 lg:text-[clamp(8rem,18vw,20rem)] lg:leading-[0.78]"
                   style={{ WebkitTextStroke: "1.5px rgba(236,231,218,0.85)" }}
                 >
                   0{i + 1}
                 </span>
-                <div className="relative max-w-2xl lg:max-w-[40%] lg:pl-4">
+                <div data-step-cluster className="relative max-w-2xl lg:max-w-[40%] lg:pl-4">
                   <p className="eyebrow mb-4 !text-text-dim-2">{`0${i + 1} / 04`}</p>
                   <h3 className="mega text-[clamp(3.5rem,9vw,9rem)]">
                     {step.t}
