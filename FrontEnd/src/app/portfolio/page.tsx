@@ -30,7 +30,7 @@ import {
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { CreateListingModal } from "@/components/CreateListingModal";
-import { cancelListingOnChain } from "@/lib/marketplace";
+import { cancelListingOnChain, burnNftOnChain } from "@/lib/marketplace";
 import {
   getUserActiveBids,
   getAllSavedBidsForAuction,
@@ -131,7 +131,6 @@ export default function PortfolioPage() {
           .filter(Boolean) as string[];
 
         if (settledSoldMints.length > 0) {
-          settledSoldMints.forEach((m) => deleteMintedArtwork(m, walletStr));
           setArtworks((prev) =>
             prev.filter((item) => !settledSoldMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr))
           );
@@ -223,11 +222,35 @@ export default function PortfolioPage() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
-  const handleDelete = (mintAddress: string) => {
-    if (!publicKey) return;
+  const handleDelete = async (mintAddress: string) => {
+    if (!publicKey || !wallet.signMessage) {
+      setListingActionMsg(L("Hãy kết nối ví hỗ trợ ký tin nhắn (ví dụ Phantom).", "Connect a wallet that can sign messages (e.g. Phantom)."));
+      return;
+    }
+    const ok = window.confirm(
+      L(
+        "Xóa vĩnh viễn tác phẩm này?\n\nNFT sẽ bị TIÊU HỦY (burn) khỏi ví của bạn trên Solana và bản ghi sẽ bị xóa khỏi MINTLY. Không thể hoàn tác.",
+        "Delete this artwork permanently?\n\nThe NFT will be BURNED from your wallet on Solana and its record removed from MINTLY. This cannot be undone."
+      )
+    );
+    if (!ok) return;
     const walletStr = publicKey.toBase58();
-    deleteMintedArtwork(mintAddress, walletStr);
-    setArtworks((prev) => prev.filter((a) => a.mintAddress !== mintAddress));
+    try {
+      setListingActionMsg(L("Đang chờ ví xác nhận…", "Waiting for wallet confirmation…"));
+      const ts = Date.now();
+      const sigBytes = await wallet.signMessage(new TextEncoder().encode(`MINTLY_DELETE:${mintAddress}:${walletStr}:${ts}`));
+      await burnNftOnChain(connection, wallet, new PublicKey(mintAddress));
+      await deleteMintedArtwork(mintAddress, walletStr, { ts, signature: btoa(String.fromCharCode(...sigBytes)) });
+      setArtworks((prev) => prev.filter((a) => a.mintAddress !== mintAddress));
+      setListingActionMsg(L("Đã xóa tác phẩm: NFT đã bị tiêu hủy và bản ghi đã xóa khỏi MINTLY.", "Artwork deleted: the NFT was burned and its record removed from MINTLY."));
+    } catch (err: any) {
+      const rejected = /reject|denied|cancel/i.test(String(err?.message));
+      setListingActionMsg(
+        rejected
+          ? L("Bạn đã hủy yêu cầu trên ví. Tác phẩm chưa bị xóa.", "You cancelled the wallet request. The artwork was not deleted.")
+          : L("Không xóa được tác phẩm. Vui lòng thử lại.", "Could not delete the artwork. Please try again.")
+      );
+    }
   };
 
   const handleDownload = (imageUrl: string, title: string) => {

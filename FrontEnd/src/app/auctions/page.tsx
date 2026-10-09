@@ -224,7 +224,7 @@ export default function AuctionsPage() {
               </button>
             </div>
 
-            <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-3">
+            <div className="mt-4 flex-1 overflow-y-auto overscroll-contain pr-1 space-y-3" data-lenis-prevent>
               {userArtworks.length === 0 ? (
                 <div className="py-12 text-center text-text-dim">
                   <p className="text-sm">{L("Bạn chưa có tác phẩm nào trong kho.", "You have no artworks in your vault yet.")}</p>

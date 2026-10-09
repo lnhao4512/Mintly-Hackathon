@@ -100,7 +100,7 @@ export async function fetchSaleHistoryForMint(mintAddress: string): Promise<Sold
 }
 
 export async function hydrateAllCaches(wallet?: string): Promise<void> {
-  await Promise.all([wallet ? hydrateArtworksForWallet(wallet) : Promise.resolve(), hydrateSales()]);
+  await Promise.all([wallet ? hydrateArtworksForWallet(wallet) : Promise.resolve(), wallet ? hydrateHiddenMints(wallet) : Promise.resolve(), hydrateSales()]);
 }
 
 // ---- Artworks / portfolio ----
@@ -165,21 +165,41 @@ export function getUserMintedArtworks(walletAddress: string): MintedArtworkRecor
   return list;
 }
 
-export function deleteMintedArtwork(mintAddress: string, walletAddress: string): void {
+/** Deletes the artwork record in MongoDB and hides the NFT for this wallet (wallet-signed). Rejects if the server did not confirm. */
+export async function deleteMintedArtwork(
+  mintAddress: string,
+  walletAddress: string,
+  auth: { ts: number; signature: string }
+): Promise<void> {
+  const res = await fetch(
+    `/api/artworks/${encodeURIComponent(mintAddress)}?wallet=${encodeURIComponent(walletAddress)}&ts=${auth.ts}&sig=${encodeURIComponent(auth.signature)}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) throw new Error("Delete failed");
   artworksCache = artworksCache.filter(
     (a) => !(a.mintAddress.toLowerCase() === mintAddress.toLowerCase() && a.creator.toLowerCase() === walletAddress.toLowerCase())
   );
-  fetch(`/api/artworks/${encodeURIComponent(mintAddress)}?wallet=${encodeURIComponent(walletAddress)}`, {
-    method: "DELETE",
-  }).catch((err) => console.warn("Failed to delete artwork:", err));
+  if (!hiddenMintsCache.includes(mintAddress)) hiddenMintsCache.push(mintAddress);
 }
 
-// Ownership transfer (via markArtworkAsSold re-assigning `creator`) replaces the old hidden-mint
-// hack; kept as no-ops so existing call sites don't need to change.
-export function getHiddenMints(_walletAddress: string): string[] {
-  return [];
+let hiddenMintsCache: string[] = [];
+
+export async function hydrateHiddenMints(wallet: string): Promise<void> {
+  if (!wallet) return;
+  const data = await safeFetchJson<{ hidden: string[] }>(`/api/artworks?hidden=${encodeURIComponent(wallet)}`);
+  if (data?.hidden) hiddenMintsCache = data.hidden;
 }
-export function unhideArtwork(_mintAddress: string, _walletAddress: string): void {}
+
+export function getHiddenMints(_walletAddress: string): string[] {
+  return hiddenMintsCache;
+}
+
+/** Called when a wallet acquires an NFT again (won/bought): it must show up even if it was deleted before. */
+export function unhideArtwork(mintAddress: string, walletAddress: string): void {
+  if (!hiddenMintsCache.includes(mintAddress)) return;
+  hiddenMintsCache = hiddenMintsCache.filter((m) => m !== mintAddress);
+  fetch(`/api/artworks/${encodeURIComponent(mintAddress)}?wallet=${encodeURIComponent(walletAddress)}&unhide=1`, { method: "DELETE" }).catch(() => {});
+}
 
 export function markArtworkAsSold(record: SoldArtworkRecord): void {
   salesCache.unshift(record);

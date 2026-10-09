@@ -9,7 +9,9 @@ import { PublicKey } from "@solana/web3.js";
 import { CheckIcon, WalletIcon, WarningIcon, SolanaIcon } from "@/components/ui/Icons";
 import { fetchLiveAuctions, fetchAuctionById, type Auction } from "@/lib/data";
 import { getMarketplaceProgram } from "@/utils/anchor";
-import { getConfigPda, getAuctionEscrowAuthorityPda, WSOL_MINT } from "@/lib/config";
+import { getConfigPda } from "@/lib/config";
+import { payAuctionDeposit } from "@/lib/marketplace";
+import { assertExpectedCluster } from "@/lib/network";
 import { getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { useI18n } from "@/lib/i18n";
 
@@ -66,46 +68,22 @@ function SettlementContent() {
     setTxSuccess(null);
 
     try {
-      const program = getMarketplaceProgram(connection, wallet);
+      await assertExpectedCluster(connection);
+      const program = getMarketplaceProgram(connection, wallet) as any;
       const auctionPubkey = new PublicKey(auction.id);
       const [configPda] = getConfigPda();
-      const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPubkey);
-
-      const winnerPaymentAta = await getOrCreateAssociatedTokenAccount(
-        connection,
-        wallet as any,
-        WSOL_MINT,
-        wallet.publicKey
-      );
-
-      const escrowPaymentAta = await getOrCreateAssociatedTokenAccount(
-        connection,
-        wallet as any,
-        WSOL_MINT,
-        escrowAuthority,
-        true
-      );
 
       // A finished auction stays LIVE on-chain until someone calls finalize_auction (permissionless);
       // pay_deposit/pay_balance reject it before that.
-      const onChain = await (program.account as any).auction.fetch(auctionPubkey);
+      const onChain = await program.account.auction.fetch(auctionPubkey);
       if (onChain.status.live !== undefined) {
         await program.methods.finalizeAuction().accounts({ auction: auctionPubkey }).rpc();
       }
 
-      const tx = await program.methods
-        .payDeposit()
-        .accounts({
-          winner: wallet.publicKey,
-          config: configPda,
-          auction: auctionPubkey,
-          winnerPaymentAccount: winnerPaymentAta.address,
-          escrowAuthority,
-          escrowPaymentAccount: escrowPaymentAta.address,
-          paymentMint: WSOL_MINT,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+      // Wraps the missing WSOL (and checks the SOL balance on Devnet) before paying the deposit.
+      const config = await program.account.marketplaceConfig.fetch(configPda);
+      const depositLamports = Math.floor((onChain.currentBid.toNumber() * config.depositBps) / 10_000);
+      const tx = await payAuctionDeposit(connection, wallet, auctionPubkey, depositLamports);
 
       setTxSuccess(tx);
     } catch (err: any) {

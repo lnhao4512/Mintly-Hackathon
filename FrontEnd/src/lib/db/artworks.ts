@@ -44,12 +44,37 @@ export async function getArtworkByMint(mintAddress: string): Promise<MintedArtwo
   return doc ? stripId(doc) : null;
 }
 
-export async function deleteArtworkForWallet(mintAddress: string, walletAddress: string) {
+export async function deleteArtworkForWallet(mintAddress: string, walletAddress: string): Promise<number> {
   const col = await collection();
-  await col.deleteOne({
+  const res = await col.deleteOne({
     mintAddress: { $regex: `^${escapeRegex(mintAddress)}$`, $options: "i" },
     creator: { $regex: `^${escapeRegex(walletAddress)}$`, $options: "i" },
   });
+  return res.deletedCount;
+}
+
+/**
+ * An NFT stays in the wallet after "delete" (we cannot burn it), so the portfolio would re-discover it from
+ * the wallet's token accounts on the next load. Deleted mints are therefore remembered per wallet.
+ */
+async function hiddenCollection() {
+  const db = await getDb();
+  return db.collection<{ wallet: string; mintAddress: string; hiddenAt: number }>("hidden_artworks");
+}
+
+export async function hideArtworkForWallet(mintAddress: string, walletAddress: string) {
+  const col = await hiddenCollection();
+  await col.updateOne({ wallet: walletAddress, mintAddress }, { $set: { hiddenAt: Date.now() } }, { upsert: true });
+}
+
+export async function unhideArtworkForWallet(mintAddress: string, walletAddress: string) {
+  const col = await hiddenCollection();
+  await col.deleteOne({ wallet: walletAddress, mintAddress });
+}
+
+export async function getHiddenMintsForWallet(walletAddress: string): Promise<string[]> {
+  const col = await hiddenCollection();
+  return (await col.find({ wallet: walletAddress }).toArray()).map((d) => d.mintAddress);
 }
 
 function escapeRegex(s: string) {

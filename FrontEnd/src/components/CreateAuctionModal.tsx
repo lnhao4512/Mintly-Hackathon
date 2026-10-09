@@ -14,6 +14,7 @@ import {
 import { Keypair, SystemProgram, Transaction } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import { assertAuctionCanBeCreated } from "@/lib/marketplace";
+import { assertExpectedCluster } from "@/lib/network";
 import {
   MARKETPLACE_FEE_BPS,
   WSOL_MINT,
@@ -133,6 +134,7 @@ export function CreateAuctionModal({
         return;
       }
 
+      await assertExpectedCluster(connection);
       await assertAuctionCanBeCreated(connection, nftMint);
 
       const program = getMarketplaceProgram(connection, wallet);
@@ -263,7 +265,7 @@ export function CreateAuctionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8 max-h-[90vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
         {/* Close Button */}
         <button
           onClick={onClose}

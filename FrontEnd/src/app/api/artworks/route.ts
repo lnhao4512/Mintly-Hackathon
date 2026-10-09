@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { upsertArtwork, getArtworksByCreator, getArtworkByMint } from "@/lib/db/artworks";
+import { upsertArtwork, getArtworksByCreator, getArtworkByMint, getHiddenMintsForWallet } from "@/lib/db/artworks";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const creator = searchParams.get("creator");
   const mint = searchParams.get("mint");
+  const hidden = searchParams.get("hidden");
+
+  if (hidden) {
+    return NextResponse.json({ hidden: await getHiddenMintsForWallet(hidden) });
+  }
 
   if (mint) {
     const art = await getArtworkByMint(mint);

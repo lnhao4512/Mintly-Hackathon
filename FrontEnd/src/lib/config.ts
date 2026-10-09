@@ -90,3 +90,9 @@ export function getBidPda(
     programId
   );
 }
+
+/**
+ * Wallets used by `scripts/devnet_sim.mjs` to generate simulated auctions. Their on-chain accounts cannot be
+ * deleted (the program has no close instruction), so they are excluded from every listing and statistic.
+ */
+export const SIMULATED_SELLERS = new Set<string>(["77jAqjDrkeo6YPgzGXtuRQJEjRh7fGJRqk3KghR4uAyE"]);
