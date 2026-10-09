@@ -318,7 +318,7 @@ export default function ExplorePage() {
           {/* the framed work, hung on the wall */}
           <Link
             href="/auctions"
-            data-cursor
+            data-cursor="img"
             data-hero-frame
             ref={plateRef}
             className="absolute left-1/2 top-[11%] z-10 block -translate-x-1/2"
@@ -421,34 +421,34 @@ export default function ExplorePage() {
               <article
                 key={step.t}
                 data-panel
-                className="relative flex min-h-[80svh] w-full flex-col justify-end border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-[78vw] lg:shrink-0 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
+                className="relative flex min-h-[90svh] w-full flex-col justify-end overflow-hidden border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-screen lg:shrink-0 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
               >
+                {/* photo as the background; it drifts sideways inside the panel while you scroll */}
+                <div data-step-img className="absolute inset-y-0 -left-[10%] w-[120%] will-change-transform">
+                  <Image src={`/assets/step-${i + 1}.jpg`} alt="" fill sizes="100vw" className="object-cover" style={{ filter: "saturate(0.85) sepia(0.12)" }} />
+                </div>
+                {/* black overlay so the type always reads: even tint + a heavier left side + soft top/bottom */}
+                <div aria-hidden className="absolute inset-0 bg-ink/55" />
+                <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/45 to-ink/10" />
+                <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/60" />
+
                 <span
-                  className="pointer-events-none absolute left-5 top-16 select-none font-display text-[clamp(8rem,20vw,22rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:left-16 lg:top-[8%]"
-                  style={{ WebkitTextStroke: "1px rgba(236,231,218,0.28)" }}
+                  className="pointer-events-none absolute right-5 top-16 select-none font-display text-[clamp(8rem,22vw,24rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:right-14 lg:top-[8%]"
+                  style={{ WebkitTextStroke: "1px rgba(236,231,218,0.45)" }}
                 >
                   0{i + 1}
                 </span>
-                <div className="relative mb-10 aspect-[16/10] w-full overflow-hidden bg-bg-elevated lg:absolute lg:right-16 lg:top-1/2 lg:mb-0 lg:w-[44%] lg:-translate-y-1/2">
-                  <div data-step-img className="absolute inset-y-0 -left-[10%] w-[120%] will-change-transform">
-                    <Image src={`/assets/step-${i + 1}.jpg`} alt="" fill sizes="(max-width:1024px) 100vw, 50vw" className="object-cover" style={{ filter: "brightness(0.82) saturate(0.85) sepia(0.15)" }} />
-                  </div>
-                  <i className="reg left-3 top-3" />
-                  <i className="reg right-3 top-3" />
-                  <i className="reg bottom-3 left-3" />
-                  <i className="reg bottom-3 right-3" />
-                  <span className="absolute bottom-3 left-8 bg-ink/80 px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.18em] text-text-dim-2 backdrop-blur-sm">{`0${i + 1} / 04 — ${step.t}`}</span>
-                </div>
-                <div className="relative max-w-2xl lg:max-w-[40%]">
+                <div className="relative max-w-2xl lg:max-w-[42%]">
+                  <p className="eyebrow mb-4 !text-text-dim-2">{`0${i + 1} / 04`}</p>
                   <h3 className="mega text-[clamp(3.5rem,9vw,9rem)]">
                     {step.t}
                     <em>.</em>
                   </h3>
-                  <p className="mt-6 max-w-lg text-lg leading-relaxed text-text-dim-2">
+                  <p className="mt-6 max-w-lg text-lg leading-relaxed text-text">
                     {step.d}
                   </p>
-                  <div className="mt-8 h-px w-full bg-line">
-                    <div className="h-px w-1/4 bg-accent" style={{ width: `${(i + 1) * 25}%` }} />
+                  <div className="mt-8 h-px w-full bg-text/25">
+                    <div className="h-px bg-accent" style={{ width: `${(i + 1) * 25}%` }} />
                   </div>
                 </div>
               </article>

@@ -23,7 +23,7 @@ export function ArtworkCard({ artwork, index }: { artwork: Artwork; index?: numb
   const direct = artwork.priceLabel === "Direct Sale";
 
   return (
-    <Link href={artwork.href || `/listings/${artwork.id}`} className="group block" data-cursor>
+    <Link href={artwork.href || `/listings/${artwork.id}`} className="group block" data-cursor="img">
       <div className={`relative overflow-hidden bg-bg-elevated ${isLarge ? "aspect-[4/5]" : "aspect-[5/4]"}`}>
         <Image
           src={artwork.image}

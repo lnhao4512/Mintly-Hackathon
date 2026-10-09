@@ -96,7 +96,7 @@ export default function MarketPage() {
           <div className="grid gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {listings.map((item, idx) => (
               <FadeUp key={item.id} delay={(idx % 4) * 0.07}>
-                <Link href={item.href || `/listings/${item.id}`} className="group block" data-cursor>
+                <Link href={item.href || `/listings/${item.id}`} className="group block" data-cursor="img">
                   <div className="relative aspect-square overflow-hidden bg-bg-elevated">
                     <Image
                       src={item.image}

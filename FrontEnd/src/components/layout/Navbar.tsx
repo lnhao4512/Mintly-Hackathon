@@ -44,19 +44,36 @@ export function Navbar() {
     };
   }, [publicKey, connection]);
 
-  // Hide on scroll down, show on scroll up
+  // Hide on scroll down, show on scroll up.
+  // Smoothness: one rAF-throttled reader, a small dead-zone so wheel jitter cannot flip the state,
+  // and direction is decided from the distance travelled, not from a single event.
   useEffect(() => {
-    let last = window.scrollY;
-    const onScroll = () => {
+    let lastY = window.scrollY;
+    let travelled = 0; // signed distance since the direction last changed
+    let raf = 0;
+    const update = () => {
+      raf = 0;
       const y = window.scrollY;
+      const dy = y - lastY;
+      lastY = y;
       // on the home page the header stays invisible over the hero photo and gets its colour once you pass it
       const threshold = pathname === "/" ? window.innerHeight - 90 : 40;
       setScrolled(y > threshold);
-      setHidden(y > last && y > 240 && !open);
-      last = y;
+      if (Math.sign(dy) !== Math.sign(travelled)) travelled = 0;
+      travelled += dy;
+      if (open || y < 160) setHidden(false);
+      else if (travelled > 56) setHidden(true);
+      else if (travelled < -20) setHidden(false);
     };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [open, pathname]);
 
   // Full-screen menu: clip-path wipe + staggered links
@@ -117,12 +134,18 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 transition-[transform,background,color] duration-500 ${
+        className={`fixed inset-x-0 top-0 will-change-transform transition-[transform,opacity,color] duration-[700ms] ${
           open ? "z-[70] text-ink" : "z-50"
-        } ${hidden ? "-translate-y-full" : "translate-y-0"} ${scrolled && !open ? "bg-ink/80 backdrop-blur-md" : "bg-transparent"}`}
+        } ${hidden ? "-translate-y-[110%] opacity-0" : "translate-y-0 opacity-100"}`}
         style={{ transitionTimingFunction: "var(--ease-out-expo)" }}
       >
-        <div className="mx-auto flex h-[68px] w-full max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-12">
+        {/* colour layer: fades in/out instead of switching classes, so there is no flash or jump */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 border-b border-line bg-ink/80 backdrop-blur-md transition-opacity duration-500"
+          style={{ opacity: scrolled && !open ? 1 : 0 }}
+        />
+        <div className="relative mx-auto flex h-[68px] w-full max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-12">
           <Link href="/" className="group flex items-center gap-3" data-cursor>
             <span className="relative block size-7 overflow-hidden">
               <Image src="/logo.png" alt="MINTLY" fill className="object-cover grayscale transition-all duration-500 group-hover:grayscale-0" priority />

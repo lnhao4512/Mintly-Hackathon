@@ -21,9 +21,12 @@ export function Cursor() {
     const over = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       const lens = Boolean(target?.closest('[data-cursor="lens"]'));
+      const img = !lens && Boolean(target?.closest('[data-cursor="img"]'));
       const hit = target?.closest("a, button, [data-cursor]");
       el.classList.toggle("is-lens", lens);
-      el.classList.toggle("is-hover", !lens && Boolean(hit));
+      el.classList.toggle("is-img", img);
+      // text and controls keep the inverting disc; pictures never get colour-inverted
+      el.classList.toggle("is-hover", !lens && !img && Boolean(hit));
     };
 
     window.addEventListener("mousemove", move);

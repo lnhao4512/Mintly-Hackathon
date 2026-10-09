@@ -150,7 +150,7 @@ export default function AuctionsPage() {
 
               return (
                 <FadeUp key={auction.id} delay={(idx % 3) * 0.08}>
-                  <Link href={`/auctions/${auction.id}`} className="group block" data-cursor>
+                  <Link href={`/auctions/${auction.id}`} className="group block" data-cursor="img">
                     <div className="relative aspect-[4/5] overflow-hidden bg-bg-elevated">
                       <Image
                         src={auction.image}

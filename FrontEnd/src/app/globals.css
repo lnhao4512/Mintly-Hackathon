@@ -516,6 +516,16 @@ textarea::placeholder {
   margin: -42px 0 0 -42px;
   background: var(--bone);
 }
+/* over pictures: a calm translucent ring, no colour inversion */
+.cursor-ring.is-img {
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  background: rgba(236, 231, 218, 0.14);
+  mix-blend-mode: normal;
+  border-color: rgba(236, 231, 218, 0.85);
+}
+
 /* over the footer wordmark the page draws its own growing disc, so the ring steps aside */
 .cursor-ring.is-lens {
   opacity: 0;
