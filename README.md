@@ -201,6 +201,11 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 - Commit-reveal sealed-bid đã có sẵn on-chain nhưng chưa được tích hợp vào UI đấu giá (đang dùng mô hình đấu giá công khai kiểu English auction).
 - Phiên mô phỏng của script `devnet_sim.mjs` không xóa được khỏi chuỗi (chương trình không có lệnh đóng account), nên bị loại khỏi mọi danh sách và thống kê qua `SIMULATED_SELLERS` trong `config.ts`; vẫn mở được bằng link trực tiếp.
 - Xóa tác phẩm ở `/portfolio` yêu cầu ví ký tin nhắn `MINTLY_DELETE`, burn NFT (đóng token account, hoàn rent) rồi xóa bản ghi trong MongoDB.
+- **Kết quả kiểm chứng trên hợp đồng đang chạy Devnet** (`node scripts/devnet_sim.mjs --probe`, giao dịch thật):
+  - Chống bid sát giờ **chưa có** trên bản deployed: đặt giá khi còn dưới 60 giây không đẩy `end_time` (chênh lệch 0 giây).
+  - Cọc bị khóa **100%** giá đặt (30000000 trên 30000000 lamports), không phải 10%.
+  - **Tự hoàn cọc khi bị vượt giá không thực hiện được**: lượt đặt giá thứ hai bị từ chối với `ConstraintSigner` ở `escrow_payment_account`. Lỗi nằm ngay trong mã nguồn `place_bid.rs`: tài khoản này khai báo `init_if_needed` không có seeds nên mỗi lượt đặt giá đều đòi chữ ký keypair, mà không ai còn giữ khóa đó. Cần đổi sang ATA của `escrow_authority` (thêm `associated_token_program`) rồi build và deploy lại.
+  - Chia 70/30 khi bùng kèo: logic có trong mã nguồn (`default_winner.rs`), chưa kiểm chứng được on-chain vì phải chờ hết hạn thanh toán (nhiều ngày).
 - Hợp đồng deployed tạo PDA phiên đấu giá bằng `init` (không phải `init_if_needed` như mã nguồn), nên **mỗi NFT chỉ có một phiên duy nhất**: mint đã từng có phiên (mở, hủy hoặc chốt) không thể đấu giá lại, giao dịch thất bại với "account already in use" (Phantom báo "Unexpected error"). Frontend kiểm tra trước và báo rõ lý do; muốn đấu giá lại cần deploy hợp đồng mới.
 - Chặn người bán tự đặt giá vào phiên của mình: đã chặn ở frontend; ràng buộc on-chain (`SellerCannotBid` trong `place_bid.rs`) chỉ có hiệu lực sau khi deploy lại hợp đồng, nên gọi trực tiếp bản deployed vẫn bypass được.
 - Chưa có UI hủy listing (`cancel_listing`) — chỉ có hủy auction.

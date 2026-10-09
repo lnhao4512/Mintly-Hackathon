@@ -377,7 +377,36 @@ async function settleAll() {
   console.log(`Done: ${log.length} confirmed transactions, ${open.length} auctions settled, ${volume.toFixed(3)} SOL (simulated users, devnet). Log: ${outFile}`);
 }
 
+// Probe the DEPLOYED program: does a late bid extend the auction (anti-sniping), and is an outbid deposit refunded?
+async function probe() {
+  const { seller, bidders } = loadWallets();
+  const [A, B] = bidders;
+  const program = programFor(A);
+  const wsolBal = async (kp) => {
+    try {
+      return Number((await conn.getTokenAccountBalance(getAssociatedTokenAddressSync(WSOL, kp.publicKey))).value.amount);
+    } catch {
+      return 0;
+    }
+  };
+  const { mint: nftMint } = await mintNft(seller);
+  const { auction, endTime } = await createAuction(seller, nftMint, 20_000_000, 40); // 40s: any bid is inside the 60s window
+  const endOf = async () => (await retry("fetch", () => program.account.auction.fetch(auction))).endTime.toNumber();
+  console.log("end_time at creation:", endTime);
+  const aBefore = await wsolBal(A);
+  await placeBid(A, auction, 30_000_000);
+  const afterFirst = await endOf();
+  console.log(`anti-snipe: end_time after a bid inside the last 60s = ${afterFirst} (delta vs creation ${afterFirst - endTime}s) -> ${afterFirst > endTime ? "EXTENDED" : "NOT extended"}`);
+  const aHeld = aBefore - (await wsolBal(A));
+  console.log("bidder A WSOL locked:", aHeld, "lamports of a 30000000 bid");
+  await placeBid(B, auction, 40_000_000);
+  await sleep(2000);
+  const aBack = await wsolBal(A);
+  console.log(`outbid refund: A WSOL after being outbid = ${aBack} (was ${aBefore}); refunded ${aBack - (aBefore - aHeld)} lamports`);
+}
+
 async function main() {
+  if (process.argv.includes("--probe")) return probe();
   if (process.argv.includes("--settle")) return settleAll();
   console.log(`Mintly devnet simulation — ${AUCTIONS} auction cycle(s), RPC ${RPC}`);
   const cfg = await retry("config", () => conn.getAccountInfo(configPda));
