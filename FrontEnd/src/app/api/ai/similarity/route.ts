@@ -36,6 +36,9 @@ export async function POST(request: Request) {
     embedding: body.embedding,
     metadata: body.metadata,
     locale: body.locale === "en" ? "en" : "vi",
+    creator: typeof body.creator === "string" ? body.creator : undefined,
+    exclusive: body.exclusive === true,
+    exclusiveThreshold: typeof body.exclusiveThreshold === "number" ? body.exclusiveThreshold : undefined,
   };
 
   // Handle explicit indexing after on-chain minting

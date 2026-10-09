@@ -25,6 +25,19 @@ export async function getAllSales(): Promise<SoldArtworkRecord[]> {
   return docs.map(stripId);
 }
 
+/** Completed trades per wallet (as seller OR buyer; one sale counts once per wallet). */
+export async function countTradesForWallets(wallets: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = Object.fromEntries(wallets.map((w) => [w, 0]));
+  if (wallets.length === 0) return out;
+  const col = await collection();
+  const docs = await col.find({ $or: [{ seller: { $in: wallets } }, { buyer: { $in: wallets } }] }, { projection: { seller: 1, buyer: 1 } }).toArray();
+  for (const d of docs) {
+    const parties = new Set([d.seller, d.buyer]);
+    for (const w of parties) if (w in out) out[w] += 1;
+  }
+  return out;
+}
+
 export async function getSalesForWallet(wallet: string): Promise<SoldArtworkRecord[]> {
   const col = await collection();
   const norm = wallet.toLowerCase().trim();

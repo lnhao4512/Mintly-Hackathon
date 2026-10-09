@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { RankBadge } from "@/components/ui/RankBadge";
 import Image from "next/image";
 import Link from "next/link";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -116,7 +117,7 @@ export default function MarketPage() {
                     <h3 className="truncate font-display text-xl font-light tracking-[-0.03em] transition-colors duration-500 group-hover:text-accent">{item.title}</h3>
                     <span className="font-mono-ui text-sm">{item.price}</span>
                     <span />
-                    <span className="eyebrow truncate">Seller {item.artist}</span>
+                    <span className="eyebrow truncate">Seller {item.artist} <RankBadge wallet={item.sellerWallet} /></span>
                     <span className="eyebrow text-right">{L("Giá bán", "Price")}</span>
                   </div>
                 </Link>

@@ -78,10 +78,12 @@ pub struct PayBalance<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn handler(ctx: Context<PayBalance>, _amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<PayBalance>) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp;
     let auction = &mut ctx.accounts.auction;
 
+    // The winner may only settle once bidding is over; otherwise the top bidder could close the auction early.
+    require!(current_time >= auction.end_time, MarketplaceError::AuctionStillActive);
     require!(current_time <= auction.payment_deadline, MarketplaceError::PaymentDeadlinePassed);
     require!(ctx.accounts.payment_mint.key() == auction.payment_mint, MarketplaceError::InvalidPaymentToken);
     require!(ctx.accounts.nft_mint.key() == auction.nft_mint, MarketplaceError::InvalidNFTMint);
@@ -94,6 +96,8 @@ pub fn handler(ctx: Context<PayBalance>, _amount: u64) -> Result<()> {
 
     let remaining_to_pay = total_amount.saturating_sub(auction.deposit_paid);
 
+    let cpi_program = ctx.accounts.token_program.to_account_info();
+
     // 1. Transfer remaining 90% (or total if no deposit) from winner to escrow
     if remaining_to_pay > 0 {
         let cpi_accounts = Transfer {
@@ -101,7 +105,6 @@ pub fn handler(ctx: Context<PayBalance>, _amount: u64) -> Result<()> {
             to: ctx.accounts.escrow_payment_account.to_account_info(),
             authority: ctx.accounts.winner.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program.clone(), cpi_accounts);
         token::transfer(cpi_ctx, remaining_to_pay)?;
     }

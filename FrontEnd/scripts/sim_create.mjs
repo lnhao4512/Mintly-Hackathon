@@ -34,6 +34,7 @@ const ix = await program.methods
   .accounts({ seller, config, tokenConfig, nftMint, paymentMint: WSOL, sellerTokenAccount, auction, escrowAuthority, escrowTokenAccount: escrow.publicKey, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId })
   .instruction();
 const tx = new Transaction({ feePayer: seller, recentBlockhash: (await conn.getLatestBlockhash()).blockhash }).add(ix);
-tx.partialSign(escrow);
-const sim = await conn.simulateTransaction(tx);
+
+const { VersionedTransaction } = await import("@solana/web3.js");
+const sim = await conn.simulateTransaction(new VersionedTransaction(tx.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true });
 console.log(JSON.stringify(sim.value.err), "\n" + (sim.value.logs || []).join("\n"));

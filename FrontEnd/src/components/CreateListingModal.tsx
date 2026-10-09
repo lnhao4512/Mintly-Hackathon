@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { createListingOnChain } from "@/lib/marketplace";
-import { MARKETPLACE_FEE_BPS } from "@/lib/config";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 import type { MintedArtworkRecord } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 
@@ -21,6 +21,7 @@ function toLamports(sol: number) {
 
 export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingModalProps) {
   const { L } = useI18n();
+  const market = useMarketConfig();
   const router = useRouter();
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -34,7 +35,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
   if (!isOpen || !artwork) return null;
 
   const parsedPrice = Number(priceSol);
-  const feeSol = Number.isFinite(parsedPrice) ? (parsedPrice * MARKETPLACE_FEE_BPS) / 10_000 : 0;
+  const feeSol = Number.isFinite(parsedPrice) ? (parsedPrice * market.feeBps) / 10_000 : 0;
   const sellerReceives = Number.isFinite(parsedPrice) ? Math.max(parsedPrice - feeSol, 0) : 0;
 
   async function handleCreateListing(e: React.FormEvent) {
@@ -107,7 +108,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
             {L("Đăng bán tác phẩm", "List artwork")}
           </h2>
           <p className="mt-1 text-sm text-text-dim">
-            {L("NFT được khóa vào escrow; người mua thanh toán đủ giá niêm yết, sàn thu 5%.", "The NFT is locked in escrow; the buyer pays the full list price and the platform takes 5%.")}
+            {L(`NFT được khóa vào escrow; người mua thanh toán đủ giá niêm yết, sàn thu ${market.feePct}%.`, `The NFT is locked in escrow; the buyer pays the full list price and the platform takes ${market.feePct}%.`)}
           </p>
         </div>
 
@@ -168,7 +169,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-accent">{L("Phí sàn 5%", "Platform fee 5%")}</div>
+              <div className="text-xs font-semibold text-accent">{L(`Phí sàn ${market.feePct}%`, `Platform fee ${market.feePct}%`)}</div>
               <div className="mt-1 font-mono text-base font-bold text-black">
                 {feeSol.toFixed(3)} SOL
               </div>

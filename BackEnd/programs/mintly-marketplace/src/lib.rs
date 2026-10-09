@@ -9,7 +9,7 @@ pub mod utils;
 
 use instructions::*;
 
-declare_id!("Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq");
+declare_id!("6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA");
 
 #[program]
 pub mod mintly_marketplace {
@@ -99,8 +99,8 @@ pub mod mintly_marketplace {
         instructions::pay_deposit::handler(ctx)
     }
 
-    pub fn pay_balance(ctx: Context<PayBalance>, amount: u64) -> Result<()> {
-        instructions::pay_balance::handler(ctx, amount)
+    pub fn pay_balance(ctx: Context<PayBalance>) -> Result<()> {
+        instructions::pay_balance::handler(ctx)
     }
 
     pub fn default_winner(ctx: Context<DefaultWinner>) -> Result<()> {

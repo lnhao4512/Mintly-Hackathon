@@ -1,4 +1,5 @@
 import anchorPkg from "@coral-xyz/anchor";
+import { loadKeypair } from "./_keypair.mjs";
 const { AnchorProvider, Program, Wallet, BN } = anchorPkg;
 import {
   Connection,
@@ -22,20 +23,13 @@ const __dirname = path.dirname(__filename);
 const RPC_URL = process.env.SOLANA_RPC_URL || "http://127.0.0.1:8899";
 const connection = new Connection(RPC_URL, "confirmed");
 
-// Deployer keypair
-const secretKey = new Uint8Array([
-  26,196,206,217,156,1,204,78,218,241,216,54,236,243,37,126,
-  10,63,128,145,64,186,191,154,154,48,212,2,101,134,121,222,
-  17,98,96,70,186,160,19,197,55,64,58,74,244,216,230,17,
-  135,155,10,127,115,235,247,251,241,179,0,175,0,80,244,59
-]);
-const payer = Keypair.fromSecretKey(secretKey);
+const payer = loadKeypair();
 const wallet = new Wallet(payer);
 
 const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
 const idlPath = path.resolve(__dirname, "../src/idl/mintly_marketplace.json");
 const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
-const programId = new PublicKey("Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq");
+const programId = new PublicKey("6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA");
 const program = new Program(idl, provider);
 
 const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], programId);

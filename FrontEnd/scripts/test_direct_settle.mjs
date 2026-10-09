@@ -9,7 +9,7 @@ import {
 import fs from 'fs';
 
 const conn = new Connection('https://api.devnet.solana.com', 'confirmed');
-const PROGRAM_ID = new PublicKey('Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq');
+const PROGRAM_ID = new PublicKey('6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA');
 
 // Winner wallet
 const winner = new PublicKey('EV7sZkb7DZzxPgQckP9y5MH9kz4j4LwfoEJycaN2fv8y');

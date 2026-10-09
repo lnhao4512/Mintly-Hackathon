@@ -5,10 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-mintly_marketplace = "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq"
+mintly_marketplace = "6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA"
 
 [programs.devnet]
-mintly_marketplace = "Cp7nRDpPothhBnSzLv8EmVGQcg4A5HCkmJorw3A3XdRq"
+mintly_marketplace = "6HYc93V8Xzf6BYw8mTUgXZzpbJWrwuFQbw4BxRKYUgSA"
 
 [registry]
 url = "https://api.apr.dev"

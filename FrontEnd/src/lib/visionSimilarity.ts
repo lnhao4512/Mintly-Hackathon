@@ -37,6 +37,8 @@ export interface SimilarityAnalysis {
   dominantColors: string[];
   complexityScore: number; // 0 - 100
   totalDatabaseItemsCompared: number;
+  /** set when another creator's exclusive work is at least as similar as the creator's chosen threshold */
+  exclusiveConflict?: { title: string; mint?: string; similarity: number; threshold: number } | null;
   closestMatch: {
     title: string;
     similarity: number;
@@ -61,6 +63,11 @@ export interface AnalyzeInput {
   embedding?: unknown; // CLIP image embedding computed in the browser
   metadata?: { name?: string; description?: string; mint?: string };
   locale?: "vi" | "en";
+  /** wallet of the person minting; their own exclusive works never block them */
+  creator?: string;
+  /** registration only: protect this work against lookalikes */
+  exclusive?: boolean;
+  exclusiveThreshold?: number;
 }
 
 interface ReferenceItem extends Partial<ImageFeatures> {
@@ -70,6 +77,9 @@ interface ReferenceItem extends Partial<ImageFeatures> {
   sha256?: string;
   embedding?: number[] | null;
   createdAt?: number;
+  creator?: string;
+  exclusive?: boolean;
+  exclusiveThreshold?: number;
 }
 
 const SITE_ITEMS = (siteData as { items: ReferenceItem[] }).items;
@@ -77,6 +87,9 @@ const SITE_ITEMS = (siteData as { items: ReferenceItem[] }).items;
 const MINTED_CATEGORY = "NFT đã mint trên MINTLY";
 const HIGH_THRESHOLD = 75;
 const MODERATE_THRESHOLD = 40;
+export const EXCLUSIVE_MIN = 40;
+export const EXCLUSIVE_MAX = 95;
+const clampThreshold = (v: unknown) => Math.min(EXCLUSIVE_MAX, Math.max(EXCLUSIVE_MIN, Math.round(Number(v)) || 70));
 
 function decodeImage(imageData: string): Buffer {
   return Buffer.from(imageData.replace(/^data:[^;]+;base64,/, ""), "base64");
@@ -96,6 +109,9 @@ export async function registerMintedArtwork(input: AnalyzeInput): Promise<boolea
       fingerprint: sha256,
       title: input.metadata?.name || "",
       mint: input.metadata?.mint || "",
+      creator: input.creator || undefined,
+      exclusive: input.exclusive === true,
+      exclusiveThreshold: input.exclusive ? clampThreshold(input.exclusiveThreshold) : undefined,
       ...features,
       embedding: normalizeEmbedding(input.embedding),
       createdAt: Date.now(),
@@ -174,6 +190,11 @@ export async function analyzeArtwork(input: AnalyzeInput): Promise<SimilarityAna
   scored.sort((a, b) => b.score - a.score);
   const best = scored[0];
 
+  // Exclusive works of OTHER creators: refuse anything at least as similar as the owner's chosen threshold.
+  const conflict = scored.find(
+    (s) => s.item.exclusive && (!input.creator || s.item.creator !== input.creator) && pct(s.score) >= clampThreshold(s.item.exclusiveThreshold)
+  );
+
   const L = (vi: string, en: string) => (input.locale === "en" ? en : vi);
   const reasonFor = (s: Scored) => {
     if (s.exact) return L("Trùng khớp 100% dữ liệu tệp gốc.", "100% match with the original file data.");
@@ -213,6 +234,9 @@ export async function analyzeArtwork(input: AnalyzeInput): Promise<SimilarityAna
   } else if (status === "MODERATE_SIMILARITY") {
     message = L(`Có nét tương đồng vừa phải (${finalSimilarity}%) với "${closestTitle}". Nên kiểm tra lại trước khi mint.`, `Moderate similarity (${finalSimilarity}%) with "${closestTitle}". Review before minting.`);
   }
+  if (conflict) {
+    message = L(`Không thể mint: tác phẩm giống ${pct(conflict.score)}% với "${conflict.item.title}", một tác phẩm độc quyền (chủ sở hữu chặn từ ${clampThreshold(conflict.item.exclusiveThreshold)}%).`, `Cannot mint: the work is ${pct(conflict.score)}% similar to "${conflict.item.title}", an exclusive artwork (its owner blocks from ${clampThreshold(conflict.item.exclusiveThreshold)}%).`);
+  }
   if (!queryEmbedding) message += L(" (Chưa có phân tích AI embedding — kết quả chỉ dựa trên hash & màu sắc.)", " (No AI embedding analysis yet — result based on hash and colour only.)");
 
     return {
@@ -238,6 +262,9 @@ export async function analyzeArtwork(input: AnalyzeInput): Promise<SimilarityAna
           category: best.item.category,
           mint: best.item.category === MINTED_CATEGORY ? best.item.id : undefined,
         }
+      : null,
+    exclusiveConflict: conflict
+      ? { title: conflict.item.title, mint: conflict.item.id, similarity: pct(conflict.score), threshold: clampThreshold(conflict.item.exclusiveThreshold) }
       : null,
     similarItems,
     evidence: [

@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 export type LineIconName =
   | "shield" | "rocket" | "trophy" | "target" | "palette" | "lock" | "image" | "flame" | "spark"
-  | "hammer" | "clock" | "crown" | "bolt" | "flag" | "link" | "scroll" | "cross" | "check" | "warning" | "pause";
+  | "gem" | "hammer" | "clock" | "crown" | "bolt" | "flag" | "link" | "scroll" | "cross" | "check" | "warning" | "pause";
 
 const PATHS: Record<LineIconName, string> = {
   shield: "M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z M9 12l2 2 4-4",
@@ -14,6 +14,7 @@ const PATHS: Record<LineIconName, string> = {
   image: "M4 5h16v14H4V5z M4 16l5-5 4 4 3-3 4 4 M9 9.5h.01",
   flame: "M12 3c1 3.5 5 5 5 10a5 5 0 01-10 0c0-2 1-3 2-4 .3 1.2 1 2 2 2 0-3-.5-5 1-8z",
   spark: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8L18 16z",
+  gem: "M6 4h12l4 6-10 11L2 10l4-6z M2 10h20 M9 4l3 6 3-6 M12 21l-3-11 M12 21l3-11",
   hammer: "M14 4l6 6-3 3-6-6 3-3z M12 8L4 16l4 4 8-8 M3 21h7",
   clock: "M12 21a9 9 0 100-18 9 9 0 000 18z M12 7v5l3 2",
   crown: "M4 8l4 4 4-6 4 6 4-4-2 10H6L4 8z",

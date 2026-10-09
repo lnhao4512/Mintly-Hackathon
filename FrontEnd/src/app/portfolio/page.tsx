@@ -1,6 +1,7 @@
 "use client";
 
 import { LineIcon } from "@/components/ui/LineIcon";
+import { RankBadge } from "@/components/ui/RankBadge";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -12,6 +13,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SolanaIcon, DotsIcon } from "@/components/ui/Icons";
 import { useI18n } from "@/lib/i18n";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   getUserMintedArtworks,
@@ -42,6 +44,7 @@ import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function PortfolioPage() {
   const { t, L } = useI18n();
+  const market = useMarketConfig();
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
   const { connection } = useConnection();
@@ -317,6 +320,7 @@ export default function PortfolioPage() {
                   <h1 className="font-display text-2xl text-text sm:text-4xl">
                     {t("portfolio.title")}
                   </h1>
+                  <RankBadge wallet={publicKey?.toBase58()} className="!px-2 !py-1 !text-[11px]" />
                   <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-green-400">
                     Solana Devnet
                   </span>
@@ -504,7 +508,7 @@ export default function PortfolioPage() {
                               <span className="font-mono font-bold text-text">{listing.price}</span>
                             </div>
                             <div className="mt-2 flex items-center justify-between text-xs">
-                              <span className="text-text-dim">{L("Phí sàn 5%", "Platform fee 5%")}</span>
+                              <span className="text-text-dim">{L(`Phí sàn ${market.feePct}%`, `Platform fee ${market.feePct}%`)}</span>
                               <span className="font-mono text-[#c8ff3d]">
                                 {(listing.priceLamports * 0.05 / 1e9).toFixed(3)} SOL
                               </span>

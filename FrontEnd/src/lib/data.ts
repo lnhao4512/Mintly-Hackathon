@@ -124,6 +124,7 @@ export async function fetchLiveListings(connection: Connection): Promise<Artwork
           size: idx === 0 ? "large" : "small",
           href: `/listings/${item.publicKey.toBase58()}`,
           nftMint,
+          sellerWallet: seller,
         };
       });
   } catch (error) {

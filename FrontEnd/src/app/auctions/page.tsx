@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RankBadge } from "@/components/ui/RankBadge";
 import Link from "next/link";
 import Image from "next/image";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -20,9 +21,11 @@ import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { useI18n } from "@/lib/i18n";
 import { getSavedBidSecret, getAllSavedBidsForAuction, hydrateAllBidSecrets } from "@/lib/auction-crypto";
 import { Loading, Skeleton } from "@/components/ui/Loading";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 
 export default function AuctionsPage() {
   const { t, L } = useI18n();
+  const market = useMarketConfig();
   const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
@@ -93,7 +96,7 @@ export default function AuctionsPage() {
   const headerStats = [
     { label: t("auctions.liveOnSolana"), value: `${activeCount} ${t("auctions.auctionCount")}${activeCount === 1 ? "" : "s"}` },
     { label: t("auctions.highestBid"), value: highestBidSol > 0 ? `${highestBidSol.toFixed(2)} SOL` : t("auctions.noBids") },
-    { label: t("auctions.contractState"), value: t("auctions.verifiedActive") },
+    { label: t("auctions.contractState"), value: !market.loaded ? "…" : market.paused ? L("Tạm dừng", "Paused") : L("Đang hoạt động", "Running") },
   ];
 
   return (
@@ -191,7 +194,7 @@ export default function AuctionsPage() {
                       <span className={`font-mono-ui text-sm ${state === "LIVE" ? "text-accent" : "text-text"}`}>{effectiveHighestBid} SOL</span>
                       <span />
                       <span className="eyebrow truncate">
-                        {t("auctions.seller")} {auction.artist}
+                        {t("auctions.seller")} {auction.artist} <RankBadge wallet={auction.seller} />
                       </span>
                       <span className="eyebrow text-right">{isSettled ? L("Giá chốt", "Final price") : isEnded ? L("Giá cuối", "Final bid") : t("auctions.currentBid")}</span>
                     </div>

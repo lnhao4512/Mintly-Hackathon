@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use crate::state::{Auction, AuctionStatus, Bid, MarketplaceConfig, TokenConfig};
-use crate::constants::{ANTI_SNIPE_EXTENSION, ANTI_SNIPE_WINDOW, BID_SEED, CONFIG_SEED, ESCROW_SEED, TOKEN_SEED};
+use crate::constants::{ANTI_SNIPE_EXTENSION, ANTI_SNIPE_WINDOW, BID_SEED, CONFIG_SEED, ESCROW_PAY_SEED, ESCROW_SEED, TOKEN_SEED};
 use crate::errors::MarketplaceError;
 use crate::events::{BidPlaced, PreviousBidderRefunded};
 
@@ -47,9 +47,13 @@ pub struct PlaceBid<'info> {
     )]
     pub escrow_authority: AccountInfo<'info>,
 
+    // A PDA (not a fresh keypair): every bid can create/reuse it without anyone holding its key. A keypair
+    // account would demand that key's signature on every bid, so the second bid (and the refund) could never happen.
     #[account(
         init_if_needed,
         payer = bidder,
+        seeds = [ESCROW_PAY_SEED, auction.key().as_ref()],
+        bump,
         token::mint = payment_mint,
         token::authority = escrow_authority,
     )]

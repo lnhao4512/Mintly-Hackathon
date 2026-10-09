@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { RankBadge } from "@/components/ui/RankBadge";
 
 export type Artwork = {
   id: string;
@@ -13,6 +14,8 @@ export type Artwork = {
   rarity?: "trending" | "collector" | "rare";
   href?: string;
   nftMint?: string;
+  /** full wallet of the seller/creator (for the rank badge) */
+  sellerWallet?: string;
 };
 
 /** Museum-label card: framed plate on top, specimen label underneath. */
@@ -55,7 +58,7 @@ export function ArtworkCard({ artwork, index }: { artwork: Artwork; index?: numb
         <span className="font-mono-ui text-sm text-text">{artwork.price}</span>
         <span />
         <span className="eyebrow truncate">
-          {t("card.by")} {artwork.artist}
+          {t("card.by")} {artwork.artist} <RankBadge wallet={artwork.sellerWallet} />
         </span>
         <span className="eyebrow text-right">{direct ? t("card.buyNow") : t("card.bid")}</span>
       </div>

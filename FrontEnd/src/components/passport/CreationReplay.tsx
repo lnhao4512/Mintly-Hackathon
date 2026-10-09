@@ -102,7 +102,7 @@ export function CreationReplay({ mint }: { mint: string }) {
       <div className="mt-5 grid gap-5 sm:grid-cols-[200px_1fr]">
         {proof.frames.length > 0 && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={proof.frames[frame]} alt={L("Tái hiện quá trình vẽ", "Drawing process replay")} className="aspect-square w-full rounded-2xl border border-white/10 bg-white object-cover" />
+          <img src={proof.frames[frame]} alt={L("Tái hiện quá trình vẽ", "Drawing process replay")} className="max-h-[70vh] w-full rounded-2xl border border-white/10 bg-white object-contain" />
         )}
         <dl className="space-y-3 text-sm">
           <div>

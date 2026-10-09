@@ -11,6 +11,7 @@ import { useDrawingCanvas } from "@/hooks/useDrawingCanvas";
 import { CanvasToolbar } from "@/components/canvas/CanvasToolbar";
 import { BrushPanel } from "@/components/canvas/BrushPanel";
 import { LayersPanel } from "@/components/canvas/LayersPanel";
+import { FramePanel } from "@/components/canvas/FramePanel";
 import { deleteDraft, draftKey, loadDraft, saveDraft, type DraftPayload } from "@/lib/paint/draftStore";
 import { MintModal } from "@/components/canvas/MintModal";
 import { mintNFT } from "@/lib/mint";
@@ -215,6 +216,9 @@ export default function CreatorStudioPage() {
   const [attestSig, setAttestSig] = useState<string | null>(null);
   const [attestError, setAttestError] = useState<string | null>(null);
   const [aiCheck, setAiCheck] = useState<ArtworkSimilarityResult | null>(null);
+  // exclusivity: refuse other creators' lookalikes of this work from the chosen similarity upwards
+  const [exclusive, setExclusive] = useState(false);
+  const [exclusiveThreshold, setExclusiveThreshold] = useState(70);
   const [aiChecking, setAiChecking] = useState(false);
   const [aiStage, setAiStage] = useState<AiStage | null>(null);
   const aiStageLabel: Record<AiStage, string> = {
@@ -229,7 +233,7 @@ export default function CreatorStudioPage() {
     try {
       const base64Data = await actions.exportToBase64();
       if (base64Data) {
-        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage);
+        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage, publicKey?.toBase58());
         setAiCheck(result);
       }
     } catch (error) {
@@ -237,7 +241,7 @@ export default function CreatorStudioPage() {
     } finally {
       setAiChecking(false);
     }
-  }, [actions, title, statement]);
+  }, [actions, title, statement, publicKey]);
 
   const handlePreview = useCallback(async () => {
     const base64Data = await actions.exportToBase64();
@@ -309,8 +313,18 @@ export default function CreatorStudioPage() {
       setAiChecking(true);
       setBlockReason(null);
       try {
-        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage);
+        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage, publicKey?.toBase58());
         setAiCheck(result);
+        if (result.exclusiveConflict) {
+          const c = result.exclusiveConflict;
+          setBlockReason(
+            L(
+              `Tác phẩm của bạn giống ${c.similarity}% với "${c.title}", một tác phẩm độc quyền (chủ sở hữu chặn từ ${c.threshold}% trở lên). Hãy sáng tạo khác đi để xuất bản.`,
+              `Your work is ${c.similarity}% similar to "${c.title}", an exclusive artwork (its owner blocks from ${c.threshold}% upward). Make it more distinct to publish.`
+            )
+          );
+          return;
+        }
         if (result.matchType === "EXACT") {
           setBlockReason(L(`Ảnh này trùng khớp hoàn toàn với "${result.closestMatch?.title ?? "một tác phẩm đã có"}". {L("Không thể mint", "Cannot mint")} bản sao y hệt.`, `This image is an exact match for "${result.closestMatch?.title ?? "an existing artwork"}". An identical copy cannot be minted.`));
           return;
@@ -328,7 +342,7 @@ export default function CreatorStudioPage() {
       }
     }
     setMintModalOpen(true);
-  }, [connected, actions, setVisible, title, statement, attestSig]);
+  }, [connected, actions, setVisible, title, statement, attestSig, publicKey]);
 
   const confirmAttestation = useCallback(async () => {
     if (!publicKey || !wallet.signMessage || !previewUrl) return;
@@ -354,7 +368,10 @@ export default function CreatorStudioPage() {
 
       // Final check on the exact pixels being minted; the fingerprint is written into the NFT
       // metadata (and therefore into the creation proof) so provenance order can be proven.
-      const finalCheck = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }).catch(() => null);
+      const finalCheck = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, undefined, publicKey.toBase58()).catch(() => null);
+      if (finalCheck?.exclusiveConflict) {
+        throw new Error(L(`Tác phẩm giống ${finalCheck.exclusiveConflict.similarity}% với "${finalCheck.exclusiveConflict.title}", một tác phẩm độc quyền — không thể mint.`, `The work is ${finalCheck.exclusiveConflict.similarity}% similar to "${finalCheck.exclusiveConflict.title}", an exclusive artwork — it cannot be minted.`));
+      }
       if (finalCheck?.matchType === "EXACT") {
         throw new Error(L("Ảnh trùng khớp hoàn toàn với tác phẩm đã có — không thể mint.", "The image exactly matches an existing artwork — it cannot be minted."));
       }
@@ -423,12 +440,12 @@ export default function CreatorStudioPage() {
           name: title.trim(),
           description: statement,
           mint: result.mintAddress,
-        }).catch((err) => console.warn("Failed to register artwork in AI cache:", err));
+        }, { creator: publicKey.toBase58(), exclusive, exclusiveThreshold }).catch((err) => console.warn("Failed to register artwork in AI cache:", err));
       }
 
       return result;
     },
-    [publicKey, wallet, connection, actions, title, statement, attestSig, dKey]
+    [publicKey, wallet, connection, actions, title, statement, attestSig, dKey, exclusive, exclusiveThreshold]
   );
 
   mintOpenRef.current = mintModalOpen;
@@ -488,6 +505,8 @@ export default function CreatorStudioPage() {
                     ‹
                   </button>
                 </div>
+                <FramePanel state={state} actions={actions} />
+                <div className="border-t border-line" />
                 <BrushPanel state={state} actions={actions} />
                 <div className="border-t border-line" />
                 <LayersPanel state={state} actions={actions} />
@@ -541,10 +560,16 @@ export default function CreatorStudioPage() {
               {/* Canvas artboard with Native Scroll for Panning */}
               <div className="relative size-full overflow-auto flex items-start justify-center pt-5 pb-24">
                 <div 
-                  className="relative aspect-square shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.35)] transition-all duration-200 ease-out"
+                  className="relative shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.35)] transition-all duration-200 ease-out"
                   style={{
-                    height: `calc((100% - 6.5rem) * ${state.zoomScale})`,
-                    minHeight: `calc(320px * ${state.zoomScale})`,
+                    aspectRatio: `${state.canvasSize.w} / ${state.canvasSize.h}`,
+                    // a wide frame is limited by the width of the stage, a tall or square one by its height
+                    ...(state.canvasSize.w > state.canvasSize.h
+                      ? { width: `calc(100% * ${state.zoomScale})`, maxWidth: "none" }
+                      : {
+                          height: `calc((100% - 6.5rem) * ${state.zoomScale})`,
+                          minHeight: `calc(320px * ${state.zoomScale})`,
+                        }),
                   }}
                 >
                   <canvas
@@ -678,6 +703,51 @@ export default function CreatorStudioPage() {
               className="resize-none rounded-[24px] border border-line-subtle bg-[rgba(32,31,31,0.3)] p-4 font-sans text-sm leading-6 text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent"
             />
           </label>
+
+          {/* Exclusivity */}
+          <div className="flex flex-col gap-3 border border-line p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={exclusive}
+                onChange={(e) => setExclusive(e.target.checked)}
+                className="mt-1 size-4 accent-[var(--accent)]"
+              />
+              <span className="flex flex-col gap-1">
+                <span className="eyebrow">{L("Tác phẩm độc quyền", "Exclusive artwork")}</span>
+                <span className="text-xs leading-5 text-text-dim">
+                  {L(
+                    "Người khác không thể xuất bản tác phẩm giống tác phẩm này từ mức tương đồng bạn chọn trở lên.",
+                    "Other creators cannot publish a work at or above the similarity you choose."
+                  )}
+                </span>
+              </span>
+            </label>
+            {exclusive && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between font-mono-ui text-[10px] uppercase tracking-[0.1em] text-text-dim">
+                  <span>{L("Chặn từ mức giống", "Block from similarity")}</span>
+                  <span className="text-accent">{exclusiveThreshold}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={40}
+                  max={95}
+                  step={1}
+                  value={exclusiveThreshold}
+                  onChange={(e) => setExclusiveThreshold(Number(e.target.value))}
+                  className="w-full accent-[var(--accent)]"
+                  aria-label={L("Ngưỡng tương đồng", "Similarity threshold")}
+                />
+                <p className="text-[11px] leading-5 text-text-dim">
+                  {L(
+                    "Thấp = bảo vệ chặt nhưng dễ chặn nhầm tác phẩm cùng phong cách. Cao = chỉ chặn bản sao gần giống.",
+                    "Low = strong protection but may block similar styles. High = only blocks near copies."
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Settings grid */}
           <div className="flex gap-6">
