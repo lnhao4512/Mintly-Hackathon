@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -8,6 +9,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { DotsIcon, PlusIcon, ChevronDownIcon, SolanaIcon } from "@/components/ui/Icons";
 import { useDrawingCanvas } from "@/hooks/useDrawingCanvas";
 import { CanvasToolbar } from "@/components/canvas/CanvasToolbar";
+import { BrushPanel } from "@/components/canvas/BrushPanel";
+import { LayersPanel } from "@/components/canvas/LayersPanel";
+import { deleteDraft, draftKey, loadDraft, saveDraft, type DraftPayload } from "@/lib/paint/draftStore";
 import { MintModal } from "@/components/canvas/MintModal";
 import { mintNFT } from "@/lib/mint";
 import { useI18n } from "@/lib/i18n";
@@ -27,7 +31,121 @@ export default function CreatorStudioPage() {
 
   const [title, setTitle] = useState("");
   const [statement, setStatement] = useState("");
+
+  // ---------------- drafts + leave guard ----------------
+  const router = useRouter();
+  const [panelTab, setPanelTab] = useState<"draw" | "publish">("draw");
+  const [metaDirty, setMetaDirty] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<DraftPayload | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const dKey = draftKey(publicKey?.toBase58());
+  const unsaved = state.isDirty || metaDirty;
+  const unsavedRef = useRef(false);
+  unsavedRef.current = unsaved;
+
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    const payload = actions.serializeDraft({ title, statement });
+    if (!payload) return false;
+    setSavingDraft(true);
+    try {
+      await saveDraft(dKey, payload);
+      setSavedAt(payload.updatedAt);
+      actions.markClean();
+      setMetaDirty(false);
+      return true;
+    } catch (e) {
+      console.warn("Draft save failed:", e);
+      return false;
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [actions, dKey, statement, title]);
+  const saveRef = useRef(saveNow);
+  saveRef.current = saveNow;
+  const mintOpenRef = useRef(false);
+
+  // offer to restore a saved draft when the studio opens
+  useEffect(() => {
+    if (!connected) return;
+    let alive = true;
+    loadDraft(dKey).then((d) => {
+      if (alive && d) setPendingDraft(d);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [connected, dKey]);
+
+  // autosave while there are unsaved changes (idle-time so drawing never stutters)
+  useEffect(() => {
+    if (!connected) return;
+    const run = () => {
+      if (!unsavedRef.current || mintOpenRef.current) return;
+      const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+      if (ric) ric(() => void saveRef.current(), { timeout: 4000 });
+      else void saveRef.current();
+    };
+    const id = window.setInterval(run, 20000);
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && unsavedRef.current) void saveRef.current();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [connected]);
+
+  // closing / reloading the tab
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!unsavedRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // clicking any in-app link (navbar, footer, menu...) while there is unsaved work
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!unsavedRef.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeaveTarget(url.pathname + url.search + url.hash);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
+  const leaveNow = useCallback(
+    (target: string) => {
+      unsavedRef.current = false;
+      actions.markClean();
+      setMetaDirty(false);
+      setLeaveTarget(null);
+      router.push(target);
+    },
+    [actions, router]
+  );
+
+  const saveAndLeave = useCallback(
+    async (target: string) => {
+      await saveNow();
+      leaveNow(target);
+    },
+    [leaveNow, saveNow]
+  );
   const [mintModalOpen, setMintModalOpen] = useState(false);
+  // (mirrored into a ref for the autosave timer)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fullscreenRef = useRef<HTMLElement>(null);
@@ -281,6 +399,10 @@ export default function CreatorStudioPage() {
           body: JSON.stringify({ ...trace, mintAddress: result.mintAddress, creator: publicKey.toBase58(), proofHash, signature: result.signature }),
         }).catch((err) => console.warn("Failed to store creation proof:", err));
 
+        void deleteDraft(dKey);
+        actions.markClean();
+        setMetaDirty(false);
+
         // 2. Register into AI similarity index
         registerMintedArtworkAI(base64Data, {
           name: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
@@ -291,8 +413,10 @@ export default function CreatorStudioPage() {
 
       return result;
     },
-    [publicKey, wallet, connection, actions, title, statement, attestSig]
+    [publicKey, wallet, connection, actions, title, statement, attestSig, dKey]
   );
+
+  mintOpenRef.current = mintModalOpen;
 
   const handleCloseMint = useCallback(() => {
     setMintModalOpen(false);
@@ -302,10 +426,13 @@ export default function CreatorStudioPage() {
 
   const handleBackToCanvas = useCallback(() => {
     actions.clear();
+    void deleteDraft(dKey);
+    setMetaDirty(false);
+    setSavedAt(null);
     setTitle("");
     setStatement("");
     setPreviewUrl(null);
-  }, [actions]);
+  }, [actions, dKey]);
 
   return (
     <div className="relative flex h-[calc(100svh-30px)] flex-col overflow-hidden">
@@ -355,13 +482,13 @@ export default function CreatorStudioPage() {
                   }
                 }
               }}
-              className="relative flex flex-1 items-center justify-center overflow-hidden rounded-2xl border border-line-subtle bg-[#f8f8f8] shadow-[inset_0_2px_4px_1px_rgba(0,0,0,0.05)]"
+              className="relative flex flex-1 items-center justify-center overflow-hidden border border-line bg-[#171716]"
             >
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   backgroundImage:
-                    "linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)",
+                    "linear-gradient(rgba(236,231,218,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(236,231,218,0.045) 1px, transparent 1px)",
                   backgroundSize: "40px 40px",
                 }}
               />
@@ -402,7 +529,13 @@ export default function CreatorStudioPage() {
               <div className="absolute left-4 top-4 flex items-center gap-3 rounded-full border border-line-glass bg-[rgba(34,34,34,0.55)] px-4 py-2 backdrop-blur-md">
                 <span className="size-2 rounded-full bg-[#e3e2e1]" />
                 <span className="eyebrow">
-                  {state.zoomScale !== 1 ? `${t("create.zoom")}: ${Math.round(state.zoomScale * 100)}%` : t("create.readyToDraw")}
+                  {state.zoomScale !== 1
+                    ? `${t("create.zoom")}: ${Math.round(state.zoomScale * 100)}%`
+                    : unsaved
+                      ? L("Chưa lưu", "Unsaved")
+                      : savedAt
+                        ? L("Đã lưu nháp", "Draft saved")
+                        : t("create.readyToDraw")}
                 </span>
               </div>
 
@@ -417,12 +550,34 @@ export default function CreatorStudioPage() {
 
             {/* Metadata panel */}
             <aside className="flex w-[382px] shrink-0 flex-col gap-8 overflow-auto rounded-2xl border border-line-glass bg-[rgba(34,34,34,0.4)] p-8 backdrop-blur-md max-lg:hidden">
-              <div className="flex items-center justify-between">
-                <h2 className="font-display text-[32px] leading-10 text-text">{t("create.provenance")}</h2>
-                <button aria-label="More options" className="pb-2 text-text-dim hover:text-text">
-                  <DotsIcon width={18} height={18} />
-                </button>
+              <div className="-mb-2 flex border-b border-line">
+                {(
+                  [
+                    ["draw", L("Vẽ", "Draw")],
+                    ["publish", L("Xuất bản", "Publish")],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPanelTab(id)}
+                    className={`relative -mb-px flex-1 border-b-2 py-3 font-mono-ui text-[11px] uppercase tracking-[0.16em] transition-colors ${
+                      panelTab === id ? "border-accent text-text" : "border-transparent text-text-dim hover:text-text"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
+
+              {panelTab === "draw" ? (
+                <>
+                  <BrushPanel state={state} actions={actions} />
+                  <div className="border-t border-line" />
+                  <LayersPanel state={state} actions={actions} />
+                </>
+              ) : (
+                <>
 
               {/* Upload Image Option */}
               <div className="flex flex-col gap-2">
@@ -457,7 +612,10 @@ export default function CreatorStudioPage() {
                 <span className="eyebrow">{t("create.artworkTitle")}</span>
                 <input
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    setMetaDirty(true);
+                  }}
                   placeholder={t("create.titlePlaceholder")}
                   className="border-b border-white/10 bg-transparent pb-3 pt-2 font-sans text-lg text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent"
                 />
@@ -468,7 +626,10 @@ export default function CreatorStudioPage() {
             <span className="eyebrow">{t("create.statement")}</span>
             <textarea
               value={statement}
-              onChange={(e) => setStatement(e.target.value)}
+              onChange={(e) => {
+                setStatement(e.target.value);
+                setMetaDirty(true);
+              }}
               placeholder={t("create.statementPlaceholder")}
               rows={4}
               className="resize-none rounded-[24px] border border-line-subtle bg-[rgba(32,31,31,0.3)] p-4 font-sans text-sm leading-6 text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent"
@@ -670,6 +831,9 @@ export default function CreatorStudioPage() {
             </div>
           </div>
 
+                </>
+              )}
+
           {/* Wallet guard + Actions */}
           {!connected && (
             <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
@@ -685,7 +849,26 @@ export default function CreatorStudioPage() {
             </div>
           )}
 
-          <div className="mt-auto flex gap-4 pt-8">
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-5">
+            <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text-dim">
+              {unsaved ? (
+                <span className="text-amber">● {L("Chưa lưu", "Unsaved changes")}</span>
+              ) : savedAt ? (
+                `✓ ${L("Đã lưu nháp", "Draft saved")} ${new Date(savedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+              ) : (
+                L("Chưa có bản nháp", "No draft yet")
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => void saveNow()}
+              disabled={savingDraft || !unsaved}
+              className="border border-line px-4 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text transition-colors hover:border-accent hover:text-accent disabled:pointer-events-none disabled:opacity-40"
+            >
+              {savingDraft ? L("Đang lưu…", "Saving…") : L("Lưu nháp", "Save draft")}
+            </button>
+          </div>
+          <div className="flex gap-4 pt-4">
             <button 
               onClick={handlePreview}
               className="flex-1 rounded-full border border-white/10 px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-text transition-colors hover:border-text hover:bg-white/5"
@@ -720,9 +903,80 @@ export default function CreatorStudioPage() {
         )}
       </main>
 
+      {pendingDraft && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6">
+            <p className="eyebrow text-accent">{L("Bản nháp chưa hoàn thành", "Unfinished draft")}</p>
+            <p className="mt-2 font-display text-3xl font-light tracking-[-0.03em]">{pendingDraft.title || L("Chưa đặt tên", "Untitled")}</p>
+            <div className="mt-4 flex gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pendingDraft.thumb} alt="" className="size-24 border border-line bg-white object-cover" />
+              <div className="text-sm text-text-dim-2">
+                <p>
+                  {pendingDraft.layers.length} {L("lớp", "layers")} · {pendingDraft.trace.strokes} {L("nét vẽ", "strokes")}
+                </p>
+                <p className="mt-1 text-text-dim">
+                  {L("Lưu lúc", "Saved")} {new Date(pendingDraft.updatedAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn flex-1 !py-3"
+                onClick={async () => {
+                  const d = pendingDraft;
+                  setPendingDraft(null);
+                  await actions.restoreDraft(d);
+                  setTitle(d.title);
+                  setStatement(d.statement);
+                  setSavedAt(d.updatedAt);
+                  setMetaDirty(false);
+                }}
+              >
+                {L("Tiếp tục vẽ", "Continue drawing")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost flex-1 !py-3"
+                onClick={() => {
+                  void deleteDraft(dKey);
+                  setPendingDraft(null);
+                }}
+              >
+                {L("Bắt đầu mới", "Start fresh")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {leaveTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6">
+            <p className="eyebrow text-amber">{L("Bạn có thay đổi chưa lưu", "You have unsaved changes")}</p>
+            <p className="mt-2 font-display text-3xl font-light tracking-[-0.03em]">{L("Rời khỏi Studio?", "Leave the Studio?")}</p>
+            <p className="mt-3 text-sm text-text-dim-2">
+              {L("Tranh đang vẽ sẽ mất nếu bạn rời đi mà không lưu. Lưu nháp để tiếp tục vẽ sau.", "Your drawing will be lost if you leave without saving. Save a draft to keep working later.")}
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button type="button" className="btn !py-3" disabled={savingDraft} onClick={() => void saveAndLeave(leaveTarget)}>
+                {savingDraft ? L("Đang lưu…", "Saving…") : L("Lưu nháp & rời đi", "Save draft & leave")}
+              </button>
+              <button type="button" className="btn btn-ghost !py-3" onClick={() => leaveNow(leaveTarget)}>
+                {L("Rời đi, không lưu", "Leave without saving")}
+              </button>
+              <button type="button" className="py-2 font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim hover:text-text" onClick={() => setLeaveTarget(null)}>
+                {L("Ở lại vẽ tiếp", "Stay and keep drawing")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {blockReason && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4" onClick={() => setBlockReason(null)}>
-          <div className="glass-panel max-w-md rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6" onClick={(e) => e.stopPropagation()}>
             <p className="font-display text-2xl text-red-300">{L("Không thể mint", "Cannot mint")}</p>
             <p className="mt-3 text-sm text-text-dim">{blockReason}</p>
             <button onClick={() => setBlockReason(null)} className="mt-5 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">{L("Đã hiểu", "Got it")}</button>
@@ -732,7 +986,7 @@ export default function CreatorStudioPage() {
 
       {attestOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
-          <div className="glass-panel max-w-md rounded-2xl p-6">
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6">
             <p className="font-display text-2xl text-amber">{L("Ảnh rất giống tác phẩm khác", "This image closely resembles another artwork")}</p>
             <p className="mt-3 text-sm text-text-dim">
               {L(`AI thấy ảnh này giống ${Math.round(aiCheck?.similarity ?? 0)}% với \u201c${aiCheck?.closestMatch?.title ?? "một tác phẩm đã có"}\u201d. Nếu đây là tác phẩm của bạn, hãy xác nhận và ký bằng ví. Chữ ký được ghi vào metadata, và nếu bị khiếu nại đạo nhái, nó là bằng chứng bạn đã cam kết.`, `AI finds this image ${Math.round(aiCheck?.similarity ?? 0)}% similar to \u201c${aiCheck?.closestMatch?.title ?? "an existing artwork"}\u201d. If it is your own work, confirm and sign with your wallet. The signature is recorded in the metadata and is evidence of your commitment if a plagiarism dispute is raised.`)}

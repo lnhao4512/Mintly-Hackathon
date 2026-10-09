@@ -261,7 +261,7 @@ textarea::placeholder {
   font-variation-settings: "opsz" 144;
   letter-spacing: -0.045em;
   line-height: 0.8;
-  font-size: min(26vw, 36vh);
+  font-size: min(31vw, 36vh);
   white-space: nowrap;
 }
 .wordmark-base {

@@ -76,6 +76,9 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 | 16 | **Chặn sao chép khi mint** | ✅ | Ảnh trùng khớp hoàn toàn (`EXACT`) bị chặn; giống cao phải tick cam kết và ký `MINTLY_ATTEST` bằng ví, chữ ký ghi vào metadata. Kiểm tra ở frontend, người dùng kỹ thuật vẫn có thể mint thẳng qua chương trình SPL |
 | 17 | **Hộ chiếu QR** | ✅ | Passport có mã QR tải được dẫn tới trang xác thực |
 | 18 | **Thưởng báo cáo đạo nhái** | ⚠️ Ghi sổ | Khiếu nại được chấp nhận ghi 0.05 SOL cho người báo cáo; admin chi trả thủ công, chưa tự động on-chain |
+| 19 | **Studio nhiều cọ** | ✅ | 9 cọ (bút chì, bút mực, bút dạ, phun sơn, **màu nước**, **sáp màu**, than, bụi sơn, pixel) + công cụ **blend/smudge**, tẩy, đổ màu, lấy màu, chữ. Nhận lực nhấn bút cảm ứng (`pressure`). Engine tự viết trong `src/lib/paint/brushes.ts` |
+| 20 | **Layers** | ✅ | Thêm/xóa/nhân bản/gộp lớp, ẩn hiện, độ mờ, chế độ hòa trộn (multiply, screen, overlay…), đổi tên, sắp xếp; hoàn tác/làm lại cho cả thao tác lớp |
+| 21 | **Bản nháp + xác nhận rời trang** | ✅ | Lưu nháp vào IndexedDB (tự lưu mỗi 20 giây khi có thay đổi), khôi phục khi quay lại; hộp thoại xác nhận khi bấm link rời Studio và cảnh báo khi đóng tab. Chưa chặn được nút Back của trình duyệt (Next.js App Router) |
 | 7 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?
