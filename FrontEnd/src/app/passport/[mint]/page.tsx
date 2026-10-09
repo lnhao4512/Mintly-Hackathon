@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { getArtworkImage, getArtworkByMint, hydrateArtworkByMint, fetchSaleHistoryForMint, type SoldArtworkRecord } from "@/lib/artworkCache";
 import { sha256Hex } from "@/lib/proof";
 import { CreationReplay } from "@/components/passport/CreationReplay";
+import { PassportQR } from "@/components/passport/PassportQR";
 import { OriginalityPanel } from "@/components/passport/OriginalityPanel";
 
 export default function PassportPage({ params }: { params: Promise<{ mint: string }> }) {
@@ -255,6 +256,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
               </dl>
             </article>
 
+            <PassportQR mint={mint} title={artworkTitle} />
             <CreationReplay mint={mint} />
             <OriginalityPanel mint={mint} score={getArtworkByMint(mint)?.originalityScore} />
 

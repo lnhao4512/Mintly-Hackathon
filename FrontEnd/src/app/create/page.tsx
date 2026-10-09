@@ -13,7 +13,7 @@ import { mintNFT } from "@/lib/mint";
 import { useI18n } from "@/lib/i18n";
 import { analyzeArtworkSimilarity, registerMintedArtworkAI, type AiStage, type ArtworkSimilarityResult } from "@/lib/ai";
 import { saveMintedArtwork } from "@/lib/artworkCache";
-import { hashCreationTrace } from "@/lib/proof";
+import { hashCreationTrace, sha256Hex } from "@/lib/proof";
 
 export default function CreatorStudioPage() {
   const { t } = useI18n();
@@ -35,6 +35,60 @@ export default function CreatorStudioPage() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
+  // ---- Live drawing broadcast -------------------------------------------------
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const stopLive = useCallback(async () => {
+    const id = liveSessionId;
+    setLiveSessionId(null);
+    if (id) fetch("/api/live", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "end", sessionId: id }) }).catch(() => {});
+  }, [liveSessionId]);
+
+  const startLive = useCallback(async () => {
+    setLiveError(null);
+    if (!publicKey || !wallet.signMessage) {
+      setLiveError("Hãy kết nối ví hỗ trợ ký tin nhắn (ví dụ Phantom).");
+      return;
+    }
+    try {
+      const nonce = crypto.randomUUID();
+      const creator = publicKey.toBase58();
+      const sig = await wallet.signMessage(new TextEncoder().encode(`MINTLY_LIVE:${creator}:${nonce}`));
+      const res = await fetch("/api/live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", creator, title: title || "Tác phẩm đang vẽ", nonce, signature: btoa(String.fromCharCode(...sig)) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể bắt đầu phát");
+      setLiveSessionId(data.sessionId);
+    } catch (e) {
+      setLiveError(e instanceof Error ? e.message : "Không thể bắt đầu phát");
+    }
+  }, [publicKey, wallet, title]);
+
+  useEffect(() => {
+    if (!liveSessionId) return;
+    const timer = setInterval(() => {
+      const frame = actions.getLiveFrame();
+      if (!frame) return;
+      fetch("/api/live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "frame", sessionId: liveSessionId, frame, title: title || undefined }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [liveSessionId, actions, title]);
+
+  // ---- Originality gate: exact copies are blocked, near-copies need a signed attestation ----
+  const [blockReason, setBlockReason] = useState<string | null>(null);
+  const [attestOpen, setAttestOpen] = useState(false);
+  const [attestChecked, setAttestChecked] = useState(false);
+  const [attestSig, setAttestSig] = useState<string | null>(null);
+  const [attestError, setAttestError] = useState<string | null>(null);
   const [aiCheck, setAiCheck] = useState<ArtworkSimilarityResult | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
   const [aiStage, setAiStage] = useState<AiStage | null>(null);
@@ -121,8 +175,20 @@ export default function CreatorStudioPage() {
     if (base64Data) {
       setPreviewUrl(base64Data);
       setAiChecking(true);
+      setBlockReason(null);
       try {
-        setAiCheck(await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage));
+        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage);
+        setAiCheck(result);
+        if (result.matchType === "EXACT") {
+          setBlockReason(`Ảnh này trùng khớp hoàn toàn với "${result.closestMatch?.title ?? "một tác phẩm đã có"}". Không thể mint bản sao y hệt.`);
+          return;
+        }
+        if (result.status === "HIGH_SIMILARITY" && !attestSig) {
+          setAttestChecked(false);
+          setAttestError(null);
+          setAttestOpen(true);
+          return;
+        }
       } catch (error) {
         console.error("AI similarity check failed:", error);
       } finally {
@@ -130,7 +196,21 @@ export default function CreatorStudioPage() {
       }
     }
     setMintModalOpen(true);
-  }, [connected, actions, setVisible, title, statement]);
+  }, [connected, actions, setVisible, title, statement, attestSig]);
+
+  const confirmAttestation = useCallback(async () => {
+    if (!publicKey || !wallet.signMessage || !previewUrl) return;
+    setAttestError(null);
+    try {
+      const hash = await sha256Hex(previewUrl);
+      const sig = await wallet.signMessage(new TextEncoder().encode(`MINTLY_ATTEST:${publicKey.toBase58()}:${hash}`));
+      setAttestSig(btoa(String.fromCharCode(...sig)));
+      setAttestOpen(false);
+      setMintModalOpen(true);
+    } catch (e) {
+      setAttestError(e instanceof Error ? e.message : "Không thể ký xác nhận");
+    }
+  }, [publicKey, wallet, previewUrl]);
 
   const handleConfirmMint = useCallback(
     async (onProgress?: (step: "preparing" | "awaiting-wallet" | "confirming" | "success") => void) => {
@@ -142,10 +222,14 @@ export default function CreatorStudioPage() {
       // Final check on the exact pixels being minted; the fingerprint is written into the NFT
       // metadata (and therefore into the creation proof) so provenance order can be proven.
       const finalCheck = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }).catch(() => null);
+      if (finalCheck?.matchType === "EXACT") {
+        throw new Error("Ảnh trùng khớp hoàn toàn với tác phẩm đã có — không thể mint.");
+      }
       const provenanceAttributes = finalCheck?.perceptualHash
         ? [
             { trait_type: "Perceptual Hash", value: finalCheck.perceptualHash },
             { trait_type: "Originality Score", value: `${finalCheck.originalityScore ?? ""}` },
+            ...(attestSig ? [{ trait_type: "Originality Attestation", value: attestSig.slice(0, 44) }] : []),
           ]
         : [];
 
@@ -207,7 +291,7 @@ export default function CreatorStudioPage() {
 
       return result;
     },
-    [publicKey, wallet, connection, actions, title, statement]
+    [publicKey, wallet, connection, actions, title, statement, attestSig]
   );
 
   const handleCloseMint = useCallback(() => {
@@ -608,6 +692,22 @@ export default function CreatorStudioPage() {
             >
               {t("create.preview")}
             </button>
+            <div className="basis-full space-y-1">
+              <button
+                onClick={liveSessionId ? stopLive : startLive}
+                className={`w-full rounded-full border px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] transition-all ${
+                  liveSessionId ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-white/15 text-text hover:border-white/30"
+                }`}
+              >
+                {liveSessionId ? "● Đang phát trực tiếp — bấm để dừng" : "Phát trực tiếp phiên vẽ"}
+              </button>
+              {liveSessionId && publicKey && (
+                <a href={`/live/${publicKey.toBase58()}`} target="_blank" rel="noopener noreferrer" className="block text-center text-[11px] text-accent hover:underline">
+                  Mở trang người xem
+                </a>
+              )}
+              {liveError && <p className="text-center text-[11px] text-red-300">{liveError}</p>}
+            </div>
             <button
               onClick={handleOpenMint}
               className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)] disabled:opacity-40 disabled:pointer-events-none"
@@ -619,6 +719,43 @@ export default function CreatorStudioPage() {
           </>
         )}
       </main>
+
+      {blockReason && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4" onClick={() => setBlockReason(null)}>
+          <div className="glass-panel max-w-md rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <p className="font-display text-2xl text-red-300">Không thể mint</p>
+            <p className="mt-3 text-sm text-text-dim">{blockReason}</p>
+            <button onClick={() => setBlockReason(null)} className="mt-5 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">Đã hiểu</button>
+          </div>
+        </div>
+      )}
+
+      {attestOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
+          <div className="glass-panel max-w-md rounded-2xl p-6">
+            <p className="font-display text-2xl text-amber">Ảnh rất giống tác phẩm khác</p>
+            <p className="mt-3 text-sm text-text-dim">
+              AI thấy ảnh này giống {Math.round(aiCheck?.similarity ?? 0)}% với &quot;{aiCheck?.closestMatch?.title ?? "một tác phẩm đã có"}&quot;. Nếu đây là tác phẩm của bạn,
+              hãy xác nhận và ký bằng ví. Chữ ký được ghi vào metadata, và nếu bị khiếu nại đạo nhái, nó là bằng chứng bạn đã cam kết.
+            </p>
+            <label className="mt-4 flex items-start gap-2 text-sm text-text">
+              <input type="checkbox" checked={attestChecked} onChange={(e) => setAttestChecked(e.target.checked)} className="mt-1" />
+              Tôi là tác giả và chịu trách nhiệm về tính nguyên bản của tác phẩm này.
+            </label>
+            {attestError && <p className="mt-3 text-xs text-red-300">{attestError}</p>}
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setAttestOpen(false)} className="flex-1 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">Hủy</button>
+              <button
+                onClick={confirmAttestation}
+                disabled={!attestChecked}
+                className="flex-1 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a0a] disabled:opacity-40"
+              >
+                Ký & tiếp tục
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mint confirmation modal */}
       <MintModal

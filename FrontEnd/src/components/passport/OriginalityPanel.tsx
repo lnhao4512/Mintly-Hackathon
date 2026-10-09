@@ -9,6 +9,8 @@ interface Dispute {
   reason: string;
   evidenceUrl?: string;
   status: "open" | "upheld" | "rejected";
+  bountySol?: number;
+  bountyPaid?: boolean;
 }
 
 /** Originality badge (AI score recorded at mint) + community dispute reporting (wallet-signed). */
@@ -95,6 +97,11 @@ export function OriginalityPanel({ mint, score }: { mint: string; score?: number
             <li key={d.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
               <span className="font-mono">{d.reporter.slice(0, 4)}…{d.reporter.slice(-4)}</span> · {d.status === "open" ? "đang chờ" : d.status === "upheld" ? "chấp nhận" : "bác bỏ"}
               <p className="mt-1 text-text">{d.reason}</p>
+              {d.status === "upheld" && d.bountySol ? (
+                <p className="mt-1 text-green-300">
+                  Thưởng người báo cáo: {d.bountySol} SOL — {d.bountyPaid ? "đã chi trả" : "chờ quản trị viên chi trả (ghi sổ, chưa tự động on-chain)"}
+                </p>
+              ) : null}
               {d.evidenceUrl && (
                 <a href={d.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
                   Bằng chứng

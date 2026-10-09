@@ -64,6 +64,10 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 | 12 | Uy tín người mua | ✅ (hiển thị) | Đếm auction `DEFAULTED` đọc từ chain + giao dịch đã thanh toán. Chưa ép buộc on-chain (cọc thích ứng cần sửa hợp đồng) |
 | 13 | Nhãn nguyên bản + khiếu nại | ✅ | Điểm AI hiện trên passport; khiếu nại ký bằng ví (Ed25519 `signMessage`); admin xử lý bằng chữ ký của `authority` đọc từ MarketplaceConfig |
 | 14 | Royalty bán lại | ❌ Chưa làm | NFT hiện là SPL mint thường, **không có Metaplex Token Metadata** (metadata chỉ là data-URI giả, chưa lên IPFS/Arweave). Muốn có royalty đúng chuẩn Solana phải tạo Token Metadata (`seller_fee_basis_points`, `creators`) khi mint rồi đọc trong `pay_balance` |
+| 15 | **Vẽ trực tiếp (Live Drawing)** | ✅ | Studio phát khung canvas ~1.5s/lần (`/api/live`, MongoDB, ký ví Ed25519 để bắt đầu); người xem vào `/live/[ví]`, thấy đấu giá đang mở của nghệ sĩ đọc từ Solana. Polling, chưa phải WebSocket |
+| 16 | **Chặn sao chép khi mint** | ✅ | Ảnh trùng khớp hoàn toàn (`EXACT`) bị chặn; giống cao phải tick cam kết và ký `MINTLY_ATTEST` bằng ví, chữ ký ghi vào metadata. Kiểm tra ở frontend, người dùng kỹ thuật vẫn có thể mint thẳng qua chương trình SPL |
+| 17 | **Hộ chiếu QR** | ✅ | Passport có mã QR tải được dẫn tới trang xác thực |
+| 18 | **Thưởng báo cáo đạo nhái** | ⚠️ Ghi sổ | Khiếu nại được chấp nhận ghi 0.05 SOL cho người báo cáo; admin chi trả thủ công, chưa tự động on-chain |
 | 7 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?

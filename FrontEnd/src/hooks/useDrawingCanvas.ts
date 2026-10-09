@@ -33,6 +33,7 @@ export interface DrawingActions {
   exportToBase64: () => Promise<string | null>;
   loadImage: (source: File | string) => Promise<boolean>;
   getCreationTrace: () => CreationTrace;
+  getLiveFrame: () => string | null;
 }
 
 interface Point {
@@ -652,6 +653,21 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
     };
   }, []);
 
+  /** 480px WebP snapshot of the canvas, used for live streaming. */
+  const getLiveFrame = useCallback((): string | null => {
+    const context = getContext();
+    if (!context) return null;
+    const out = document.createElement("canvas");
+    out.width = 480;
+    out.height = 480;
+    const octx = out.getContext("2d");
+    if (!octx) return null;
+    octx.fillStyle = "#ffffff";
+    octx.fillRect(0, 0, 480, 480);
+    octx.drawImage(context.canvas, 0, 0, 480, 480);
+    return out.toDataURL("image/webp", 0.6);
+  }, [getContext]);
+
   // ---- Public API -----------------------------------------------------------
   const state: DrawingState = {
     tool,
@@ -677,6 +693,7 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
     exportToBase64,
     loadImage,
     getCreationTrace,
+    getLiveFrame,
   };
 
   const handlers = {

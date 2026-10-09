@@ -10,7 +10,12 @@ export interface DisputeRecord {
   createdAt: number;
   resolvedAt?: number;
   resolvedBy?: string;
+  /** Reward owed to the reporter when upheld. Tracked as a ledger entry; paid out manually by the admin (not on-chain yet). */
+  bountySol?: number;
+  bountyPaid?: boolean;
 }
+
+export const BOUNTY_SOL = 0.05;
 
 async function collection() {
   const db = await getDb();
@@ -44,6 +49,6 @@ export async function listDisputes(filter: { mintAddress?: string; status?: Disp
 
 export async function resolveDispute(id: string, status: "upheld" | "rejected", resolvedBy: string): Promise<boolean> {
   const col = await collection();
-  const res = await col.updateOne({ id, status: "open" }, { $set: { status, resolvedAt: Date.now(), resolvedBy } });
+  const res = await col.updateOne({ id, status: "open" }, { $set: { status, resolvedAt: Date.now(), resolvedBy, ...(status === "upheld" ? { bountySol: BOUNTY_SOL, bountyPaid: false } : {}) } });
   return res.modifiedCount === 1;
 }

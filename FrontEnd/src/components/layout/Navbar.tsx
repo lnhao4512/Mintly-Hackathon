@@ -14,6 +14,7 @@ const links = [
   { key: "nav.create", href: "/create" },
   { key: "nav.auctions", href: "/auctions" },
   { key: "nav.originality", href: "/originality" },
+  { key: "nav.live", href: "/live" },
   { key: "nav.portfolio", href: "/portfolio" },
 ];
 
