@@ -397,7 +397,17 @@ export async function placeBidOnChain(
     builder.remainingAccounts([{ pubkey: prevBidderPaymentAccount, isWritable: true, isSigner: false }]);
   }
 
-  return builder.rpc();
+  // The IDL marks escrow_payment_account as a signer (it is `init_if_needed`). That is only true the
+  // first time, when a fresh keypair creates it. After that nobody holds its key, so it must not be
+  // a signer — otherwise every bid after the first fails with "Signature verification failed".
+  const ix = await builder.instruction();
+  if (!escrowPayment.signer) {
+    const meta = ix.keys.find((k: { pubkey: PublicKey }) => k.pubkey.equals(escrowPayment.address));
+    if (meta) meta.isSigner = false;
+  }
+  const signature = await wallet.sendTransaction(new Transaction().add(ix), connection, escrowPayment.signer ? { signers: [escrowPayment.signer] } : undefined);
+  await connection.confirmTransaction(signature, "confirmed");
+  return signature;
 }
 
 export async function buyListingOnChain(
@@ -512,9 +522,9 @@ export async function payAuctionBalance(
   const treasuryPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, treasury, true);
   const sellerPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, seller, true);
 
-  // amount = 0 lets the program fall back to auction.current_bid (see pay_balance.rs)
+  // The IDL for pay_balance takes no arguments; the program settles at auction.current_bid.
   return program.methods
-    .payBalance(new BN(0))
+    .payBalance()
     .accounts({
       winner,
       config: configPda,
