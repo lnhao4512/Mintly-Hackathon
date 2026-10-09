@@ -188,6 +188,11 @@ export default function AuctionDetailPage({
       return;
     }
 
+    if (auction.seller && wallet.publicKey.toBase58() === auction.seller) {
+      setActionError(L("Bạn không thể đấu giá tác phẩm của chính mình.", "You cannot bid on your own auction."));
+      return;
+    }
+
     const amount = parseFloat(bidAmountSol);
     const minRequired = parseFloat(minRequiredBid);
 
@@ -694,7 +699,10 @@ export default function AuctionDetailPage({
               </div>
 
               {/* LIVE BIDDING FORM */}
-              {currentPhase === "LIVE" && (
+              {currentPhase === "LIVE" && wallet.publicKey && auction.seller === wallet.publicKey.toBase58() && (
+                <p className="border border-line p-4 text-sm text-text-dim">{L("Đây là phiên của bạn. Người bán không thể tự đặt giá.", "This is your auction. Sellers cannot bid on their own work.")}</p>
+              )}
+              {currentPhase === "LIVE" && !(wallet.publicKey && auction.seller === wallet.publicKey.toBase58()) && (
                 <form onSubmit={handlePlaceBid} className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between">

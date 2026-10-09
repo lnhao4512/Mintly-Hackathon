@@ -20,6 +20,7 @@ pub struct PlaceBid<'info> {
     #[account(
         mut,
         constraint = auction.status == AuctionStatus::LIVE @ MarketplaceError::InvalidAuctionState,
+        constraint = auction.seller != bidder.key() @ MarketplaceError::SellerCannotBid,
     )]
     pub auction: Box<Account<'info, Auction>>,
 

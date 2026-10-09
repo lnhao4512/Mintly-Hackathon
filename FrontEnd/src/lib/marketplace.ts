@@ -366,6 +366,9 @@ export async function placeBidOnChain(
   const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
 
   const auctionAccount = await program.account.auction.fetch(auctionPda);
+  if (auctionAccount.seller.equals(bidder)) {
+    throw new Error(Lg("Bạn không thể đấu giá tác phẩm của chính mình.", "You cannot bid on your own auction."));
+  }
   const prevBidder: PublicKey | null = auctionAccount.highestBidder ?? null;
 
   // Program takes a flat 10% deposit (see place_bid.rs); only wrap what's actually needed.
