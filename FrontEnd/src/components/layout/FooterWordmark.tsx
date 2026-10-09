@@ -8,7 +8,7 @@ import { gsap } from "@/lib/gsap";
  * letters inside the disc turn into the museum photograph (picture inside text). The disc, the
  * picture mask and the cursor ring are all driven by the same two smoothed coordinates.
  */
-export function FooterWordmark({ image = "/museum.jpg", className = "" }: { image?: string; className?: string }) {
+export function FooterWordmark({ image = "/museum2.jpg", className = "" }: { image?: string; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

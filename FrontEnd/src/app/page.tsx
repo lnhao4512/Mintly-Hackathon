@@ -425,7 +425,7 @@ export default function ExplorePage() {
               >
                 {/* photo as the background; it drifts sideways inside the panel while you scroll */}
                 <div data-step-img className="absolute inset-y-0 -left-[10%] w-[120%] will-change-transform">
-                  <Image src={`/assets/step-${i + 1}.jpg`} alt="" fill sizes="100vw" className="object-cover" style={{ filter: "saturate(0.85) sepia(0.12)" }} />
+                  <Image src={`/museum${i + 3}.jpg`} alt="" fill sizes="100vw" className="object-cover" style={{ filter: "saturate(0.85) sepia(0.12)" }} />
                 </div>
                 {/* black overlay so the type always reads: even tint + a heavier left side + soft top/bottom */}
                 <div aria-hidden className="absolute inset-0 bg-ink/55" />
