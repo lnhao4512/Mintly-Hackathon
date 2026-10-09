@@ -11,6 +11,8 @@ export interface DraftLayer {
 
 export interface DraftPayload {
   version: 1;
+  /** artboard size; absent in drafts saved before resizable frames */
+  size?: { w: number; h: number };
   updatedAt: number;
   title: string;
   statement: string;

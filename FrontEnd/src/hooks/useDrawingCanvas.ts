@@ -33,6 +33,8 @@ export interface DrawingState {
   /** bumps whenever pixels change so thumbnails can refresh */
   thumbTick: number;
   recentColors: string[];
+  /** artboard size in pixels */
+  canvasSize: { w: number; h: number };
 }
 
 export interface CreationTrace {
@@ -73,13 +75,17 @@ export interface DrawingActions {
   renameLayer: (id: string, name: string) => void;
   moveLayer: (id: string, dir: 1 | -1) => void;
   getLayerCanvas: (id: string) => HTMLCanvasElement | undefined;
+  /** resize the artboard; existing artwork stays centred (cropped or padded), history is reset */
+  setCanvasSize: (w: number, h: number) => void;
   // drafts
   serializeDraft: (meta: { title: string; statement: string }) => DraftPayload | null;
   restoreDraft: (draft: DraftPayload) => Promise<void>;
   markClean: () => void;
 }
 
-const SIZE = 1080; // fixed internal resolution (square NFT)
+export const DEFAULT_CANVAS_SIZE = 1080;
+export const MIN_CANVAS_SIZE = 256;
+export const MAX_CANVAS_SIZE = 2048;
 const MAX_HISTORY = 80;
 const TRACE_FRAME_SIZE = 240;
 const TRACE_MAX_FRAMES = 60;
@@ -94,10 +100,10 @@ type HItem =
 
 const uid = () => `l_${Math.random().toString(36).slice(2, 9)}`;
 
-function makeCanvas(): HTMLCanvasElement {
+function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement("canvas");
-  c.width = SIZE;
-  c.height = SIZE;
+  c.width = w;
+  c.height = h;
   return c;
 }
 
@@ -110,6 +116,8 @@ function makeCanvas(): HTMLCanvasElement {
 export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
   const { L } = useI18n();
 
+  const sizeRef = useRef({ w: DEFAULT_CANVAS_SIZE, h: DEFAULT_CANVAS_SIZE });
+  const [canvasSize, setCanvasSizeState] = useState({ w: DEFAULT_CANVAS_SIZE, h: DEFAULT_CANVAS_SIZE });
   const layerCanvases = useRef(new Map<string, HTMLCanvasElement>());
   const layersRef = useRef<LayerInfo[]>([]);
   const activeRef = useRef("");
@@ -158,8 +166,8 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
   const displayCtx = useCallback(() => {
     const c = canvasRef.current;
     if (!c) return null;
-    if (c.width !== SIZE) c.width = SIZE;
-    if (c.height !== SIZE) c.height = SIZE;
+    if (c.width !== sizeRef.current.w) c.width = sizeRef.current.w;
+    if (c.height !== sizeRef.current.h) c.height = sizeRef.current.h;
     return c.getContext("2d");
   }, [canvasRef]);
 
@@ -167,7 +175,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     (rect?: Rect) => {
       const ctx = displayCtx();
       if (!ctx) return;
-      const r = rect ?? { x: 0, y: 0, w: SIZE, h: SIZE };
+      const r = rect ?? { x: 0, y: 0, w: sizeRef.current.w, h: sizeRef.current.h };
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
@@ -198,12 +206,14 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     if (!trace.startedAt) trace.startedAt = now;
     if (now - trace.lastFrameAt < TRACE_MIN_GAP_MS) return;
     const thumb = document.createElement("canvas");
-    thumb.width = thumb.height = TRACE_FRAME_SIZE;
+    const fit = TRACE_FRAME_SIZE / Math.max(canvas.width, canvas.height);
+    thumb.width = Math.max(1, Math.round(canvas.width * fit));
+    thumb.height = Math.max(1, Math.round(canvas.height * fit));
     const tctx = thumb.getContext("2d");
     if (!tctx) return;
     tctx.fillStyle = "#ffffff";
-    tctx.fillRect(0, 0, TRACE_FRAME_SIZE, TRACE_FRAME_SIZE);
-    tctx.drawImage(canvas, 0, 0, TRACE_FRAME_SIZE, TRACE_FRAME_SIZE);
+    tctx.fillRect(0, 0, thumb.width, thumb.height);
+    tctx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
     trace.frames.push(thumb.toDataURL("image/webp", 0.6));
     trace.lastFrameAt = now;
     if (trace.frames.length > TRACE_MAX_FRAMES) trace.frames = trace.frames.filter((_, i) => i % 2 === 0);
@@ -222,7 +232,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
 
   const insertLayerRaw = useCallback(
     (meta: LayerInfo, index: number, pixels?: ImageData) => {
-      const cv = makeCanvas();
+      const cv = makeCanvas(sizeRef.current.w, sizeRef.current.h);
       if (pixels) cv.getContext("2d")!.putImageData(pixels, 0, 0);
       layerCanvases.current.set(meta.id, cv);
       const next = [...layersRef.current];
@@ -340,7 +350,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     redoStack.current = [];
     traceRef.current = { frames: [], strokes: 0, startedAt: 0, lastFrameAt: 0, imported: false };
     const meta: LayerInfo = { id: uid(), name: layerName(1), visible: true, opacity: 1, blend: "source-over" };
-    layerCanvases.current.set(meta.id, makeCanvas());
+    layerCanvases.current.set(meta.id, makeCanvas(sizeRef.current.w, sizeRef.current.h));
     commitLayers([meta]);
     commitActive(meta.id);
     composite();
@@ -369,16 +379,16 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
       return {
-        x: ((clientX - rect.left) * SIZE) / (rect.width || SIZE),
-        y: ((clientY - rect.top) * SIZE) / (rect.height || SIZE),
+        x: ((clientX - rect.left) * sizeRef.current.w) / (rect.width || sizeRef.current.w),
+        y: ((clientY - rect.top) * sizeRef.current.h) / (rect.height || sizeRef.current.h),
       };
     },
     [canvasRef]
   );
 
   const ensureScratch = () => {
-    if (!baseRef.current) baseRef.current = makeCanvas();
-    if (!bufferRef.current) bufferRef.current = makeCanvas();
+    if (!baseRef.current) baseRef.current = makeCanvas(sizeRef.current.w, sizeRef.current.h);
+    if (!bufferRef.current) bufferRef.current = makeCanvas(sizeRef.current.w, sizeRef.current.h);
     return { base: baseRef.current, buffer: bufferRef.current };
   };
 
@@ -395,12 +405,13 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
       const id = activeRef.current;
       const lctx = lctxOf(id);
       if (!disp || !lctx) return;
-      const W = SIZE;
+      const W = sizeRef.current.w;
+      const H = sizeRef.current.h;
       const x = Math.floor(Math.max(0, Math.min(W - 1, sx)));
-      const y = Math.floor(Math.max(0, Math.min(W - 1, sy)));
+      const y = Math.floor(Math.max(0, Math.min(H - 1, sy)));
 
       // region is decided on what you SEE (merged), paint goes to the active layer
-      const merged = disp.getImageData(0, 0, W, W);
+      const merged = disp.getImageData(0, 0, W, H);
       const m32 = new Uint32Array(merged.data.buffer);
       const target = m32[y * W + x];
       const tr = target & 255, tg = (target >> 8) & 255, tb = (target >> 16) & 255, ta = (target >>> 24) & 255;
@@ -411,7 +422,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
         Math.abs(((c >> 16) & 255) - tb) <= tol &&
         Math.abs(((c >>> 24) & 255) - ta) <= tol;
 
-      const mask = new Uint8Array(W * W);
+      const mask = new Uint8Array(W * H);
       const stack: number[] = [x, y];
       let minX = x, maxX = x, minY = y, maxY = y;
       while (stack.length) {
@@ -430,7 +441,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
         minY = Math.min(minY, cy);
         maxY = Math.max(maxY, cy);
         for (const ny of [cy - 1, cy + 1]) {
-          if (ny < 0 || ny >= W) continue;
+          if (ny < 0 || ny >= H) continue;
           let inSpan = false;
           for (let i = left; i <= right; i++) {
             const idx = ny * W + i;
@@ -444,12 +455,12 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
         }
       }
 
-      const rect: Rect = { x: Math.max(0, minX - 1), y: Math.max(0, minY - 1), w: Math.min(W, maxX + 2) - Math.max(0, minX - 1), h: Math.min(W, maxY + 2) - Math.max(0, minY - 1) };
+      const rect: Rect = { x: Math.max(0, minX - 1), y: Math.max(0, minY - 1), w: Math.min(W, maxX + 2) - Math.max(0, minX - 1), h: Math.min(H, maxY + 2) - Math.max(0, minY - 1) };
       const before = lctx.getImageData(rect.x, rect.y, rect.w, rect.h);
       const after = new ImageData(new Uint8ClampedArray(before.data), rect.w, rect.h);
       const [r, g, b] = hexToRgb(cfg.current.color);
       const a = Math.round(255 * cfg.current.opacity);
-      const grow = (px: number, py: number) => px >= 0 && py >= 0 && px < W && py < W && mask[py * W + px];
+      const grow = (px: number, py: number) => px >= 0 && py >= 0 && px < W && py < H && mask[py * W + px];
       for (let yy = 0; yy < rect.h; yy++) {
         for (let xx = 0; xx < rect.w; xx++) {
           const gx = rect.x + xx, gy = rect.y + yy;
@@ -512,11 +523,11 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
         const rect: Rect = {
           x: Math.max(0, Math.floor(pt.x - 6)),
           y: Math.max(0, Math.floor(pt.y - fontSize)),
-          w: Math.min(SIZE, Math.ceil(w + 12)),
-          h: Math.min(SIZE, Math.ceil(fontSize * 2)),
+          w: Math.min(sizeRef.current.w, Math.ceil(w + 12)),
+          h: Math.min(sizeRef.current.h, Math.ceil(fontSize * 2)),
         };
-        rect.w = Math.min(rect.w, SIZE - rect.x);
-        rect.h = Math.min(rect.h, SIZE - rect.y);
+        rect.w = Math.min(rect.w, sizeRef.current.w - rect.x);
+        rect.h = Math.min(rect.h, sizeRef.current.h - rect.y);
         const before = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
         ctx.globalAlpha = c.opacity;
         ctx.fillStyle = c.color;
@@ -541,7 +552,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
 
       const { base, buffer } = ensureScratch();
       const bctx = base.getContext("2d")!;
-      bctx.clearRect(0, 0, SIZE, SIZE);
+      bctx.clearRect(0, 0, sizeRef.current.w, sizeRef.current.h);
       bctx.drawImage(layerCv, 0, 0);
 
       const onFlush = (r: Rect) => composite(r);
@@ -622,7 +633,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
   );
 
   // ---------------------------------------------------------------- layers
-  const fullData = (id: string) => lctxOf(id)?.getImageData(0, 0, SIZE, SIZE);
+  const fullData = (id: string) => lctxOf(id)?.getImageData(0, 0, sizeRef.current.w, sizeRef.current.h);
 
   const addLayer = useCallback(() => {
     const idx = layersRef.current.findIndex((l) => l.id === activeRef.current) + 1;
@@ -642,10 +653,10 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
         // the last layer can't be removed — wipe it instead
         const ctx = lctxOf(id)!;
         const before = pixels;
-        ctx.clearRect(0, 0, SIZE, SIZE);
-        const after = ctx.getImageData(0, 0, SIZE, SIZE);
+        ctx.clearRect(0, 0, sizeRef.current.w, sizeRef.current.h);
+        const after = ctx.getImageData(0, 0, sizeRef.current.w, sizeRef.current.h);
         composite();
-        pushHistory({ t: "px", id, rect: { x: 0, y: 0, w: SIZE, h: SIZE }, before, after });
+        pushHistory({ t: "px", id, rect: { x: 0, y: 0, w: sizeRef.current.w, h: sizeRef.current.h }, before, after });
         bump();
         return;
       }
@@ -686,11 +697,11 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
       lowerCtx.globalCompositeOperation = upper.blend;
       lowerCtx.drawImage(upperCv, 0, 0);
       lowerCtx.restore();
-      const lowerAfter = lowerCtx.getImageData(0, 0, SIZE, SIZE);
+      const lowerAfter = lowerCtx.getImageData(0, 0, sizeRef.current.w, sizeRef.current.h);
       pushHistory({
         t: "group",
         items: [
-          { t: "px", id: lower.id, rect: { x: 0, y: 0, w: SIZE, h: SIZE }, before: lowerBefore, after: lowerAfter },
+          { t: "px", id: lower.id, rect: { x: 0, y: 0, w: sizeRef.current.w, h: sizeRef.current.h }, before: lowerBefore, after: lowerAfter },
           { t: "del", meta: upper, index: idx, pixels: upperPixels },
         ],
       });
@@ -724,11 +735,11 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     const id = activeRef.current;
     const ctx = lctxOf(id);
     if (!ctx) return;
-    const before = ctx.getImageData(0, 0, SIZE, SIZE);
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    const after = ctx.getImageData(0, 0, SIZE, SIZE);
+    const before = ctx.getImageData(0, 0, sizeRef.current.w, sizeRef.current.h);
+    ctx.clearRect(0, 0, sizeRef.current.w, sizeRef.current.h);
+    const after = ctx.getImageData(0, 0, sizeRef.current.w, sizeRef.current.h);
     composite();
-    pushHistory({ t: "px", id, rect: { x: 0, y: 0, w: SIZE, h: SIZE }, before, after });
+    pushHistory({ t: "px", id, rect: { x: 0, y: 0, w: sizeRef.current.w, h: sizeRef.current.h }, before, after });
     bump();
   }, [bump, composite, pushHistory]);
 
@@ -765,11 +776,12 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     if (!canvasRef.current) return null;
     composite();
     const out = document.createElement("canvas");
-    out.width = out.height = SIZE;
+    out.width = sizeRef.current.w;
+    out.height = sizeRef.current.h;
     const ctx = out.getContext("2d");
     if (!ctx) return null;
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.fillRect(0, 0, sizeRef.current.w, sizeRef.current.h);
     ctx.drawImage(canvasRef.current, 0, 0);
     return out.toDataURL("image/png");
   }, [canvasRef, composite]);
@@ -788,15 +800,15 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
           const w = img.naturalWidth || img.width;
           const h = img.naturalHeight || img.height;
           if (!w || !h) return done(false);
-          const ratio = Math.min(SIZE / w, SIZE / h);
+          const ratio = Math.min(sizeRef.current.w / w, sizeRef.current.h / h);
           const dw = w * ratio, dh = h * ratio;
           const meta: LayerInfo = { id: uid(), name: L("Ảnh nhập", "Imported image"), visible: true, opacity: 1, blend: "source-over" };
           const idx = layersRef.current.length;
-          const tmp = makeCanvas();
+          const tmp = makeCanvas(sizeRef.current.w, sizeRef.current.h);
           const tctx = tmp.getContext("2d")!;
           tctx.imageSmoothingQuality = "high";
-          tctx.drawImage(img, (SIZE - dw) / 2, (SIZE - dh) / 2, dw, dh);
-          const pixels = tctx.getImageData(0, 0, SIZE, SIZE);
+          tctx.drawImage(img, (sizeRef.current.w - dw) / 2, (sizeRef.current.h - dh) / 2, dw, dh);
+          const pixels = tctx.getImageData(0, 0, sizeRef.current.w, sizeRef.current.h);
           insertLayerRaw(meta, idx, pixels);
           pushHistory({ t: "add", meta, index: idx, pixels });
           traceRef.current.imported = true;
@@ -833,12 +845,14 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const out = document.createElement("canvas");
-    out.width = out.height = 480;
+    const fit = 480 / Math.max(canvas.width, canvas.height);
+    out.width = Math.round(canvas.width * fit);
+    out.height = Math.round(canvas.height * fit);
     const octx = out.getContext("2d");
     if (!octx) return null;
     octx.fillStyle = "#ffffff";
-    octx.fillRect(0, 0, 480, 480);
-    octx.drawImage(canvas, 0, 0, 480, 480);
+    octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(canvas, 0, 0, out.width, out.height);
     return out.toDataURL("image/webp", 0.6);
   }, [canvasRef]);
 
@@ -847,14 +861,17 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     (meta: { title: string; statement: string }): DraftPayload | null => {
       if (!canvasRef.current) return null;
       const thumb = document.createElement("canvas");
-      thumb.width = thumb.height = 160;
+      const fit = 160 / Math.max(canvasRef.current.width, canvasRef.current.height);
+      thumb.width = Math.round(canvasRef.current.width * fit);
+      thumb.height = Math.round(canvasRef.current.height * fit);
       const tctx = thumb.getContext("2d")!;
       tctx.fillStyle = "#ffffff";
-      tctx.fillRect(0, 0, 160, 160);
-      tctx.drawImage(canvasRef.current, 0, 0, 160, 160);
+      tctx.fillRect(0, 0, thumb.width, thumb.height);
+      tctx.drawImage(canvasRef.current, 0, 0, thumb.width, thumb.height);
       const t = traceRef.current;
       return {
         version: 1,
+        size: { ...sizeRef.current },
         updatedAt: Date.now(),
         title: meta.title,
         statement: meta.statement,
@@ -876,11 +893,17 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
 
   const restoreDraft = useCallback(
     async (draft: DraftPayload) => {
+      // the artboard size is part of the draft (older drafts are the default square)
+      const ds = draft.size ?? { w: DEFAULT_CANVAS_SIZE, h: DEFAULT_CANVAS_SIZE };
+      sizeRef.current = { w: ds.w, h: ds.h };
+      setCanvasSizeState({ w: ds.w, h: ds.h });
+      baseRef.current = null;
+      bufferRef.current = null;
       const loaded = await Promise.all(
         draft.layers.map(
           (l) =>
             new Promise<{ meta: LayerInfo; cv: HTMLCanvasElement }>((resolve) => {
-              const cv = makeCanvas();
+              const cv = makeCanvas(sizeRef.current.w, sizeRef.current.h);
               const img = new Image();
               img.onload = () => {
                 cv.getContext("2d")!.drawImage(img, 0, 0);
@@ -914,6 +937,36 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     [bump, commitActive, commitLayers, composite]
   );
 
+  const setCanvasSize = useCallback(
+    (wIn: number, hIn: number) => {
+      const clamp = (v: number) => Math.min(MAX_CANVAS_SIZE, Math.max(MIN_CANVAS_SIZE, Math.round(v) || DEFAULT_CANVAS_SIZE));
+      const w = clamp(wIn);
+      const h = clamp(hIn);
+      const old = sizeRef.current;
+      if (old.w === w && old.h === h) return;
+      const dx = Math.round((w - old.w) / 2);
+      const dy = Math.round((h - old.h) / 2);
+      // keep the artwork centred: the frame crops it or pads it with transparency
+      layerCanvases.current.forEach((cv, id) => {
+        const next = makeCanvas(w, h);
+        next.getContext("2d")!.drawImage(cv, dx, dy);
+        layerCanvases.current.set(id, next);
+      });
+      baseRef.current = null;
+      bufferRef.current = null;
+      sizeRef.current = { w, h };
+      setCanvasSizeState({ w, h });
+      // history patches belong to the old geometry
+      undoStack.current = [];
+      redoStack.current = [];
+      composite();
+      setIsDirty(true);
+      setHistTick((n) => n + 1);
+      bump();
+    },
+    [bump, composite]
+  );
+
   const markClean = useCallback(() => setIsDirty(false), []);
 
   // ---------------------------------------------------------------- public API
@@ -934,6 +987,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     isDirty,
     thumbTick,
     recentColors,
+    canvasSize,
   };
 
   const actions: DrawingActions = {
@@ -964,6 +1018,7 @@ export function useDrawingCanvas(canvasRef: React.RefObject<HTMLCanvasElement | 
     renameLayer: (id, name) => patchLayer(id, { name: name.slice(0, 40) || "—" }),
     moveLayer,
     getLayerCanvas: (id) => layerCanvases.current.get(id),
+    setCanvasSize,
     serializeDraft,
     restoreDraft,
     markClean,

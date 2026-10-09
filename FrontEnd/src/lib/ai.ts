@@ -7,6 +7,7 @@ export interface ArtworkSimilarityResult {
   originalityScore?: number | null;
   potentialDuplicate: boolean | null;
   matchType?: "EXACT" | "NEAR_DUPLICATE" | "SEMANTIC" | "DISTINCT";
+  exclusiveConflict?: { title: string; mint?: string; similarity: number; threshold: number } | null;
   engine?: string;
   hashSimilarity?: number | null;
   visualSimilarity?: number | null;
@@ -107,7 +108,8 @@ async function prepareArtwork(imageData: string, onStage?: (s: AiStage) => void)
 export async function analyzeArtworkSimilarity(
   imageData: string,
   metadata: { name?: string; description?: string },
-  onStage?: (s: AiStage) => void
+  onStage?: (s: AiStage) => void,
+  creator?: string
 ): Promise<ArtworkSimilarityResult> {
   const prepared = await prepareArtwork(imageData, onStage);
   onStage?.("comparing");
@@ -115,7 +117,7 @@ export async function analyzeArtworkSimilarity(
   const response = await fetch("/api/ai/similarity", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ action: "analyze", ...prepared, metadata, locale: currentLocale() }),
+    body: JSON.stringify({ action: "analyze", ...prepared, metadata, creator, locale: currentLocale() }),
   });
 
   if (!response.ok) {
@@ -127,14 +129,15 @@ export async function analyzeArtworkSimilarity(
 
 export async function registerMintedArtworkAI(
   imageData: string,
-  metadata: { name?: string; description?: string; mint?: string }
+  metadata: { name?: string; description?: string; mint?: string },
+  protection?: { creator?: string; exclusive?: boolean; exclusiveThreshold?: number }
 ): Promise<boolean> {
   try {
     const prepared = await prepareArtwork(imageData);
     const response = await fetch("/api/ai/similarity", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "register", ...prepared, metadata }),
+      body: JSON.stringify({ action: "register", ...prepared, metadata, ...protection }),
     });
     return response.ok;
   } catch {

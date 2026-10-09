@@ -22,7 +22,11 @@ function Thumb({ layer, actions, tick }: { layer: LayerInfo; actions: DrawingAct
     const ctx = c.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, c.width, c.height);
-    ctx.drawImage(src, 0, 0, c.width, c.height);
+    // keep the frame's aspect ratio inside the square thumbnail
+    const k = Math.min(c.width / src.width, c.height / src.height);
+    const dw = src.width * k;
+    const dh = src.height * k;
+    ctx.drawImage(src, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
   }, [layer.id, tick, actions]);
   return (
     <canvas

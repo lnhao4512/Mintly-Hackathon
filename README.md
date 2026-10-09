@@ -79,6 +79,8 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 | 19 | **Studio nhiều cọ** | Hoạt động | 9 cọ (bút chì, bút mực, bút dạ, phun sơn, **màu nước**, **sáp màu**, than, bụi sơn, pixel) + công cụ **blend/smudge**, tẩy, đổ màu, lấy màu, chữ. Nhận lực nhấn bút cảm ứng (`pressure`). Engine tự viết trong `src/lib/paint/brushes.ts` |
 | 20 | **Layers** | Hoạt động | Thêm/xóa/nhân bản/gộp lớp, ẩn hiện, độ mờ, chế độ hòa trộn (multiply, screen, overlay…), đổi tên, sắp xếp; hoàn tác/làm lại cho cả thao tác lớp |
 | 21 | **Bản nháp + xác nhận rời trang** | Hoạt động | Lưu nháp vào IndexedDB (tự lưu mỗi 20 giây khi có thay đổi), khôi phục khi quay lại; hộp thoại xác nhận khi bấm link rời Studio và cảnh báo khi đóng tab. Chưa chặn được nút Back của trình duyệt (Next.js App Router) |
+| 22 | **Tác phẩm độc quyền** | Hoạt động (chặn ở frontend và API) | Khi mint có thể tick "Tác phẩm độc quyền" và chọn ngưỡng 40–95%. Người khác tải lên tác phẩm giống từ ngưỡng đó trở lên sẽ bị chặn (`exclusiveConflict` trong `/api/ai/similarity`); chính chủ không bị chặn. Giống như chặn sao chép, đây là kiểm tra ngoài chuỗi: ai gọi thẳng chương trình trên chuỗi vẫn mint được. |
+| 23 | **Khung tranh tùy chỉnh** | Hoạt động | Studio đổi kích thước khung (preset 1:1, 4:5, 2:3, 9:16, 5:4, 3:2, 16:9 hoặc nhập rộng × cao, 256–2048 px); nét vẽ được căn giữa, lịch sử hoàn tác được đặt lại; kích thước được lưu cùng bản nháp. |
 | 7 | Test tự động (`anchor test`) | Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?

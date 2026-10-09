@@ -10,6 +10,10 @@ export interface ArtworkFingerprint extends Partial<ImageFeatures> {
   embedding?: number[] | null;
   /** Legacy 16-d byte-sample vector (pre-perceptual-hash registry entries) */
   vector?: number[];
+  /** the creator asked to block other people's lookalikes of this work */
+  exclusive?: boolean;
+  /** similarity % (40-95) from which a lookalike by another creator is refused */
+  exclusiveThreshold?: number;
   createdAt: number;
 }
 
