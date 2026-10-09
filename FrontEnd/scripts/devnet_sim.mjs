@@ -38,7 +38,8 @@ const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : def;
 };
-const AUCTIONS = Number(arg("auctions", "3"));
+const bare = process.argv.slice(2).find((a) => /^\d+$/.test(a));
+const AUCTIONS = Number(arg("auctions", bare ?? "3"));
 const API = arg("api", "http://localhost:3000");
 const RPC = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 const EXPLORER = (sig) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
@@ -107,18 +108,18 @@ async function fund(kp, minSol, funder) {
   }
   const amount = Math.min(2 * LAMPORTS_PER_SOL, Math.max(need, LAMPORTS_PER_SOL));
   try {
-    const sig = await retry("airdrop", () => conn.requestAirdrop(kp.publicKey, amount), 3);
+    const sig = await retry("airdrop", () => conn.requestAirdrop(kp.publicKey, amount), 1);
     await retry("airdrop-confirm", async () => {
       const bh = await conn.getLatestBlockhash();
       await conn.confirmTransaction({ signature: sig, ...bh }, "confirmed");
     });
     record("airdrop", sig);
   } catch (e) {
-    console.error(`\n✖ The devnet airdrop was refused (${String(e.message).slice(0, 90)}).`);
-    console.error(`  Send at least ${minSol.toFixed(2)} devnet SOL to the SELLER address below, then run the script again:`);
-    console.error(`    ${kp.publicKey.toBase58()}`);
-    console.error("  (free devnet SOL: https://faucet.solana.com — the script shares it with the two bidder wallets),");
-    console.error("  or set FUNDER_KEYPAIR=<path to a funded devnet keypair json>.");
+    console.log(`\n✖ The devnet airdrop was refused (${String(e.message).slice(0, 90)}).`);
+    console.log(`  Send at least ${minSol.toFixed(2)} devnet SOL to the SELLER address below, then run the script again:`);
+    console.log(`    ${kp.publicKey.toBase58()}`);
+    console.log("  (free devnet SOL: https://faucet.solana.com — the script shares it with the two bidder wallets),");
+    console.log("  or set FUNDER_KEYPAIR=<path to a funded devnet keypair json>.");
     process.exit(1);
   }
 }
@@ -349,7 +350,7 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("\n✖ Simulation stopped:", e?.message || e);
-  if (log.length) console.error(`  ${log.length} transaction(s) were confirmed before the error.`);
+  console.log("\n✖ Simulation stopped:", e?.message || e);
+  if (log.length) console.log(`  ${log.length} transaction(s) were confirmed before the error.`);
   process.exit(1);
 });
