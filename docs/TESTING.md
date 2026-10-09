@@ -51,6 +51,6 @@ cd FrontEnd
 npm run sim:devnet -- --auctions 3
 ```
 
-- Cần ~1.5 SOL Devnet gửi vào địa chỉ **seller** mà script in ra (faucet.solana.com); script chia lại cho hai ví đặt giá. Hoặc đặt `FUNDER_KEYPAIR=<file json>`.
+- Cần ~0.4 SOL Devnet (giá đấu nhỏ 0.01–0.02 SOL nên rất rẻ) gửi vào địa chỉ **seller** mà script in ra (faucet.solana.com); script chia lại cho hai ví đặt giá. Hoặc đặt `FUNDER_KEYPAIR=<file json>`.
 - Nên dùng RPC riêng: `SOLANA_RPC_URL=<helius/quicknode>` (RPC công cộng giới hạn rất gắt).
 - Kết quả ghi vào `FrontEnd/scripts/sim-output/*.json` (kèm link Explorer) và, nếu app đang chạy, vào MongoDB với cờ `simulated: true`. **Khi thuyết trình phải nói rõ đây là dữ liệu mô phỏng, không phải traction.**

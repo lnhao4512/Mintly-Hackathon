@@ -149,7 +149,7 @@ async function createAuction(seller, nftMint, startLamports, durationSec) {
   const revealDeadline = endTime + 86400;
   const depositDeadline = revealDeadline + 86400;
   const paymentDeadline = depositDeadline + 2 * 86400;
-  const minIncrement = Math.max(Math.floor(startLamports * 0.05), 50_000_000);
+  const minIncrement = 5_000_000; // 0.005 SOL — keeps the demo cheap on a faucet budget
   const sig = await retry("create_auction", () =>
     program.methods
       .createAuction(new BN(startLamports), new BN(minIncrement), new BN(now - 30), new BN(endTime), new BN(revealDeadline), new BN(depositDeadline), new BN(paymentDeadline))
@@ -284,11 +284,11 @@ async function main() {
 
   const funder = process.env.FUNDER_KEYPAIR ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(process.env.FUNDER_KEYPAIR, "utf-8")))) : null;
   // what each wallet needs: bids + rent + fees (bidder 1 also pays the winning price)
-  const needA = 0.1 + 0.25 * AUCTIONS;
-  const needB = 0.05 + 0.04 * AUCTIONS;
-  const needSeller = 0.05 + 0.03 * AUCTIONS;
+  const needA = 0.05 + 0.05 * AUCTIONS;
+  const needB = 0.04 + 0.025 * AUCTIONS;
+  const needSeller = 0.04 + 0.03 * AUCTIONS;
   // one funding source is enough: airdrop/transfer to the seller, which then tops up the bidders
-  await fund(seller, funder ? needSeller : needSeller + needA + needB + 0.05, funder);
+  await fund(seller, funder ? needSeller : needSeller + needA + needB + 0.03, funder);
   const bank = funder ?? seller;
   await fund(A, needA, bank);
   await fund(B, needB, bank);
@@ -297,7 +297,7 @@ async function main() {
   const cycles = [];
   for (let i = 0; i < AUCTIONS; i++) {
     console.log(`\n— Auction ${i + 1}/${AUCTIONS}`);
-    const startSol = 0.05 + 0.05 * (i % 3);
+    const startSol = 0.01 + 0.005 * (i % 3);
     const { mint, sig: mintSig } = await mintNft(seller);
     const { auction, endTime, minIncrement } = await createAuction(seller, mint, Math.round(startSol * LAMPORTS_PER_SOL), 150);
     await placeBid(A, auction, Math.round(startSol * LAMPORTS_PER_SOL));
