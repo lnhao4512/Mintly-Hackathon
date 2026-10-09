@@ -1,4 +1,4 @@
-# 🎨 MINTLY — Sàn Đấu Giá NFT 1/1 "Chống Bùng Kèo" trên Solana
+# MINTLY — Sàn Đấu Giá NFT 1/1 "Chống Bùng Kèo" trên Solana
 
 > Sàn giao dịch & đấu giá NFT 1/1 phi tập trung trên Solana, với escrow cọc 10% chống bùng kèo bằng smart contract, kiểm tra trùng lặp tác phẩm bằng AI trước khi mint, và hộ chiếu (passport) truy xuất nguồn gốc on-chain cho từng NFT.
 
@@ -59,27 +59,27 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 
 | # | Tính năng | Trạng thái | Ghi chú |
 |---|---|---|---|
-| 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | ✅ Đã nối thật vào chương trình Anchor (`place_bid`, `pay_balance`, `default_winner`) | Sau khi deploy bản mới: 70% tiền phạt chuyển cho Seller, 30% vào quỹ sàn (`config.forfeiture_recipient`) |
-| 2 | Cơ chế Commit-Reveal đấu giá kín (SHA-256) | ⚙️ Có sẵn on-chain (`commit_bid.rs`, `reveal_bid.rs`) nhưng **không dùng trong luồng đấu giá hiện tại** | UI hiện tại hiển thị giá cao nhất công khai theo thời gian thực (English auction), không tương thích với mô hình "giấu giá tới khi hết giờ". Có thể làm tiếp ở bản v2 nếu muốn |
-| 3 | AI kiểm tra trùng lặp ảnh trước khi mint | ✅ Hoạt động | Đa tín hiệu: perceptual hash (pHash + dHash, nhận diện cả ảnh lật/cắt/resize/nén lại) + layout + màu + embedding CLIP chạy ngay trên trình duyệt. Chỉ cảnh báo, không chặn mint. Xem mục 5.1 |
-| 4 | NFT Passport + đấu giá lại nhiều vòng | ✅ Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |
-| 5 | Bán giá cố định qua tab `/market` | ✅ Hoạt động | Seller đăng giá cứng từ `/portfolio`, NFT khóa trong listing escrow; buyer mua ngay, smart contract chia 5% phí sàn và 95% cho seller |
-| 6 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | ✅ Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
-| 8 | **Bảo hiểm bùng kèo** | ⚠️ Đã sửa code Rust, **chưa build/deploy** | `default_winner` chia cọc bị tịch thu: 70% cho seller (`SELLER_FORFEIT_BPS`), 30% cho quỹ sàn. Thêm account `seller_payment_account` (IDL + frontend đã cập nhật). Cần `anchor build && anchor deploy` mới dùng được |
-| 9 | **Chống bid sát giờ** | ⚠️ Đã sửa code Rust, **chưa build/deploy** | Bid trong 60s cuối đẩy `end_time` thành `now + 60s` (`place_bid.rs`) |
-| 10 | Đấu giá realtime | ✅ | `connection.onAccountChange` trên Auction PDA + thông báo gia hạn / bị vượt giá |
-| 11 | Proof-of-Creation | ✅ | Studio ghi time-lapse nét vẽ; SHA-256 của trace được neo on-chain bằng **SPL Memo** trong chính giao dịch mint; passport replay và đối chiếu mã băm với Memo đọc từ chain. Chỉ là bằng chứng bổ sung, vẫn có thể dựng trace giả bằng kỹ thuật |
-| 12 | Uy tín người mua | ✅ (hiển thị) | Đếm auction `DEFAULTED` đọc từ chain + giao dịch đã thanh toán. Chưa ép buộc on-chain (cọc thích ứng cần sửa hợp đồng) |
-| 13 | Nhãn nguyên bản + khiếu nại | ✅ | Điểm AI hiện trên passport; khiếu nại ký bằng ví (Ed25519 `signMessage`); admin xử lý bằng chữ ký của `authority` đọc từ MarketplaceConfig |
-| 14 | Royalty bán lại | ❌ Chưa làm | NFT hiện là SPL mint thường, **không có Metaplex Token Metadata** (metadata chỉ là data-URI giả, chưa lên IPFS/Arweave). Muốn có royalty đúng chuẩn Solana phải tạo Token Metadata (`seller_fee_basis_points`, `creators`) khi mint rồi đọc trong `pay_balance` |
-| 15 | **Vẽ trực tiếp (Live Drawing)** | ✅ | Studio phát khung canvas ~1.5s/lần (`/api/live`, MongoDB, ký ví Ed25519 để bắt đầu); người xem vào `/live/[ví]`, thấy đấu giá đang mở của nghệ sĩ đọc từ Solana. Polling, chưa phải WebSocket |
-| 16 | **Chặn sao chép khi mint** | ✅ | Ảnh trùng khớp hoàn toàn (`EXACT`) bị chặn; giống cao phải tick cam kết và ký `MINTLY_ATTEST` bằng ví, chữ ký ghi vào metadata. Kiểm tra ở frontend, người dùng kỹ thuật vẫn có thể mint thẳng qua chương trình SPL |
-| 17 | **Hộ chiếu QR** | ✅ | Passport có mã QR tải được dẫn tới trang xác thực |
-| 18 | **Thưởng báo cáo đạo nhái** | ⚠️ Ghi sổ | Khiếu nại được chấp nhận ghi 0.05 SOL cho người báo cáo; admin chi trả thủ công, chưa tự động on-chain |
-| 19 | **Studio nhiều cọ** | ✅ | 9 cọ (bút chì, bút mực, bút dạ, phun sơn, **màu nước**, **sáp màu**, than, bụi sơn, pixel) + công cụ **blend/smudge**, tẩy, đổ màu, lấy màu, chữ. Nhận lực nhấn bút cảm ứng (`pressure`). Engine tự viết trong `src/lib/paint/brushes.ts` |
-| 20 | **Layers** | ✅ | Thêm/xóa/nhân bản/gộp lớp, ẩn hiện, độ mờ, chế độ hòa trộn (multiply, screen, overlay…), đổi tên, sắp xếp; hoàn tác/làm lại cho cả thao tác lớp |
-| 21 | **Bản nháp + xác nhận rời trang** | ✅ | Lưu nháp vào IndexedDB (tự lưu mỗi 20 giây khi có thay đổi), khôi phục khi quay lại; hộp thoại xác nhận khi bấm link rời Studio và cảnh báo khi đóng tab. Chưa chặn được nút Back của trình duyệt (Next.js App Router) |
-| 7 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
+| 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | Đã nối thật vào chương trình Anchor (`place_bid`, `pay_balance`, `default_winner`) | Sau khi deploy bản mới: 70% tiền phạt chuyển cho Seller, 30% vào quỹ sàn (`config.forfeiture_recipient`) |
+| 2 | Cơ chế Commit-Reveal đấu giá kín (SHA-256) | Có sẵn on-chain (`commit_bid.rs`, `reveal_bid.rs`) nhưng **không dùng trong luồng đấu giá hiện tại** | UI hiện tại hiển thị giá cao nhất công khai theo thời gian thực (English auction), không tương thích với mô hình "giấu giá tới khi hết giờ". Có thể làm tiếp ở bản v2 nếu muốn |
+| 3 | AI kiểm tra trùng lặp ảnh trước khi mint | Hoạt động | Đa tín hiệu: perceptual hash (pHash + dHash, nhận diện cả ảnh lật/cắt/resize/nén lại) + layout + màu + embedding CLIP chạy ngay trên trình duyệt. Chỉ cảnh báo, không chặn mint. Xem mục 5.1 |
+| 4 | NFT Passport + đấu giá lại nhiều vòng | Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |
+| 5 | Bán giá cố định qua tab `/market` | Hoạt động | Seller đăng giá cứng từ `/portfolio`, NFT khóa trong listing escrow; buyer mua ngay, smart contract chia 5% phí sàn và 95% cho seller |
+| 6 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
+| 8 | **Bảo hiểm bùng kèo** | Đã sửa code Rust, **chưa build/deploy** | `default_winner` chia cọc bị tịch thu: 70% cho seller (`SELLER_FORFEIT_BPS`), 30% cho quỹ sàn. Thêm account `seller_payment_account` (IDL + frontend đã cập nhật). Cần `anchor build && anchor deploy` mới dùng được |
+| 9 | **Chống bid sát giờ** | Đã sửa code Rust, **chưa build/deploy** | Bid trong 60s cuối đẩy `end_time` thành `now + 60s` (`place_bid.rs`) |
+| 10 | Đấu giá realtime | Hoạt động | `connection.onAccountChange` trên Auction PDA + thông báo gia hạn / bị vượt giá |
+| 11 | Proof-of-Creation | Hoạt động | Studio ghi time-lapse nét vẽ; SHA-256 của trace được neo on-chain bằng **SPL Memo** trong chính giao dịch mint; passport replay và đối chiếu mã băm với Memo đọc từ chain. Chỉ là bằng chứng bổ sung, vẫn có thể dựng trace giả bằng kỹ thuật |
+| 12 | Uy tín người mua | Hoạt động (hiển thị) | Đếm auction `DEFAULTED` đọc từ chain + giao dịch đã thanh toán. Chưa ép buộc on-chain (cọc thích ứng cần sửa hợp đồng) |
+| 13 | Nhãn nguyên bản + khiếu nại | Hoạt động | Điểm AI hiện trên passport; khiếu nại ký bằng ví (Ed25519 `signMessage`); admin xử lý bằng chữ ký của `authority` đọc từ MarketplaceConfig |
+| 14 | Royalty bán lại | Chưa làm | NFT hiện là SPL mint thường, **không có Metaplex Token Metadata** (metadata chỉ là data-URI giả, chưa lên IPFS/Arweave). Muốn có royalty đúng chuẩn Solana phải tạo Token Metadata (`seller_fee_basis_points`, `creators`) khi mint rồi đọc trong `pay_balance` |
+| 15 | **Vẽ trực tiếp (Live Drawing)** | Hoạt động | Studio phát khung canvas ~1.5s/lần (`/api/live`, MongoDB, ký ví Ed25519 để bắt đầu); người xem vào `/live/[ví]`, thấy đấu giá đang mở của nghệ sĩ đọc từ Solana. Polling, chưa phải WebSocket |
+| 16 | **Chặn sao chép khi mint** | Hoạt động | Ảnh trùng khớp hoàn toàn (`EXACT`) bị chặn; giống cao phải tick cam kết và ký `MINTLY_ATTEST` bằng ví, chữ ký ghi vào metadata. Kiểm tra ở frontend, người dùng kỹ thuật vẫn có thể mint thẳng qua chương trình SPL |
+| 17 | **Hộ chiếu QR** | Hoạt động | Passport có mã QR tải được dẫn tới trang xác thực |
+| 18 | **Thưởng báo cáo đạo nhái** | Ghi sổ | Khiếu nại được chấp nhận ghi 0.05 SOL cho người báo cáo; admin chi trả thủ công, chưa tự động on-chain |
+| 19 | **Studio nhiều cọ** | Hoạt động | 9 cọ (bút chì, bút mực, bút dạ, phun sơn, **màu nước**, **sáp màu**, than, bụi sơn, pixel) + công cụ **blend/smudge**, tẩy, đổ màu, lấy màu, chữ. Nhận lực nhấn bút cảm ứng (`pressure`). Engine tự viết trong `src/lib/paint/brushes.ts` |
+| 20 | **Layers** | Hoạt động | Thêm/xóa/nhân bản/gộp lớp, ẩn hiện, độ mờ, chế độ hòa trộn (multiply, screen, overlay…), đổi tên, sắp xếp; hoàn tác/làm lại cho cả thao tác lớp |
+| 21 | **Bản nháp + xác nhận rời trang** | Hoạt động | Lưu nháp vào IndexedDB (tự lưu mỗi 20 giây khi có thay đổi), khôi phục khi quay lại; hộp thoại xác nhận khi bấm link rời Studio và cảnh báo khi đóng tab. Chưa chặn được nút Back của trình duyệt (Next.js App Router) |
+| 7 | Test tự động (`anchor test`) | Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?
 Ban đầu một phần dữ liệu (bid, đấu giá lại, hộ chiếu) được giả lập bằng `localStorage`/bộ nhớ tạm để demo nhanh. Toàn bộ phần này đã được:

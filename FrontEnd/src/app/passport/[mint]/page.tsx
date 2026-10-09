@@ -1,5 +1,7 @@
 "use client";
 
+import { LineIcon } from "@/components/ui/LineIcon";
+
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { getMint } from "@solana/spl-token";
@@ -156,7 +158,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                     className="size-full object-contain"
                   />
                   <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-semibold text-accent backdrop-blur-md">
-                    <span>✨</span>
+                    <LineIcon name="spark" className="size-4" />
                     <span>{L("Độc bản 1/1", "1/1 original")}</span>
                   </div>
                 </div>
@@ -248,7 +250,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                 </div>
 
                 <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 text-xs text-green-300 flex items-center gap-3">
-                  <span className="text-lg">🛡️</span>
+                  <LineIcon name="shield" className="size-5" />
                   <span>
                     {L("Bằng chứng nguồn gốc đã được xác thực mã hóa Ed25519 và bảo đảm toàn vẹn dữ liệu trên Solana Devnet.", "Provenance is verified with Ed25519 signatures and its integrity is guaranteed on Solana Devnet.")}
                   </span>

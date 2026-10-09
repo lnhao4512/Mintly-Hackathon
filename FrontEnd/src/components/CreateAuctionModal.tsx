@@ -1,5 +1,7 @@
 "use client";
 
+import { LineIcon } from "@/components/ui/LineIcon";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -114,7 +116,7 @@ export function CreateAuctionModal({
       const mintInfo = await connection.getAccountInfo(nftMint);
       if (!mintInfo) {
         setErrorMsg(
-          L(`❌ Tác phẩm "${artwork.title}" (Mint: ${artwork.mintAddress}) chưa được Mint on-chain thực tế trên Solana Devnet. Vui lòng vào trang Tạo Tác Phẩm (/create) để Mint tác phẩm lên mạng trước khi đưa lên sàn đấu giá.`, `❌ The artwork "${artwork.title}" (Mint: ${artwork.mintAddress}) has not actually been minted on Solana Devnet. Go to Create (/create) and mint it before listing it for auction.`)
+          L(`Tác phẩm "${artwork.title}" (Mint: ${artwork.mintAddress}) chưa được Mint on-chain thực tế trên Solana Devnet. Vui lòng vào trang Tạo Tác Phẩm (/create) để Mint tác phẩm lên mạng trước khi đưa lên sàn đấu giá.`, `The artwork "${artwork.title}" (Mint: ${artwork.mintAddress}) has not actually been minted on Solana Devnet. Go to Create (/create) and mint it before listing it for auction.`)
         );
         setIsSubmitting(false);
         return;
@@ -124,7 +126,7 @@ export function CreateAuctionModal({
       const ataInfo = await connection.getAccountInfo(sellerTokenAccount);
       if (!ataInfo) {
         setErrorMsg(
-          L(`❌ Ví của bạn chưa sở hữu tài khoản Token Account cho NFT này trên Solana Devnet. Vui lòng kiểm tra lại quyền sở hữu.`, `❌ Your wallet has no token account for this NFT on Solana Devnet. Please check ownership.`)
+          L(`Ví của bạn chưa sở hữu tài khoản Token Account cho NFT này trên Solana Devnet. Vui lòng kiểm tra lại quyền sở hữu.`, `Your wallet has no token account for this NFT on Solana Devnet. Please check ownership.`)
         );
         setIsSubmitting(false);
         return;
@@ -244,7 +246,7 @@ export function CreateAuctionModal({
       if (errStr.includes("AuctionStillActive") || errStr.includes("6010")) {
         msg = L("Phiên đấu giá trước đó cho tác phẩm này vẫn chưa kết thúc/hủy trên Solana, chưa thể mở vòng đấu giá lại.", "The previous auction for this artwork has not ended or been cancelled on Solana, so a new round cannot open yet.");
       } else if (errStr.includes("Blockhash not found")) {
-        msg = L("Phiên giao dịch đã hết hạn xác thực (Blockhash expired do để popup ví quá lâu). Vui lòng bấm '🚀 Kích Hoạt Phiên Đấu Giá' và bấm 'Xác nhận' trên ví trong vòng 60 giây.", "The transaction expired (blockhash expired because the wallet popup stayed open too long). Press '🚀 Activate auction' again and confirm in your wallet within 60 seconds.");
+        msg = L("Phiên giao dịch đã hết hạn xác thực (Blockhash expired do để popup ví quá lâu). Vui lòng bấm 'Kích Hoạt Phiên Đấu Giá' và bấm 'Xác nhận' trên ví trong vòng 60 giây.", "The transaction expired (blockhash expired because the wallet popup stayed open too long). Press 'Activate auction' again and confirm in your wallet within 60 seconds.");
       } else if (errStr.includes("User rejected") || errStr.includes("WalletSignTransactionError")) {
         msg = L("Bạn đã hủy yêu cầu ký giao dịch tạo đấu giá trên ví Phantom.", "You cancelled the auction signature in Phantom.");
       }
@@ -268,7 +270,7 @@ export function CreateAuctionModal({
 
         <div className="flex items-center gap-3 border-b border-white/10 pb-4">
           <div className="flex size-10 items-center justify-center rounded-2xl bg-accent/20 text-xl text-accent">
-            🔨
+            <LineIcon name="hammer" className="size-5" />
           </div>
           <div>
             <h2 className="font-display text-xl text-text">
@@ -292,7 +294,7 @@ export function CreateAuctionModal({
           </div>
           <div className="flex-1 min-w-0">
             <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-semibold text-accent">
-              {L("✨ Tác phẩm từ Kho cá nhân", "✨ Artwork from your vault")}
+              {L("Tác phẩm từ Kho cá nhân", "Artwork from your vault")}
             </span>
             <h3 className="mt-1 font-display text-base text-text truncate">
               {artwork.title}
@@ -345,7 +347,7 @@ export function CreateAuctionModal({
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-5">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
-                <span>⏱️</span>
+                <LineIcon name="clock" className="size-4" />
                 <span>{L("Cấu Hình Thời Gian (Ngày / Giờ / Phút)", "Timing (days / hours / minutes)")}</span>
               </h4>
             </div>
@@ -496,7 +498,7 @@ export function CreateAuctionModal({
             <div className="space-y-2 pt-3 border-t border-white/5">
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 space-y-1.5">
                 <div className="font-bold flex items-center gap-1.5 text-amber-300">
-                  <span>🛡️</span>
+                  <LineIcon name="shield" className="size-4" />
                   <span>{L("Quy Định Thanh Toán 100% & Phạt 10% Quá Hạn", "Payment rules: 100% due, 10% forfeited if late")}</span>
                 </div>
                 <p className="text-[11px] text-amber-200/90 leading-relaxed">
@@ -555,7 +557,7 @@ export function CreateAuctionModal({
                 </>
               ) : (
                 <>
-                  <span>🚀</span>
+                  <LineIcon name="rocket" className="size-4" />
                   <span>{L("Tạo Đấu Giá Ngay", "Create auction now")}</span>
                 </>
               )}

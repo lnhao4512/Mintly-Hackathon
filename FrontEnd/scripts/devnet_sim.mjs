@@ -72,7 +72,7 @@ async function retry(label, fn, tries = 7) {
 
 function record(kind, signature, extra = {}) {
   log.push({ kind, signature, explorer: EXPLORER(signature), ...extra });
-  console.log(`  ✔ ${String(log.length).padStart(2)} ${kind.padEnd(14)} ${signature.slice(0, 20)}…`);
+  console.log(`  OK ${String(log.length).padStart(2)} ${kind.padEnd(14)} ${signature.slice(0, 20)}…`);
 }
 
 const send = (kind, tx, signers) =>
@@ -114,7 +114,7 @@ async function fund(kp, minSol, funder) {
     });
     record("airdrop", sig);
   } catch (e) {
-    console.log(`\n✖ The devnet airdrop was refused (${String(e.message).slice(0, 90)}).`);
+    console.log(`\nFAIL The devnet airdrop was refused (${String(e.message).slice(0, 90)}).`);
     console.log(`  Send at least ${minSol.toFixed(2)} devnet SOL to the SELLER address below, then run the script again:`);
     console.log(`    ${kp.publicKey.toBase58()}`);
     console.log("  (free devnet SOL: https://faucet.solana.com — the script shares it with the two bidder wallets),");
@@ -456,7 +456,7 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.log("\n✖ Simulation stopped:", e?.message || e);
+  console.log("\nFAIL Simulation stopped:", e?.message || e);
   if (log.length) console.log(`  ${log.length} transaction(s) were confirmed before the error.`);
   process.exit(1);
 });

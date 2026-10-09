@@ -53,7 +53,7 @@ export function ProcessVisual({ step }: { step: 0 | 1 | 2 | 3 }) {
           <p className="break-all text-text">9f2c4e1a b7d03a65 c81e9d42 5a60f7b3</p>
           <p className="text-text-dim">{L("SPL Memo · giao dịch mint", "SPL Memo · mint tx")}</p>
           <p className="break-all text-text">MINTLY:proof:v1:7Qx…k2:drawn:9f2c…f7b3</p>
-          <p className="pt-2 text-success">✔ {L("khớp Memo on-chain", "trace matches memo on-chain")}</p>
+          <p className="pt-2 text-success">{L("khớp Memo on-chain", "trace matches memo on-chain")}</p>
         </div>
       )}
       {step === 2 && (

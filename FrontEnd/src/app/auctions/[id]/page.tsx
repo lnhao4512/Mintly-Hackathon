@@ -1,5 +1,7 @@
 "use client";
 
+import { LineIcon } from "@/components/ui/LineIcon";
+
 import { useEffect, useRef, useState, useCallback, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -134,9 +136,9 @@ export default function AuctionDetailPage({
     if (prev && auction) {
       const me = wallet.publicKey?.toBase58();
       if (auction.endTime && prev.endTime && auction.endTime > prev.endTime) {
-        setLiveNotice(L("⏱️ Có bid phút chót — phiên đấu giá được gia hạn thêm 60 giây (chống bid sát giờ).", "⏱️ A last-minute bid extended the auction by 60 seconds (anti-sniping)."));
+        setLiveNotice(L("Có bid phút chót — phiên đấu giá được gia hạn thêm 60 giây (chống bid sát giờ).", "A last-minute bid extended the auction by 60 seconds (anti-sniping)."));
       } else if (me && prev.highestBidder === me && auction.highestBidder && auction.highestBidder !== me) {
-        setLiveNotice(L("⚠️ Bạn vừa bị vượt giá. Tiền cọc 10% đã được hoàn lại tự động.", "⚠️ You were just outbid. Your 10% deposit was refunded automatically."));
+        setLiveNotice(L("Bạn vừa bị vượt giá. Tiền cọc 10% đã được hoàn lại tự động.", "You were just outbid. Your 10% deposit was refunded automatically."));
       }
     }
     prevAuctionRef.current = auction;
@@ -210,7 +212,7 @@ export default function AuctionDetailPage({
 
       if (balanceSol < requiredEligibilitySol) {
         setActionError(
-          L(`❌ Điều kiện không hợp lệ: Số dư ví (${balanceSol.toFixed(3)} SOL) phải lớn hơn hoặc bằng 10% (${requiredEligibilitySol.toFixed(3)} SOL) trên tổng số SOL đã đấu giá trên sàn trong tất cả giao dịch (${effectiveTotalPlatformBids.toFixed(3)} SOL).`, `❌ Not eligible: wallet balance (${balanceSol.toFixed(3)} SOL) must be at least 10% (${requiredEligibilitySol.toFixed(3)} SOL) of all SOL bid on the platform (${effectiveTotalPlatformBids.toFixed(3)} SOL).`)
+          L(`Điều kiện không hợp lệ: Số dư ví (${balanceSol.toFixed(3)} SOL) phải lớn hơn hoặc bằng 10% (${requiredEligibilitySol.toFixed(3)} SOL) trên tổng số SOL đã đấu giá trên sàn trong tất cả giao dịch (${effectiveTotalPlatformBids.toFixed(3)} SOL).`, `Not eligible: wallet balance (${balanceSol.toFixed(3)} SOL) must be at least 10% (${requiredEligibilitySol.toFixed(3)} SOL) of all SOL bid on the platform (${effectiveTotalPlatformBids.toFixed(3)} SOL).`)
         );
         setIsSubmitting(false);
         return;
@@ -317,7 +319,7 @@ export default function AuctionDetailPage({
         });
       }
 
-      setActionStatus(L(`🎉 ĐẤU GIÁ THÀNH CÔNG! Đã thanh toán 90% còn lại (${remaining90Num.toFixed(2)} SOL) + giải phóng 10% cọc (${deposit10Num.toFixed(2)} SOL), NFT đã được chuyển sang ví của bạn.`, `🎉 AUCTION WON! Paid the remaining 90% (${remaining90Num.toFixed(2)} SOL) and released the 10% deposit (${deposit10Num.toFixed(2)} SOL). The NFT is now in your wallet.`));
+      setActionStatus(L(`ĐẤU GIÁ THÀNH CÔNG! Đã thanh toán 90% còn lại (${remaining90Num.toFixed(2)} SOL) + giải phóng 10% cọc (${deposit10Num.toFixed(2)} SOL), NFT đã được chuyển sang ví của bạn.`, `AUCTION WON! Paid the remaining 90% (${remaining90Num.toFixed(2)} SOL) and released the 10% deposit (${deposit10Num.toFixed(2)} SOL). The NFT is now in your wallet.`));
       setCurrentPhase("SETTLED");
       setAuction((prev) => (prev ? { ...prev, status: "SETTLED" } : prev));
       await loadAuctionData();
@@ -551,7 +553,7 @@ export default function AuctionDetailPage({
             {/* Smart Contract Proof Details */}
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-accent">
-                {L("📜 Thông Tin On-Chain & Hợp Đồng Escrow", "📜 On-chain info & escrow contract")}
+                {L("Thông Tin On-Chain & Hợp Đồng Escrow", "On-chain info & escrow contract")}
               </h3>
               <div className="space-y-3 font-mono text-xs text-text-dim">
                 <div className="flex justify-between border-b border-white/5 pb-2">
@@ -616,7 +618,7 @@ export default function AuctionDetailPage({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div className="flex size-10 items-center justify-center rounded-2xl bg-accent/20 text-xl shadow-inner">
-                      🎯
+                      <LineIcon name="target" className="size-5" />
                     </div>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -625,11 +627,11 @@ export default function AuctionDetailPage({
                         </span>
                         {myBidRecord.bidAmountSol >= effectiveHighestBidNum ? (
                           <span className="rounded-full bg-green-500/20 px-2.5 py-0.5 text-[10px] font-bold text-green-400 border border-green-500/30">
-                            {L("👑 Bạn đang dẫn đầu", "👑 You are leading")}
+                            {L("Bạn đang dẫn đầu", "You are leading")}
                           </span>
                         ) : (
                           <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/30">
-                            {L("⚡ Có người vừa đặt giá cao hơn", "⚡ Someone just outbid you")}
+                            {L("Có người vừa đặt giá cao hơn", "Someone just outbid you")}
                           </span>
                         )}
                       </div>
@@ -666,7 +668,7 @@ export default function AuctionDetailPage({
                   <div className="text-[11px] uppercase tracking-wider text-text-dim flex items-center gap-1.5">
                     <span>{L("Giá Cao Nhất Hiện Tại (Realtime)", "Current highest bid (realtime)")}</span>
                     <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-accent">
-                      {L("⛓️ On-chain công khai", "⛓️ Public on-chain")}
+                      {L("On-chain công khai", "Public on-chain")}
                     </span>
                   </div>
                   <div className="mt-1 font-display text-4xl text-text">
@@ -719,7 +721,7 @@ export default function AuctionDetailPage({
                     <div className="mt-3 rounded-2xl border border-accent/30 bg-accent/[0.04] p-4 text-xs space-y-2.5 backdrop-blur-md">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-accent flex items-center gap-1.5">
-                          <span>🛡️</span>
+                          <LineIcon name="shield" className="size-4" />
                           <span>{L("Ký Cọc 10% Qua Smart Contract Escrow", "Sign a 10% deposit via the smart contract escrow")}</span>
                         </span>
                         <span className="rounded-full bg-accent/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-accent border border-accent/30">
@@ -753,7 +755,7 @@ export default function AuctionDetailPage({
                       </>
                     ) : (
                       <>
-                        <span>🚀</span>
+                        <LineIcon name="rocket" className="size-4" />
                         <span>{L("Xác Nhận Đặt Giá", "Confirm bid")} {bidAmountSol ? `${bidAmountSol} SOL` : ""} ({L("Nạp Cọc 10%", "10% deposit")}: {(parseFloat(bidAmountSol || minRequiredBid) * 0.10).toFixed(3)} SOL)</span>
                       </>
                     )}
@@ -777,7 +779,7 @@ export default function AuctionDetailPage({
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-accent/30 bg-accent/10 p-5 text-xs text-accent-strong space-y-3">
                     <div className="font-bold flex items-center gap-2 text-base text-accent-strong">
-                      <span>🏆</span>
+                      <LineIcon name="trophy" className="size-4" />
                       <span>{L("Phiên Đấu Giá Đã Chốt Deal!", "Auction closed!")}</span>
                     </div>
 
@@ -810,7 +812,7 @@ export default function AuctionDetailPage({
 
                     <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] text-amber-200 space-y-1">
                       <div className="font-bold flex items-center gap-1.5 text-amber-300">
-                        <span>⚠️</span>
+                        <LineIcon name="warning" className="size-4" />
                         <span>{L("Quy Định Xử Phạt Bùng Kèo 10% Cọc", "No-show rule: 10% deposit forfeited")}</span>
                       </div>
                       <p className="leading-relaxed">
@@ -832,7 +834,7 @@ export default function AuctionDetailPage({
                         </>
                       ) : (
                         <>
-                          <span>🚀</span>
+                          <LineIcon name="rocket" className="size-4" />
                           <span>{L("Thanh Toán 90% Còn Lại", "Pay the remaining 90%")} ({(effectiveHighestBidNum * 0.90).toFixed(2)} SOL) &amp; {L("Nhận NFT Ngay", "receive the NFT")}</span>
                         </>
                       )}
@@ -843,7 +845,7 @@ export default function AuctionDetailPage({
                       disabled={isSubmitting}
                       className="w-full flex items-center justify-center gap-2 rounded-full bg-red-600 hover:bg-red-500 py-4 text-xs font-bold uppercase tracking-wider text-white shadow-[0_10px_35px_-5px_rgba(239,68,68,0.8)] disabled:opacity-50 transition-all cursor-pointer"
                     >
-                      <span>⚠️</span>
+                      <LineIcon name="warning" className="size-4" />
                       <span>{L("Phạt Bùng Kèo: Chia 10% Cọc", "Penalise no-show: split the 10% deposit")} ({(effectiveHighestBidNum * 0.10).toFixed(3)} SOL)</span>
                     </button>
                   ) : (
@@ -857,7 +859,7 @@ export default function AuctionDetailPage({
               {/* SETTLED PHASE */}
               {currentPhase === "SETTLED" && (
                 <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-center space-y-3">
-                  <div className="text-3xl">🎉</div>
+                  <div className="text-3xl"><LineIcon name="spark" className="size-8" /></div>
                   <h3 className="font-display text-xl text-green-300">
                     {L("Phiên Đấu Giá Đã Quyết Toán Xong!", "Auction settled!")}
                   </h3>
@@ -869,7 +871,7 @@ export default function AuctionDetailPage({
                       href={`/passport/${auction.nftMint}`}
                       className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#0a0a09] hover:bg-accent-strong"
                     >
-                      <span>🛡️</span>
+                      <LineIcon name="shield" className="size-4" />
                       <span>{L("Xem NFT Passport Mới Nhất", "View the latest NFT passport")}</span>
                     </Link>
                   )}
@@ -910,7 +912,7 @@ export default function AuctionDetailPage({
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-md space-y-4">
               <h3 className="font-display text-lg text-text flex items-center justify-between">
                 <span>{L("Lịch Sử Đặt Giá (", "Bid history (")}{allBidsList.length})</span>
-                <span className="text-xs font-mono text-accent">{L("⛓️ On-chain công khai", "⛓️ Public on-chain")}</span>
+                <span className="text-xs font-mono text-accent">{L("On-chain công khai", "Public on-chain")}</span>
               </h3>
 
               {allBidsList.length === 0 ? (
