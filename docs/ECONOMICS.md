@@ -1,6 +1,6 @@
 # Kinh tế đơn vị (Unit economics)
 
-Mintly **không phát hành "real yield"** và không trả thưởng SOL cho người chơi/LP. Doanh thu duy nhất là **phí sàn trên giao dịch đã thanh toán thật** (`fee_bps` trong `MarketplaceConfig`, mặc định 2.5%) — thu khi `pay_balance`/`buy_listing` thành công. Tiền phạt bùng kèo (10% cọc) vào quỹ xử phạt, **không tính là doanh thu dự phóng**.
+Mintly **không phát hành "real yield"** và không trả thưởng SOL cho người chơi/LP. Doanh thu duy nhất là **phí sàn trên giao dịch đã thanh toán thật** (`fee_bps` trong `MarketplaceConfig`, mặc định 2.5%) — thu khi `pay_balance`/`buy_listing` thành công. Tiền phạt bùng kèo (10% cọc) chia 70% cho seller và 30% vào quỹ sàn (sau khi deploy bản hợp đồng mới), **không tính là doanh thu dự phóng**.
 
 ## Công thức
 `Doanh thu tháng = Khối lượng đã thanh toán (SOL) × 2.5%`
