@@ -49,13 +49,15 @@ export function Navbar() {
     let last = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;
-      setScrolled(y > 40);
+      // on the home page the header stays invisible over the hero photo and gets its colour once you pass it
+      const threshold = pathname === "/" ? window.innerHeight - 90 : 40;
+      setScrolled(y > threshold);
       setHidden(y > last && y > 240 && !open);
       last = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [open]);
+  }, [open, pathname]);
 
   // Full-screen menu: clip-path wipe + staggered links
   useEffect(() => {

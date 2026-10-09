@@ -251,8 +251,12 @@ textarea::placeholder {
   .loader-bar, .shimmer-text, .skeleton { animation: none; }
 }
 
-/* Footer wordmark: big type; the cursor becomes a photo lens while it hovers */
+/* Footer wordmark: big type; hovering grows a disc and the letters inside it turn into a picture */
 .wordmark {
+  --x: -400px;
+  --y: -400px;
+  --r: 0px;
+  position: relative;
   font-family: var(--font-display);
   font-weight: 340;
   font-variation-settings: "opsz" 144;
@@ -264,6 +268,30 @@ textarea::placeholder {
 .wordmark-base {
   display: block;
   color: var(--text);
+}
+.wordmark-disc {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(var(--r) * 2);
+  height: calc(var(--r) * 2);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--bone);
+  pointer-events: none;
+}
+.wordmark-picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: transparent;
+  background-size: cover;
+  background-position: center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 calc(var(--r) - 1px), transparent var(--r));
+  mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), #000 calc(var(--r) - 1px), transparent var(--r));
+  pointer-events: none;
 }
 
 /* Hero annotations: hairline leaders that draw toward the frame */
@@ -488,14 +516,9 @@ textarea::placeholder {
   margin: -42px 0 0 -42px;
   background: var(--bone);
 }
-/* "lens": the hover disc doubled (84 -> 168px), showing the photo as a normal picture */
+/* over the footer wordmark the page draws its own growing disc, so the ring steps aside */
 .cursor-ring.is-lens {
-  width: 168px;
-  height: 168px;
-  margin: -84px 0 0 -84px;
-  background: var(--ink) url("/museum.jpg") center / cover no-repeat;
-  mix-blend-mode: normal;
-  border-color: var(--bone);
+  opacity: 0;
 }
 @media (pointer: coarse) {
   .cursor-ring { display: none; }

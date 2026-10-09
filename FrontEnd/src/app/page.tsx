@@ -7,7 +7,6 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ArtworkCard, type Artwork } from "@/components/explore/ArtworkCard";
-import { ProcessVisual } from "@/components/explore/ProcessVisual";
 import { Frame3D } from "@/components/explore/Frame3D";
 import { Loading, Skeleton } from "@/components/ui/Loading";
 import { FadeUp, LineReveal, Marquee, Parallax, useInView } from "@/components/motion/Reveal";
@@ -31,6 +30,10 @@ const copy = {
     stats: ["Live auctions", "Direct listings", "Highest bid", "Settled volume"],
     specimen: "Specimen",
     scanned: "Scanning originality…",
+    metaLine: "N° 001 / 2026",
+    kicker: "Art that can",
+    big: ["PROVE", "ITSELF"],
+    sub: "Drawn by hand · proven original · escrowed on-chain",
     plateTitle: "Mona Lisa",
     plateMeta: "Leonardo da Vinci · c. 1503",
     seal: "PROOF OF HAND · 1/1 · SOLANA · ",
@@ -68,6 +71,10 @@ const copy = {
     stats: ["Đấu giá đang mở", "Đang bán", "Giá cao nhất", "Đã thanh toán"],
     specimen: "Mẫu vật",
     scanned: "Đang quét nguyên bản…",
+    metaLine: "N° 001 / 2026",
+    kicker: "Nghệ thuật biết tự",
+    big: ["CHỨNG", "MINH"],
+    sub: "Vẽ bằng tay · chứng minh nguyên bản · ký quỹ on-chain",
     plateTitle: "Mona Lisa",
     plateMeta: "Leonardo da Vinci · khoảng 1503",
     seal: "VẼ BẰNG TAY · 1/1 · SOLANA · ",
@@ -185,17 +192,23 @@ export default function ExplorePage() {
     if (reduce) return;
     const mm = gsap.matchMedia();
 
-    // Hero: headline drifts up and fades as you leave; plate moves slower (depth)
+    // Hero: the gallery photo drifts slower than the page (depth), the frame lifts away
     const heroCtx = gsap.context(() => {
-      gsap.to("[data-hero-title]", {
-        yPercent: -22,
-        opacity: 0.15,
+      gsap.to("[data-hero-bg]", {
+        yPercent: 12,
+        scale: 1.06,
+        ease: "none",
+        scrollTrigger: { trigger: heroRef.current, start: "top top", end: "bottom top", scrub: true },
+      });
+      gsap.to("[data-hero-frame]", {
+        yPercent: -10,
         ease: "none",
         scrollTrigger: { trigger: heroRef.current, start: "top top", end: "bottom top", scrub: true },
       });
     }, heroRef);
 
-    // Process: pin the section and slide the track sideways (desktop only)
+    // Process: pin the section and slide the track sideways (desktop only);
+    // every panel's landscape photo drifts sideways inside its frame (parallax)
     mm.add("(min-width: 1024px)", () => {
       const track = trackRef.current;
       const section = processRef.current;
@@ -214,28 +227,51 @@ export default function ExplorePage() {
           anticipatePin: 1,
         },
       });
+      gsap.utils.toArray<HTMLElement>("[data-panel]").forEach((panel) => {
+        const img = panel.querySelector<HTMLElement>("[data-step-img]");
+        if (!img) return;
+        gsap.fromTo(
+          img,
+          { xPercent: -9 },
+          {
+            xPercent: 9,
+            ease: "none",
+            scrollTrigger: { trigger: panel, containerAnimation: tween, start: "left right", end: "right left", scrub: true },
+          }
+        );
+      });
     });
 
-    // Manifesto: words light up as you scroll
-    const words = manifestoRef.current?.querySelectorAll<HTMLElement>("[data-word]");
-    if (words && words.length) {
-      gsap.fromTo(
-        words,
-        { opacity: 0.14 },
-        {
-          opacity: 1,
-          ease: "none",
-          stagger: 0.12,
-          scrollTrigger: { trigger: manifestoRef.current, start: "top 78%", end: "bottom 45%", scrub: true },
-        }
-      );
-    }
+    // Manifesto: words light up in reading order as you scroll.
+    // One ScrollTrigger writes every word's opacity from the same progress value, so there are no
+    // stacked tweens that could disagree with each other (the old bug).
+    const words = manifestoRef.current ? Array.from(manifestoRef.current.querySelectorAll<HTMLElement>("[data-word]")) : [];
+    const manifestoST = words.length
+      ? ScrollTrigger.create({
+          trigger: manifestoRef.current,
+          start: "top 80%",
+          end: "bottom 40%",
+          onUpdate: (self) => {
+            const lit = self.progress * (words.length + 3);
+            words.forEach((w, i) => {
+              w.style.opacity = String(0.14 + 0.86 * Math.min(1, Math.max(0, lit - i)));
+            });
+          },
+          onRefresh: (self) => {
+            const lit = self.progress * (words.length + 3);
+            words.forEach((w, i) => {
+              w.style.opacity = String(0.14 + 0.86 * Math.min(1, Math.max(0, lit - i)));
+            });
+          },
+        })
+      : null;
 
     // Layout shifts (data arriving) need a refresh so pin distances stay right
     const refresh = setTimeout(() => ScrollTrigger.refresh(), 800);
 
     return () => {
       clearTimeout(refresh);
+      manifestoST?.kill();
       heroCtx.revert();
       mm.revert();
     };
@@ -251,95 +287,116 @@ export default function ExplorePage() {
 
       <main className="flex-1">
         {/* ============ HERO ============ */}
-        <section ref={heroRef} className="relative flex min-h-[100svh] flex-col justify-between px-5 pb-10 pt-20 sm:px-8 lg:px-12">
-          <div ref={metaRef} className="fade-up flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
-            <span className="flex items-center gap-2">
-              <span className="size-1.5 animate-pulse rounded-full bg-accent" />
-              {c.meta}
-            </span>
-            <span className="hidden sm:block">N° 001 / 2026</span>
+        <section ref={heroRef} className="relative h-[100svh] min-h-[560px] overflow-hidden bg-ink">
+          {/* the gallery */}
+          <div data-hero-bg className="absolute inset-x-0 will-change-transform" style={{ top: "-8%", bottom: "-8%" }}>
+            <Image
+              src="/museum.jpg"
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+              style={{ filter: "brightness(0.86) saturate(0.85) sepia(0.28) contrast(1.05)" }}
+            />
+          </div>
+          {/* out-of-focus visitors at the edges, warm light, fade into the page */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-[26%] backdrop-blur-md"
+            style={{ WebkitMaskImage: "linear-gradient(90deg,#000 25%,transparent)", maskImage: "linear-gradient(90deg,#000 25%,transparent)" }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-[26%] backdrop-blur-md"
+            style={{ WebkitMaskImage: "linear-gradient(270deg,#000 25%,transparent)", maskImage: "linear-gradient(270deg,#000 25%,transparent)" }}
+          />
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(255,196,120,0.12),rgba(10,10,9,0.42)_75%)]" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-ink/85 to-transparent" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] bg-gradient-to-t from-ink via-ink/70 to-transparent" />
+
+          {/* the framed work, hung on the wall */}
+          <Link
+            href="/auctions"
+            data-cursor
+            data-hero-frame
+            ref={plateRef}
+            className="absolute left-1/2 top-[11%] z-10 block -translate-x-1/2"
+            style={{ width: "min(46vh, 62vw)" }}
+          >
+            <div style={{ "--d": "0.35s" } as React.CSSProperties} className="plate-wipe-soft">
+              <Frame3D src="/assets/mona-lisa-frame.png" alt={c.plateTitle} />
+            </div>
+          </Link>
+
+          {/* top-left: edition line */}
+          <div ref={metaRef} className="fade-up absolute left-5 top-24 z-10 max-w-[230px] sm:left-8 lg:left-12">
+            <p className="eyebrow !text-text">{c.metaLine}</p>
+            <span className="my-3 block h-px w-10 bg-text/70" />
+            <p className="text-[11px] leading-snug text-text-dim-2">{c.meta}</p>
           </div>
 
-          <div className="relative mx-auto grid w-full max-w-[1600px] flex-1 items-center py-6 lg:grid-cols-12">
-            <div data-hero-title className="relative z-10 lg:col-span-9 lg:col-start-1">
-              <LineReveal
-                as="h1"
-                lines={c.h1 as unknown as React.ReactNode[]}
-                delay={0.25}
-                stagger={0.12}
-                className="mega text-[clamp(3.6rem,17.5vw,6.5rem)] md:text-[min(13.4vw,calc((100svh_-_395px)_/_2.9))]"
-              />
-            </div>
+          {/* left: what the platform does, as small captions */}
+          <ul className="absolute left-5 top-1/2 z-10 hidden -translate-y-[40%] flex-col gap-6 sm:left-8 lg:left-12 lg:flex">
+            {c.notes.map((n, i) => (
+              <li key={n.k} className="max-w-[170px]">
+                <span className="mb-2 block h-px w-8 bg-text/60" />
+                <p className="eyebrow !text-text-dim-2">{`0${i + 1} · ${n.k}`}</p>
+                <p className="mt-1 text-[11px] leading-snug text-text-dim">{n.v}</p>
+              </li>
+            ))}
+          </ul>
 
-            {/* Centre column: what the platform does to a work, drawn as annotations pointing at the frame */}
-            <div
-              ref={annotRef}
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 hidden flex-col justify-center gap-8 lg:flex"
-              style={{ left: "47%", right: "calc(min(27%,34vh) + 1.25rem)" }}
-            >
-              <svg viewBox="0 0 120 120" className="seal hidden size-[104px] text-text-dim-2 [@media(min-height:780px)]:block">
-                <defs>
-                  <path id="seal-path" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" />
-                </defs>
-                <text fontSize="9.5" fill="currentColor" textLength="270" lengthAdjust="spacing" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>
-                  <textPath href="#seal-path">{c.seal}</textPath>
-                </text>
-                <circle cx="60" cy="60" r="4" fill="#ff4d1f" />
-              </svg>
-              <ul className="flex flex-col gap-7">
-                {c.notes.map((n, i) => (
-                  <li key={n.k} className="flex items-center gap-4" style={{ "--i": i } as React.CSSProperties}>
-                    <div className="shrink-0">
-                      <p className="eyebrow">{`0${i + 1} · ${n.k}`}</p>
-                      <p className="mt-1 font-display text-[clamp(1.05rem,1.6vw,1.5rem)] font-light tracking-[-0.02em] text-text">{n.v}</p>
-                    </div>
-                    <span className="annot-line relative h-px min-w-6 flex-1 bg-text-dim/60">
-                      <i className="absolute -right-[3px] -top-[3px] size-[7px] rounded-full bg-accent" />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Specimen plate */}
-            <div className="relative mt-10 w-full max-w-[420px] justify-self-end lg:absolute lg:right-0 lg:top-1/2 lg:-translate-y-1/2 lg:mt-0 lg:w-[min(27%,34vh)] lg:max-w-none">
-              <Parallax speed={-0.08}>
-                <Link href="/auctions" data-cursor className="block" ref={plateRef}>
-                  <div style={{ "--d": "0.35s" } as React.CSSProperties} className="plate-wipe-soft">
-                    <Frame3D src="/assets/mona-lisa-frame.png" alt={c.plateTitle} />
-                  </div>
-                  <div className="mt-5 flex items-baseline justify-between border-t border-line pt-2">
-                    <span className="whitespace-nowrap font-display text-lg font-light tracking-[-0.02em]">{c.plateTitle}</span>
-                    <span className="truncate pl-3 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text-dim-2">{c.plateMeta}</span>
-                  </div>
-                  <p className="mt-1 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-accent">● {c.scanned}</p>
-                </Link>
-              </Parallax>
-            </div>
-          </div>
-
-          <div ref={introRef} style={{ "--d": "0.8s" } as React.CSSProperties} className="fade-up mx-auto grid w-full max-w-[1600px] gap-8 pt-6 lg:grid-cols-12 lg:items-end">
-            <div className="lg:col-span-5">
-              <p className="max-w-lg text-[15px] leading-relaxed text-text-dim-2">{c.lede}</p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="/auctions" className="btn !py-3">
-                  {c.cta1} <span aria-hidden>→</span>
-                </Link>
-                <Link href="/create" className="btn btn-ghost !py-3">
-                  {c.cta2}
-                </Link>
+          {/* top-right: live numbers, like camera counters */}
+          <dl className="absolute right-5 top-24 z-10 flex flex-col items-end gap-1.5 sm:right-8 lg:right-12">
+            {c.stats.map((label, i) => (
+              <div key={label} className="flex items-center gap-3 font-mono-ui text-[11px] uppercase tracking-[0.14em] text-text-dim-2">
+                <span className="text-text-dim">{i + 1} ◄</span>
+                <dt>{label}</dt>
+                <dd className="min-w-[4.5ch] text-right text-text">{statValues[i]}</dd>
               </div>
-            </div>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-4 sm:grid-cols-4 lg:col-span-7 lg:col-start-6">
-              {c.stats.map((label, i) => (
-                <div key={label}>
-                  <dd className="font-display text-[clamp(1.5rem,2.6vw,2.4rem)] font-light leading-none tracking-[-0.03em]">{statValues[i]}</dd>
-                  <dt className="eyebrow mt-2">{label}</dt>
-                </div>
-              ))}
-            </dl>
+            ))}
+          </dl>
+
+          {/* right: lede, small and quiet */}
+          <p className="absolute right-5 top-1/2 z-10 hidden max-w-[230px] -translate-y-[10%] text-right font-display text-[13px] font-light italic leading-relaxed text-text-dim-2 sm:right-8 lg:right-12 lg:block">
+            {c.lede}
+          </p>
+
+          {/* bottom: headline */}
+          <div ref={introRef} className="fade-up absolute inset-x-0 bottom-[calc(30px+1.5rem)] z-10 flex flex-col items-center px-5 text-center" style={{ "--d": "0.5s" } as React.CSSProperties}>
+            <LineReveal
+              as="h1"
+              delay={0.25}
+              stagger={0.12}
+              className="flex flex-col items-center"
+              lines={[
+                <span key="k" className="flex items-center gap-4 font-display text-[clamp(0.95rem,1.7vw,1.5rem)] font-light italic tracking-[-0.01em] text-text-dim-2">
+                  <span className="hidden h-px w-14 bg-text/50 sm:block" />
+                  {c.kicker}
+                  <span className="hidden h-px w-14 bg-text/50 sm:block" />
+                </span>,
+                <span key="b" className="mega block text-[min(8.2vw,13vh)] !leading-[0.95]">
+                  {c.big[0]} <em>{c.big[1]}</em>
+                </span>,
+              ]}
+            />
+            <p className="mt-2 font-mono-ui text-[10px] uppercase tracking-[0.2em] text-text-dim">{c.sub}</p>
           </div>
+
+          {/* bottom corners */}
+          <div className="absolute bottom-[calc(30px+1.5rem)] left-5 z-10 hidden gap-3 sm:left-8 lg:left-12 lg:flex">
+            <Link href="/auctions" className="btn !py-3">
+              {c.cta1} <span aria-hidden>→</span>
+            </Link>
+            <Link href="/create" className="btn btn-ghost !py-3">
+              {c.cta2}
+            </Link>
+          </div>
+          <p className="absolute bottom-[calc(30px+1.5rem)] right-5 z-10 hidden text-right font-mono-ui text-[10px] uppercase leading-relaxed tracking-[0.14em] text-text-dim sm:right-8 lg:right-12 lg:block">
+            {c.plateTitle} — {c.plateMeta}
+            <span className="block text-accent">● {c.scanned}</span>
+          </p>
         </section>
 
         {/* ============ MARQUEE ============ */}
@@ -367,16 +424,22 @@ export default function ExplorePage() {
                 className="relative flex min-h-[80svh] w-full flex-col justify-end border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-[78vw] lg:shrink-0 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
               >
                 <span
-                 
-                  className="pointer-events-none absolute right-6 top-16 select-none font-display text-[clamp(10rem,24vw,26rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:right-10 lg:top-[10%]"
-                  style={{ WebkitTextStroke: "1px rgba(236,231,218,0.3)" }}
+                  className="pointer-events-none absolute left-5 top-16 select-none font-display text-[clamp(8rem,20vw,22rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:left-16 lg:top-[8%]"
+                  style={{ WebkitTextStroke: "1px rgba(236,231,218,0.28)" }}
                 >
                   0{i + 1}
                 </span>
-                <div className="mb-10 lg:absolute lg:bottom-20 lg:right-16 lg:mb-0 lg:w-[34%]">
-                  <ProcessVisual step={i as 0 | 1 | 2 | 3} />
+                <div className="relative mb-10 aspect-[16/10] w-full overflow-hidden bg-bg-elevated lg:absolute lg:right-16 lg:top-1/2 lg:mb-0 lg:w-[44%] lg:-translate-y-1/2">
+                  <div data-step-img className="absolute inset-y-0 -left-[10%] w-[120%] will-change-transform">
+                    <Image src={`/assets/step-${i + 1}.jpg`} alt="" fill sizes="(max-width:1024px) 100vw, 50vw" className="object-cover" style={{ filter: "brightness(0.82) saturate(0.85) sepia(0.15)" }} />
+                  </div>
+                  <i className="reg left-3 top-3" />
+                  <i className="reg right-3 top-3" />
+                  <i className="reg bottom-3 left-3" />
+                  <i className="reg bottom-3 right-3" />
+                  <span className="absolute bottom-3 left-8 bg-ink/80 px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.18em] text-text-dim-2 backdrop-blur-sm">{`0${i + 1} / 04 — ${step.t}`}</span>
                 </div>
-                <div className="relative max-w-2xl lg:max-w-[46%]">
+                <div className="relative max-w-2xl lg:max-w-[40%]">
                   <h3 className="mega text-[clamp(3.5rem,9vw,9rem)]">
                     {step.t}
                     <em>.</em>
@@ -395,13 +458,13 @@ export default function ExplorePage() {
 
         {/* ============ GALLERY ============ */}
         <section className="flex min-h-[100svh] flex-col justify-center px-5 py-16 sm:px-8 lg:px-12">
-          <div className="mx-auto max-w-[1600px]">
+          <div className="mx-auto w-full max-w-[1600px]">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="eyebrow mb-5 text-accent">{c.galleryEyebrow}</p>
-                <LineReveal as="h2" inline lines={[...c.galleryTitle].map((l, i) => (i === 1 ? <em key={l}>{l}</em> : l))} className="mega text-[min(9vw,15vh)]" />
+                <LineReveal as="h2" inline lines={[...c.galleryTitle].map((l, i) => (i === 1 ? <em key={l}>{l}</em> : l))} className="mega whitespace-nowrap text-[min(9vw,15vh)]" />
               </div>
-              <Link href="/auctions" className="link-draw w-fit font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim-2 hover:text-text">
+              <Link href="/auctions" className="link-draw w-fit shrink-0 self-start font-mono-ui sm:self-end text-[11px] uppercase tracking-[0.16em] text-text-dim-2 hover:text-text">
                 {c.viewAll} →
               </Link>
             </div>
