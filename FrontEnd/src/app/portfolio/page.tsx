@@ -1,5 +1,7 @@
 "use client";
 
+import { LineIcon } from "@/components/ui/LineIcon";
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,6 +25,8 @@ import {
   getWonArtworksForBuyer,
   hydrateAllCaches,
   type MintedArtworkRecord,
+  NO_ARTWORK_IMAGE,
+  mintLabel,
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { CreateListingModal } from "@/components/CreateListingModal";
@@ -175,12 +179,12 @@ export default function PortfolioPage() {
             if (existsLocally) continue;
 
             const existingArt = getArtworkByMint(mint);
-            const cachedImage = getArtworkImage(mint) || existingArt?.imageUrl || "/assets/hero-artwork.png";
+            const cachedImage = getArtworkImage(mint) || existingArt?.imageUrl || NO_ARTWORK_IMAGE;
 
             onChainMints.push({
               mintAddress: mint,
-              title: existingArt?.title || L(`Tác phẩm Mint #${mint.slice(0, 4)}`, `Minted artwork #${mint.slice(0, 4)}`),
-              description: existingArt?.description || L("Tác phẩm NFT đã được thanh toán & ghi nhận quyền sở hữu on-chain trên ví của bạn.", "The NFT has been paid for and its ownership recorded on-chain in your wallet."),
+              title: existingArt?.title || mintLabel(mint),
+              description: existingArt?.description || "",
               imageUrl: cachedImage,
               creator: existingArt?.creator || walletStr,
               createdAt: existingArt?.createdAt || Date.now() - 600000,
@@ -282,7 +286,7 @@ export default function PortfolioPage() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-5 sm:items-center">
               <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-accent/40 bg-accent/10 font-display text-2xl text-accent shadow-[0_0_30px_rgba(255,77,31,0.25)] sm:size-20 sm:text-3xl">
-                🎨
+                <LineIcon name="palette" className="size-7" />
               </div>
 
               <div className="flex flex-col">
@@ -360,7 +364,7 @@ export default function PortfolioPage() {
         {!connected ? (
           <section className="mt-12 flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/[0.02] py-20 text-center">
             <div className="flex size-16 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-2xl text-accent">
-              🔒
+              <LineIcon name="lock" className="size-7" />
             </div>
             <h2 className="mt-5 font-display text-2xl text-text sm:text-3xl">
               {t("create.connectTitle")}
@@ -410,7 +414,7 @@ export default function PortfolioPage() {
                       : "text-text-dim hover:bg-white/5 hover:text-text"
                   }`}
                 >
-                  <span>🎯</span>
+                  <LineIcon name="target" className="size-4" />
                   <span>{L("Đang Tham Gia Đấu Giá (", "Bidding (")}{myActiveBids.length})</span>
                 </button>
               </div>
@@ -516,7 +520,7 @@ export default function PortfolioPage() {
                 ) : myActiveBids.length === 0 ? (
                   <section className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.01] py-20 text-center">
                     <div className="flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-4xl">
-                      🎯
+                      <LineIcon name="target" className="size-5" />
                     </div>
                     <h3 className="mt-6 font-display text-2xl text-text">
                       {L("Chưa Tham Gia Đấu Giá Tác Phẩm Nào", "You have not bid on any artwork yet")}
@@ -538,7 +542,7 @@ export default function PortfolioPage() {
                       const nowUnix = Math.floor(Date.now() / 1000);
                       const isSettled = auction?.status?.toUpperCase() === "SETTLED";
                       const isEnded = isSettled || (auction?.endTime ? nowUnix >= auction.endTime : false);
-                      const artworkImage = auction?.image || (auction?.nftMint ? getArtworkImage(auction.nftMint) : null) || "/assets/hero-artwork.png";
+                      const artworkImage = auction?.image || (auction?.nftMint ? getArtworkImage(auction.nftMint) : null) || NO_ARTWORK_IMAGE;
 
                       const savedBids = getAllSavedBidsForAuction(bid.auctionPda);
                       const topSaved = savedBids.length > 0 ? savedBids[0].bidAmountSol : 0;
@@ -578,15 +582,15 @@ export default function PortfolioPage() {
                               <div className="flex items-center justify-between">
                                 {isSettled ? (
                                   <span className="rounded-full border border-green-500/40 bg-green-500/20 px-2.5 py-0.5 text-[10px] font-bold text-green-300 backdrop-blur-md">
-                                    {L("🏆 Đã Hoàn Tất", "🏆 Completed")}
+                                    {L("Đã Hoàn Tất", "Completed")}
                                   </span>
                                 ) : isEnded ? (
                                   <span className="rounded-full border border-white/20 bg-black/70 px-2.5 py-0.5 text-[10px] font-bold text-text-dim backdrop-blur-md">
-                                    {L("🏁 Đã Kết Thúc", "🏁 Ended")}
+                                    {L("Đã Kết Thúc", "Ended")}
                                   </span>
                                 ) : (
                                   <span className="flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/20 px-2.5 py-0.5 text-[10px] font-bold text-accent backdrop-blur-md">
-                                    <span>🎯</span>
+                                    <LineIcon name="target" className="size-4" />
                                     <span>{L("Đang Diễn Ra", "In progress")}</span>
                                   </span>
                                 )}
@@ -601,11 +605,11 @@ export default function PortfolioPage() {
                               {/* Big Center Banner for Ended / Settled */}
                               {isSettled ? (
                                 <div className="rounded-xl border border-green-500/40 bg-green-950/80 py-1.5 px-2.5 text-center text-[11px] font-bold text-green-300 backdrop-blur-md shadow-lg">
-                                  {L("🎉 ĐÃ CHỐT DEAL THÀNH CÔNG", "🎉 DEAL CLOSED")}
+                                  {L("ĐÃ CHỐT DEAL THÀNH CÔNG", "DEAL CLOSED")}
                                 </div>
                               ) : isEnded ? (
                                 <div className="rounded-xl border border-white/15 bg-black/80 py-1.5 px-2.5 text-center text-[11px] font-bold text-text-dim backdrop-blur-md">
-                                  {L("🏁 PHIÊN ĐẤU GIÁ ĐÃ KẾT THÚC", "🏁 AUCTION ENDED")}
+                                  {L("PHIÊN ĐẤU GIÁ ĐÃ KẾT THÚC", "AUCTION ENDED")}
                                 </div>
                               ) : null}
                             </div>
@@ -621,11 +625,11 @@ export default function PortfolioPage() {
                                 {!isEnded && (
                                   isLeading ? (
                                     <span className="shrink-0 rounded-full bg-green-500/20 px-2 py-0.5 text-[9px] font-bold text-green-400 border border-green-500/30">
-                                      {L("👑 Dẫn Đầu", "👑 Leading")}
+                                      {L("Dẫn Đầu", "Leading")}
                                     </span>
                                   ) : (
                                     <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-500/30">
-                                      {L("⚡ Bị Vượt", "⚡ Outbid")}
+                                      {L("Bị Vượt", "Outbid")}
                                     </span>
                                   )
                                 )}
@@ -638,13 +642,13 @@ export default function PortfolioPage() {
                             {/* Bidding Summary Box */}
                             <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2.5 space-y-1.5 text-xs">
                               <div className="flex justify-between items-center">
-                                <span className="text-text-dim text-[11px]">{L("🔥 Giá cao nhất (Max):", "🔥 Highest bid:")}</span>
+                                <span className="text-text-dim text-[11px]">{L("Giá cao nhất (Max):", "Highest bid:")}</span>
                                 <span className="font-mono font-bold text-accent text-sm">
                                   {highestBid.toFixed(2)} SOL
                                 </span>
                               </div>
                               <div className="flex justify-between items-center pt-1 border-t border-white/5">
-                                <span className="text-text-dim text-[11px]">{L("🎯 Giá của bạn:", "🎯 Your bid:")}</span>
+                                <span className="text-text-dim text-[11px]">{L("Giá của bạn:", "Your bid:")}</span>
                                 <span className="font-mono font-bold text-text">
                                   {bid.bidAmountSol.toFixed(2)} SOL
                                 </span>
@@ -679,7 +683,7 @@ export default function PortfolioPage() {
                 ) : artworks.length === 0 ? (
                   <section className="mt-12 flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.01] py-20 text-center">
                     <div className="flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-4xl">
-                      🖼️
+                      <LineIcon name="image" className="size-7" />
                     </div>
                     <h3 className="mt-6 font-display text-2xl text-text">
                       {t("portfolio.emptyTitle")}
@@ -740,12 +744,12 @@ export default function PortfolioPage() {
                         {/* Rarity & Format Pill or Live Auction Pill */}
                         {activeAuction ? (
                           <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-accent/40 bg-ink/90 px-2.5 py-1 text-[10px] font-bold text-accent backdrop-blur-md shadow-lg">
-                            <span>🔥</span>
+                            <LineIcon name="flame" className="size-4" />
                             <span>{L("Đang Đấu Giá Trên Sàn", "In an auction")}</span>
                           </div>
                         ) : (
                           <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-accent backdrop-blur-md">
-                            <span>✨</span>
+                            <LineIcon name="spark" className="size-4" />
                             <span>{L("Độc bản 1/1", "1/1 original")}</span>
                           </div>
                         )}
@@ -824,7 +828,7 @@ export default function PortfolioPage() {
                               href={`/auctions/${activeAuction.id}`}
                               className="flex items-center justify-center gap-2 rounded-xl bg-accent/20 border border-accent/40 px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-accent transition-all hover:bg-accent hover:text-[#0a0a09] shadow-[0_0_20px_rgba(255,77,31,0.3)]"
                             >
-                              <span>🔥</span>
+                              <LineIcon name="flame" className="size-4" />
                               <span>{L("Đang Trên Sàn Đấu Giá (Xem Ngay) ↗", "In an auction (view) ↗")}</span>
                             </Link>
                           ) : (

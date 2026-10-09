@@ -228,7 +228,7 @@ export function MintModal({
                     href="/portfolio"
                     className="w-full rounded-full bg-accent px-6 py-4 text-center font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)]"
                   >
-                    {t("mint.viewPortfolio")} 🎨
+                    {t("mint.viewPortfolio")} 
                   </Link>
                   <a
                     href={`https://explorer.solana.com/address/${mintAddress}?cluster=devnet`}

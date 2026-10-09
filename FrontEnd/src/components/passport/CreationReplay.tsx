@@ -114,11 +114,11 @@ export function CreationReplay({ mint }: { mint: string }) {
             <dd className="mt-1 break-all rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 font-mono text-[11px] text-text">{proof.proofHash}</dd>
           </div>
           <p className={`text-xs ${intact ? "text-green-300" : "text-red-300"}`}>
-            {intact ? L("✔ Dữ liệu replay khớp mã băm đã lưu.", "✔ Replay data matches the stored hash.") : L("✖ Dữ liệu replay KHÔNG khớp mã băm đã lưu.", "✖ Replay data does NOT match the stored hash.")}
+            {intact ? L("Dữ liệu replay khớp mã băm đã lưu.", "Replay data matches the stored hash.") : L("Dữ liệu replay KHÔNG khớp mã băm đã lưu.", "Replay data does NOT match the stored hash.")}
           </p>
           <p className={`text-xs ${onChain === "match" ? "text-green-300" : onChain === "mismatch" ? "text-red-300" : "text-text-dim"}`}>
-            {onChain === "match" && L("✔ Mã băm khớp Memo on-chain trong giao dịch mint (Solana).", "✔ The hash matches the on-chain Memo in the mint transaction (Solana).")}
-            {onChain === "mismatch" && L("✖ Mã băm KHÔNG khớp Memo on-chain.", "✖ The hash does NOT match the on-chain Memo.")}
+            {onChain === "match" && L("Mã băm khớp Memo on-chain trong giao dịch mint (Solana).", "The hash matches the on-chain Memo in the mint transaction (Solana).")}
+            {onChain === "mismatch" && L("Mã băm KHÔNG khớp Memo on-chain.", "The hash does NOT match the on-chain Memo.")}
             {onChain === "checking" && L("Đang đối chiếu Memo on-chain...", "Checking the on-chain Memo...")}
             {onChain === "unavailable" && L("Không tìm thấy Memo on-chain (NFT mint trước tính năng này, hoặc RPC không trả giao dịch cũ).", "No on-chain Memo found (NFT minted before this feature, or the RPC did not return the old transaction).")}
           </p>

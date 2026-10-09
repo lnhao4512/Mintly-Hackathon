@@ -25,7 +25,7 @@
 - **`/legal`:** đổi ngôn ngữ EN/VI; link ở footer.
 - **`/originality`:** tải ảnh khi **chưa kết nối ví** → có điểm nguyên bản. Lần đầu tải model ~90MB.
 - **Realtime:** mở trang phiên ở hai tab (ví A, ví B). Đặt giá ở tab này → tab kia đổi giá trong ~1 giây, không cần tải lại. Người bị vượt thấy thông báo vàng.
-- **Proof-of-Creation:** mint một tranh **vẽ tay** (không upload ảnh) → mở `/passport/<mint>`: thấy replay quá trình vẽ, "✔ khớp mã băm", và "✔ khớp Memo on-chain". Mint bằng ảnh upload → nhãn "Có ảnh nhập vào".
+- **Proof-of-Creation:** mint một tranh **vẽ tay** (không upload ảnh) → mở `/passport/<mint>`: thấy replay quá trình vẽ, "khớp mã băm", và "khớp Memo on-chain". Mint bằng ảnh upload → nhãn "Có ảnh nhập vào".
 - **QR hộ chiếu:** trong passport, quét bằng điện thoại (máy và điện thoại cùng mạng, hoặc dùng domain deploy) hoặc bấm "Tải mã QR".
 - **Chặn sao chép:** ở `/create`, upload lại một ảnh đã có trong catalogue (`public/assets`) rồi Mint → hộp thoại "Không thể mint". Sửa nhẹ ảnh (đổi kích thước/nén) → hộp thoại yêu cầu tick cam kết + ký ví.
 - **Khiếu nại:** ở passport của một NFT, nhập lý do (≥ 10 ký tự), "Ký bằng ví & gửi" → hiện "Đang bị khiếu nại (1)". Vào `/admin` bằng ví `authority` → thấy danh sách, bấm **Chấp nhận** → passport hiện "Khiếu nại được chấp nhận" kèm "Thưởng 0.05 SOL — chờ chi trả".

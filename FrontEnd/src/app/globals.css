@@ -266,6 +266,8 @@ textarea::placeholder {
   line-height: 0.8;
   font-size: clamp(5rem, 26vw, 28rem);
   white-space: nowrap;
+  /* keep the disc inside the wordmark box so it never spills over the footer links */
+  overflow: clip;
 }
 .wordmark-base {
   display: block;

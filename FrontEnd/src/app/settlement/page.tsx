@@ -173,7 +173,7 @@ function SettlementContent() {
                     {t("settlement.lot")}
                   </span>
                   <span className="text-base font-medium text-text">
-                    {auction?.title || "Solana Collectible"}
+                    {auction?.title || ""}
                   </span>
                 </div>
               </div>

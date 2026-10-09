@@ -211,6 +211,23 @@ export async function createListingOnChain(
   return { signature, listingPda: listingPda.toBase58() };
 }
 
+/**
+ * The deployed program creates the Auction PDA with plain `init` (seeded by the NFT mint only), so a
+ * mint that ever had an auction cannot get a second one — the transaction dies with "account already
+ * in use", which Phantom reports as "Unexpected error". Detect it up front and say why.
+ */
+export async function assertAuctionCanBeCreated(connection: Connection, nftMint: PublicKey): Promise<void> {
+  const [auctionPda] = getAuctionPda(nftMint);
+  const info = await connection.getAccountInfo(auctionPda);
+  if (!info) return;
+  throw new Error(
+    Lg(
+      "Tác phẩm này đã từng có phiên đấu giá (đang mở, đã hủy hoặc đã chốt). Hợp đồng đang chạy trên Devnet chỉ cho mỗi NFT một phiên duy nhất; muốn mở lại phải deploy phiên bản hợp đồng mới. Hãy mint một tác phẩm khác để đấu giá.",
+      "This artwork already had an auction (open, cancelled or settled). The contract deployed on Devnet allows only one auction per NFT; reopening requires deploying the updated contract. Mint a different artwork to auction."
+    )
+  );
+}
+
 export async function createAuctionOnChain(
   connection: Connection,
   wallet: WalletContextState,
@@ -219,6 +236,7 @@ export async function createAuctionOnChain(
   durationSeconds = 3 * 24 * 60 * 60
 ): Promise<{ signature: string; auctionPda: string }> {
   const seller = requireWallet(wallet);
+  await assertAuctionCanBeCreated(connection, nftMint);
   const program = getMarketplaceProgram(connection, wallet);
   const [configPda] = getConfigPda();
   const [tokenConfigPda] = getTokenConfigPda(configPda);
@@ -366,6 +384,9 @@ export async function placeBidOnChain(
   const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
 
   const auctionAccount = await program.account.auction.fetch(auctionPda);
+  if (auctionAccount.seller.equals(bidder)) {
+    throw new Error(Lg("Bạn không thể đấu giá tác phẩm của chính mình.", "You cannot bid on your own auction."));
+  }
   const prevBidder: PublicKey | null = auctionAccount.highestBidder ?? null;
 
   // Program takes a flat 10% deposit (see place_bid.rs); only wrap what's actually needed.

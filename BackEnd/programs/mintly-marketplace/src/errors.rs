@@ -76,4 +76,6 @@ pub enum MarketplaceError {
     AlreadyRevealed,
     #[msg("Commitment does not match reveal")]
     InvalidReveal,
+    #[msg("Seller cannot bid on their own auction")]
+    SellerCannotBid,
 }

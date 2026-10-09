@@ -49,6 +49,13 @@ export async function mockUploadToIPFS(_payload: string): Promise<string> {
   return `data:application/json;base64,${encoded}`;
 }
 
+/** A title is mandatory; never invent one. */
+function requireTitle(title: string): string {
+  const t = title?.trim();
+  if (!t) throw new Error("Artwork title is required");
+  return t;
+}
+
 export function createNftMetadata(
   title: string,
   description: string,
@@ -58,9 +65,9 @@ export function createNftMetadata(
   extraAttributes: NftMetadata["attributes"] = []
 ): NftMetadata {
   return {
-    name: title || "Untitled Opus",
+    name: requireTitle(title),
     symbol: "MNTLY",
-    description: description || "A digital artifact minted on MINTLY Canvas Studio.",
+    description: description?.trim() || "",
     image: imageUrl,
     attributes: [
       { trait_type: "Medium", value: "Digital" },

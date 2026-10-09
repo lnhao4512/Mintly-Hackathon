@@ -125,7 +125,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-dim">{L("Trạng thái", "Status")}</span>
                 <span className={paused ? "font-bold text-red-400" : "font-bold text-green-400"}>
-                  {paused ? L("⏸ Đang tạm dừng", "⏸ Paused") : L("▶ Đang hoạt động", "▶ Running")}
+                  {paused ? L("Đang tạm dừng", "Paused") : L("▶ Đang hoạt động", "▶ Running")}
                 </span>
               </div>
 
