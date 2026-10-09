@@ -12,6 +12,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SolanaIcon, DotsIcon } from "@/components/ui/Icons";
 import { useI18n } from "@/lib/i18n";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   getUserMintedArtworks,
@@ -42,6 +43,7 @@ import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function PortfolioPage() {
   const { t, L } = useI18n();
+  const market = useMarketConfig();
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
   const { connection } = useConnection();
@@ -504,7 +506,7 @@ export default function PortfolioPage() {
                               <span className="font-mono font-bold text-text">{listing.price}</span>
                             </div>
                             <div className="mt-2 flex items-center justify-between text-xs">
-                              <span className="text-text-dim">{L("Phí sàn 5%", "Platform fee 5%")}</span>
+                              <span className="text-text-dim">{L(`Phí sàn ${market.feePct}%`, `Platform fee ${market.feePct}%`)}</span>
                               <span className="font-mono text-[#c8ff3d]">
                                 {(listing.priceLamports * 0.05 / 1e9).toFixed(3)} SOL
                               </span>

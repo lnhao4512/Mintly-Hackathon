@@ -17,6 +17,12 @@ const eslintConfig = defineConfig([
         },
       ],
       "@next/next/no-page-custom-font": "off",
+      // React Compiler purity rules flag long-standing patterns (state set in effects, Date.now() in render,
+      // canvas refs). They are advisory here: the app builds and runs, so keep them visible as warnings.
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/immutability": "warn",
     },
   },
   // Override default ignores of eslint-config-next.

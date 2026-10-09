@@ -20,9 +20,11 @@ import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { useI18n } from "@/lib/i18n";
 import { getSavedBidSecret, getAllSavedBidsForAuction, hydrateAllBidSecrets } from "@/lib/auction-crypto";
 import { Loading, Skeleton } from "@/components/ui/Loading";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 
 export default function AuctionsPage() {
   const { t, L } = useI18n();
+  const market = useMarketConfig();
   const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
@@ -93,7 +95,7 @@ export default function AuctionsPage() {
   const headerStats = [
     { label: t("auctions.liveOnSolana"), value: `${activeCount} ${t("auctions.auctionCount")}${activeCount === 1 ? "" : "s"}` },
     { label: t("auctions.highestBid"), value: highestBidSol > 0 ? `${highestBidSol.toFixed(2)} SOL` : t("auctions.noBids") },
-    { label: t("auctions.contractState"), value: t("auctions.verifiedActive") },
+    { label: t("auctions.contractState"), value: !market.loaded ? "…" : market.paused ? L("Tạm dừng", "Paused") : L("Đang hoạt động", "Running") },
   ];
 
   return (

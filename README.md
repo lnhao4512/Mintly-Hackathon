@@ -19,7 +19,7 @@ MINTLY là một marketplace NFT 1/1 (mỗi NFT là độc bản, không phải 
 - **Thanh toán 90% còn lại + nhận NFT** khi thắng đấu giá — toàn bộ tiền và NFT đều di chuyển qua chương trình Anchor trên Solana, không phải giao dịch tay giữa hai ví.
 - **Phạt bùng kèo**: nếu người thắng không thanh toán đúng hạn, tiền cọc 10% bị tịch thu vào quỹ xử phạt của sàn.
 - **Đấu giá lại (resale) nhiều vòng**: một NFT đã bán vẫn có thể được đưa lên đấu giá vòng tiếp theo, tái sử dụng cùng một Auction PDA trên chain.
-- **Bán giá cố định**: seller đăng tranh với giá cứng, người mua vào tab **Thị trường** để mua ngay; smart contract tự chia 5% phí sàn và 95% cho seller.
+- **Bán giá cố định**: seller đăng tranh với giá cứng, người mua vào tab **Thị trường** để mua ngay; smart contract tự chia phí sàn (đọc từ `MarketplaceConfig` on-chain, hiện 2.5%) và phần còn lại cho seller.
 - **Hộ chiếu NFT (Passport)**: xem thông tin on-chain của một NFT (mint, supply, decimals, chủ sở hữu) và lịch sử chuyển nhượng qua các vòng đấu giá.
 - **Bảo hiểm bùng kèo**: cọc bị tịch thu chia 70% cho tác giả/seller, 30% cho quỹ sàn *(cần deploy hợp đồng mới)*.
 - **Chống bid sát giờ**: bid trong 60 giây cuối tự gia hạn thêm 60 giây *(cần deploy hợp đồng mới)*.
@@ -59,11 +59,11 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 
 | # | Tính năng | Trạng thái | Ghi chú |
 |---|---|---|---|
-| 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | Đã nối thật vào chương trình Anchor (`place_bid`, `pay_balance`, `default_winner`) | Sau khi deploy bản mới: 70% tiền phạt chuyển cho Seller, 30% vào quỹ sàn (`config.forfeiture_recipient`) |
+| 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | Mã nguồn đã sửa đủ (chưa deploy) | Escrow thanh toán là PDA (`escrow-pay`) nên mọi lượt đặt giá đều tạo/dùng lại được và người bị vượt được hoàn cọc; `pay_balance` chỉ cho thanh toán sau khi phiên kết thúc; `finalize_auction` chuyển thẳng sang `PAYMENT_PENDING` vì cọc đã thu lúc đặt giá, nhờ đó `default_winner` phạt được cọc (70% seller / 30% quỹ sàn). Bản Devnet đang chạy là bản cũ, xem mục Hạn chế. Frontend tự nhận bản mới hoặc bản cũ khi đặt giá. |
 | 2 | Cơ chế Commit-Reveal đấu giá kín (SHA-256) | Có sẵn on-chain (`commit_bid.rs`, `reveal_bid.rs`) nhưng **không dùng trong luồng đấu giá hiện tại** | UI hiện tại hiển thị giá cao nhất công khai theo thời gian thực (English auction), không tương thích với mô hình "giấu giá tới khi hết giờ". Có thể làm tiếp ở bản v2 nếu muốn |
 | 3 | AI kiểm tra trùng lặp ảnh trước khi mint | Hoạt động | Đa tín hiệu: perceptual hash (pHash + dHash, nhận diện cả ảnh lật/cắt/resize/nén lại) + layout + màu + embedding CLIP chạy ngay trên trình duyệt. Chỉ cảnh báo, không chặn mint. Xem mục 5.1 |
 | 4 | NFT Passport + đấu giá lại nhiều vòng | Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |
-| 5 | Bán giá cố định qua tab `/market` | Hoạt động | Seller đăng giá cứng từ `/portfolio`, NFT khóa trong listing escrow; buyer mua ngay, smart contract chia 5% phí sàn và 95% cho seller |
+| 5 | Bán giá cố định qua tab `/market` | Hoạt động | Seller đăng giá cứng từ `/portfolio`, NFT khóa trong listing escrow; buyer mua ngay, smart contract chia phí sàn (2.5% on-chain) và phần còn lại 5% cho seller |
 | 6 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
 | 8 | **Bảo hiểm bùng kèo** | Đã sửa code Rust, **chưa build/deploy** | `default_winner` chia cọc bị tịch thu: 70% cho seller (`SELLER_FORFEIT_BPS`), 30% cho quỹ sàn. Thêm account `seller_payment_account` (IDL + frontend đã cập nhật). Cần `anchor build && anchor deploy` mới dùng được |
 | 9 | **Chống bid sát giờ** | Đã sửa code Rust, **chưa build/deploy** | Bid trong 60s cuối đẩy `end_time` thành `now + 60s` (`place_bid.rs`) |
@@ -188,7 +188,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 1. **Tạo tác phẩm** (`/create`): vẽ hoặc upload ảnh → AI quét trùng lặp → mint NFT lên Solana (SPL Token 1/1 + Memo bằng chứng sáng tác) → lưu metadata vào MongoDB.
 2. **Đưa lên đấu giá** (từ `/portfolio`): gọi `create_auction` — NFT bị khoá vào escrow PDA, tạo Auction on-chain, trạng thái `LIVE`.
 3. **Đặt giá** (`/auctions/[id]`): gọi `place_bid` — 10% giá đặt được chuyển vào escrow (bid trong 60 giây cuối sẽ gia hạn phiên thêm 60 giây); người bị vượt giá trước đó được tự động hoàn 100% cọc ngay trong cùng transaction.
-4. **Hết giờ, người thắng thanh toán** (`pay_balance`): trả phần còn lại (giá thắng trừ cọc đã nạp) → sàn tự động chia phí (5%) cho treasury, phần còn lại cho seller, và chuyển NFT cho người thắng — tất cả trong 1 transaction.
+4. **Hết giờ, người thắng thanh toán** (`pay_balance`): trả phần còn lại (giá thắng trừ cọc đã nạp) → sàn tự động chia phí sàn (`fee_bps` on-chain, hiện 2.5%) cho treasury, phần còn lại cho seller, và chuyển NFT cho người thắng — tất cả trong 1 transaction.
 5. **Bùng kèo** (`default_winner`): nếu quá hạn thanh toán, ai cũng có thể gọi để tịch thu cọc 10%: **70% bồi thường cho seller, 30% vào quỹ sàn** (sau khi deploy hợp đồng mới).
 6. **Đấu giá lại**: seller (chủ mới) có thể đưa NFT đó lên đấu giá vòng tiếp — tái sử dụng đúng Auction PDA của NFT này.
 
@@ -199,6 +199,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 - Chưa có test suite tự động cho chương trình Anchor.
 - AI kiểm tra trùng lặp: chưa bắt được ảnh vừa lật vừa đổi màu, hoặc ảnh thêm viền dày; embedding do trình duyệt tính nên có thể bị giả mạo (chấp nhận được vì chỉ cảnh báo). So sánh đang duyệt tuyến tính — khi có hàng chục nghìn NFT nên chuyển sang MongoDB Atlas Vector Search. NFT mint trước bản nâng cấp chỉ khớp theo SHA-256.
 - Commit-reveal sealed-bid đã có sẵn on-chain nhưng chưa được tích hợp vào UI đấu giá (đang dùng mô hình đấu giá công khai kiểu English auction).
+- **Sau khi `anchor build && anchor deploy` lại**: không cần sửa frontend. `placeBidOnChain` thử escrow PDA trước, rồi mới quay về keypair của bản cũ; `payAuctionBalance` tự gọi `finalize_auction` (và `pay_deposit` nếu là bản cũ) trước `pay_balance`; phí sàn và trạng thái hợp đồng trên giao diện được đọc từ chuỗi.
 - Phiên mô phỏng của script `devnet_sim.mjs` không xóa được khỏi chuỗi (chương trình không có lệnh đóng account), nên bị loại khỏi mọi danh sách và thống kê qua `SIMULATED_SELLERS` trong `config.ts`; vẫn mở được bằng link trực tiếp.
 - Xóa tác phẩm ở `/portfolio` yêu cầu ví ký tin nhắn `MINTLY_DELETE`, burn NFT (đóng token account, hoàn rent) rồi xóa bản ghi trong MongoDB.
 - **Kết quả kiểm chứng trên hợp đồng đang chạy Devnet** (`node scripts/devnet_sim.mjs --probe`, giao dịch thật):
@@ -218,7 +219,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 - Số liệu hiển thị là **Devnet / dữ liệu thử nghiệm**, không phải traction thị trường.
 - **Chương trình đang chạy trên Devnet khác với mã nguồn trong repo** (phát hiện khi chạy `devnet_sim.mjs`): bản deployed thu cọc **100%** giá đặt (nguồn: 10%), chỉ cho **một lượt đặt giá mỗi phiên** (account escrow đòi chữ ký keypair → lỗi `ConstraintSigner` ở lượt thứ hai), `fee_bps` on-chain là 250 (2.5%) trong khi hằng số frontend/UI ghi 5%, và IDL `pay_balance` không có tham số. Frontend đã được chỉnh để tương thích (`placeBidOnChain` không yêu cầu escrow ký khi đã tồn tại; `payBalance()` không tham số). Muốn khớp hoàn toàn cần `anchor build && anchor deploy` lại từ mã nguồn.
 - Script mô phỏng `FrontEnd/scripts/devnet_sim.mjs` chạy trọn vòng đời trên Devnet: mint → tạo phiên → đặt giá → `finalize_auction` → `pay_deposit` → `pay_balance` (8 phiên đã settle thật). Hợp đồng deployed bắt buộc `finalize_auction` trước khi thanh toán; trang `/settlement` đã tự gọi bước này. Dữ liệu mô phỏng luôn gắn `simulated: true`.
-- `FrontEnd/scripts/init_marketplace.mjs` chứa secret key ghi cứng của ví Devnet dùng để khởi tạo — chỉ dùng cho Devnet, không dùng cho Mainnet và nên thay bằng biến môi trường.
+- Các script quản trị (`init_marketplace.mjs`, `seed_demo_artwork.mjs`, `seed_demo_bid.mjs`) đọc khóa từ file ngoài repo qua `SOLANA_KEYPAIR` (mặc định `~/.config/solana/id.json`). Khóa Devnet từng ghi cứng trong các script này vẫn còn trong lịch sử git: coi như đã lộ, không dùng lại cho Mainnet.
 
 ---
 

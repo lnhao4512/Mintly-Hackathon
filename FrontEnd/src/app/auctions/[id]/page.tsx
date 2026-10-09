@@ -255,7 +255,7 @@ export default function AuctionDetailPage({
         }
         setActionError(msg);
       } else {
-        let msg = err?.message || L("Giao dịch đặt giá & nạp cọc thất bại. Vui lòng thử lại.", "Bid and deposit failed. Please try again.");
+        const msg = err?.message || L("Giao dịch đặt giá & nạp cọc thất bại. Vui lòng thử lại.", "Bid and deposit failed. Please try again.");
         setActionError(msg);
       }
     } finally {

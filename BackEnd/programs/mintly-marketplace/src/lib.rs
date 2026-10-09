@@ -99,8 +99,8 @@ pub mod mintly_marketplace {
         instructions::pay_deposit::handler(ctx)
     }
 
-    pub fn pay_balance(ctx: Context<PayBalance>, amount: u64) -> Result<()> {
-        instructions::pay_balance::handler(ctx, amount)
+    pub fn pay_balance(ctx: Context<PayBalance>) -> Result<()> {
+        instructions::pay_balance::handler(ctx)
     }
 
     pub fn default_winner(ctx: Context<DefaultWinner>) -> Result<()> {

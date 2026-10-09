@@ -30,6 +30,7 @@ import {
   getListingEscrowAuthorityPda,
   getListingPda,
   getTokenConfigPda,
+  getAuctionEscrowPaymentPda,
   NETWORK,
 } from "@/lib/config";
 
@@ -123,16 +124,6 @@ export async function wrapSol(
   const signature = await wallet.sendTransaction(tx, connection);
   await connection.confirmTransaction(signature, "confirmed");
   return ata;
-}
-
-async function resolveEscrowPaymentAccount(
-  connection: Connection,
-  escrowAuthority: PublicKey
-): Promise<{ address: PublicKey; signer?: Keypair }> {
-  const existing = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
-  if (existing) return { address: existing };
-  const signer = Keypair.generate();
-  return { address: signer.publicKey, signer };
 }
 
 export async function createListingOnChain(
@@ -429,62 +420,92 @@ export async function placeBidOnChain(
   }
   const prevBidder: PublicKey | null = auctionAccount.highestBidder ?? null;
 
-  // Program takes a flat 10% deposit (see place_bid.rs); only wrap what's actually needed.
+  // Repo program: 10% deposit. Only wrap what is actually needed; a top-up follows if the program asks for more.
   const depositLamports = Math.floor((amountLamports * 10) / 100);
   const bidderPaymentAccount = await wrapSol(connection, wallet, depositLamports);
-  const escrowPayment = await resolveEscrowPaymentAccount(connection, escrowAuthority);
 
-  const builder = program.methods.placeBid(new BN(amountLamports)).accounts({
-    bidder,
-    config: configPda,
-    auction: auctionPda,
-    bid: bidPda,
-    bidderPaymentAccount,
-    escrowAuthority,
-    escrowPaymentAccount: escrowPayment.address,
-    paymentMint: WSOL_MINT,
-    tokenProgram: TOKEN_PROGRAM_ID,
-    systemProgram: SystemProgram.programId,
-  });
+  // The refund of the previous highest bidder goes to their WSOL account (remaining account).
+  const prevBidderPaymentAccount =
+    prevBidder && !prevBidder.equals(bidder) ? await ensureAta(connection, wallet, WSOL_MINT, prevBidder, true) : null;
 
-  if (escrowPayment.signer) {
-    builder.signers([escrowPayment.signer]);
-  }
+  // Escrow payment account candidates, newest program first:
+  //  1. existing account of this auction (any bid after the first)
+  //  2. the escrow-pay PDA (current source: created by the program, nobody signs for it)
+  //  3. a fresh keypair (legacy Devnet build: only the very first bid can ever succeed)
+  const existing = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
+  const [escrowPayPda] = getAuctionEscrowPaymentPda(auctionPda);
+  const candidates: { address: PublicKey; signer?: Keypair }[] = existing
+    ? [{ address: existing }]
+    : [{ address: escrowPayPda }, (() => { const kp = Keypair.generate(); return { address: kp.publicKey, signer: kp }; })()];
 
-  // The program refunds the previous highest bidder's deposit on-chain; it needs their
-  // WSOL account passed in as a remaining account (see place_bid.rs refund branch).
-  if (prevBidder && !prevBidder.equals(bidder)) {
-    const prevBidderPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, prevBidder, true);
-    builder.remainingAccounts([{ pubkey: prevBidderPaymentAccount, isWritable: true, isSigner: false }]);
-  }
+  const buildIx = async (c: { address: PublicKey; signer?: Keypair }) => {
+    const builder = program.methods.placeBid(new BN(amountLamports)).accounts({
+      bidder,
+      config: configPda,
+      auction: auctionPda,
+      bid: bidPda,
+      bidderPaymentAccount,
+      escrowAuthority,
+      escrowPaymentAccount: c.address,
+      paymentMint: WSOL_MINT,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    });
+    if (prevBidderPaymentAccount) {
+      builder.remainingAccounts([{ pubkey: prevBidderPaymentAccount, isWritable: true, isSigner: false }]);
+    }
+    const ix = await builder.instruction();
+    // A keypair-created escrow account must sign (legacy build); otherwise it never does.
+    const meta = ix.keys.find((k: { pubkey: PublicKey }) => k.pubkey.equals(c.address));
+    if (meta) meta.isSigner = !!c.signer;
+    return ix;
+  };
 
-  // The IDL marks escrow_payment_account as a signer (it is `init_if_needed`). That is only true the
-  // first time, when a fresh keypair creates it. After that nobody holds its key, so it must not be
-  // a signer — otherwise every bid after the first fails with "Signature verification failed".
-  const ix = await builder.instruction();
-  if (!escrowPayment.signer) {
-    const meta = ix.keys.find((k: { pubkey: PublicKey }) => k.pubkey.equals(escrowPayment.address));
-    if (meta) meta.isSigner = false;
-  }
-  const bidTx = new Transaction().add(ix);
-  const sendOpts = escrowPayment.signer ? { signers: [escrowPayment.signer] } : undefined;
+  const simulate = async (ix: any) => {
+    const tx = new Transaction().add(ix);
+    tx.feePayer = bidder;
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    // Unsigned simulation: legacy simulateTransaction(tx, signers) throws "!signature" unless the fee payer signs.
+    return connection.simulateTransaction(new VersionedTransaction(tx.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true });
+  };
+  const insufficient = (sim: any) => (sim.value.logs ?? []).some((l: string) => /insufficient funds/i.test(l));
 
-  // The program in the repo takes a 10% deposit, but the deployed Devnet build takes the full bid. Simulate first
-  // and top up the WSOL account only if the program really asks for more.
-  bidTx.feePayer = bidder;
-  bidTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  // Unsigned simulation: legacy simulateTransaction(tx, signers) throws "!signature" unless the fee payer signs.
-  const sim = await connection.simulateTransaction(new VersionedTransaction(bidTx.compileMessage()), {
-    sigVerify: false,
-    replaceRecentBlockhash: true,
-  });
-  if (sim.value.err && (sim.value.logs ?? []).some((l) => /insufficient funds/i.test(l))) {
+  let chosen = candidates[0];
+  let ix = await buildIx(chosen);
+  let sim = await simulate(ix);
+  // Not an account-layout problem but missing funds: the deployed Devnet build takes the full bid.
+  if (sim.value.err && insufficient(sim)) {
     await wrapSol(connection, wallet, amountLamports);
-  } else if (sim.value.err) {
-    throw new Error(sim.value.logs?.filter((l) => /error|failed/i.test(l)).slice(-2).join(" | ") || JSON.stringify(sim.value.err));
+    sim = await simulate(ix);
+  }
+  // Layout problem with the PDA variant (older program expects a keypair signer): fall back to the legacy account.
+  if (sim.value.err && candidates[1] && !insufficient(sim)) {
+    const legacyIx = await buildIx(candidates[1]);
+    const legacySim = await simulate(legacyIx);
+    if (!legacySim.value.err || insufficient(legacySim)) {
+      chosen = candidates[1];
+      ix = legacyIx;
+      sim = legacySim;
+      if (sim.value.err && insufficient(sim)) {
+        await wrapSol(connection, wallet, amountLamports);
+        sim = await simulate(ix);
+      }
+    }
+  }
+  if (sim.value.err) {
+    const logs = (sim.value.logs ?? []).join(" ");
+    if (/ConstraintSigner|AccountNotSigner|2002/.test(logs + JSON.stringify(sim.value.err))) {
+      throw new Error(
+        Lg(
+          "Hợp đồng đang chạy trên Devnet là bản cũ nên chỉ nhận một lượt đặt giá mỗi phiên. Cần deploy bản hợp đồng mới để có nhiều lượt đặt giá và hoàn cọc.",
+          "The contract deployed on Devnet is an older build that accepts only one bid per auction. Deploy the updated contract to enable multiple bids and refunds."
+        )
+      );
+    }
+    throw new Error(sim.value.logs?.filter((l: string) => /error|failed/i.test(l)).slice(-2).join(" | ") || JSON.stringify(sim.value.err));
   }
 
-  const signature = await wallet.sendTransaction(new Transaction().add(ix), connection, sendOpts);
+  const signature = await wallet.sendTransaction(new Transaction().add(ix), connection, chosen.signer ? { signers: [chosen.signer] } : undefined);
   await connection.confirmTransaction(signature, "confirmed");
   return signature;
 }
@@ -564,6 +585,19 @@ export async function payAuctionDeposit(
 }
 
 /**
+ * A finished auction stays LIVE on-chain until someone calls finalize_auction (permissionless). It moves to
+ * PAYMENT_PENDING (deposit already taken at bid time) or DEPOSIT_PENDING (older program builds).
+ */
+async function ensureFinalized(program: any, auctionPda: PublicKey): Promise<any> {
+  let state = await program.account.auction.fetch(auctionPda);
+  if (state.status.live !== undefined) {
+    await program.methods.finalizeAuction().accounts({ auction: auctionPda }).rpc();
+    state = await program.account.auction.fetch(auctionPda);
+  }
+  return state;
+}
+
+/**
  * Winner pays the remaining balance (current_bid - deposit_paid) and the program
  * atomically settles fee + seller proceeds + NFT transfer, all via CPI (pay_balance.rs).
  */
@@ -577,7 +611,14 @@ export async function payAuctionBalance(
   const [configPda] = getConfigPda();
   const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
 
-  const auctionAccount = await program.account.auction.fetch(auctionPda);
+  await assertExpectedCluster(connection);
+  let auctionAccount = await ensureFinalized(program, auctionPda);
+  if (auctionAccount.status.depositPending !== undefined && auctionAccount.depositPaid.toNumber() === 0) {
+    // older program build: the deposit is a separate step after finalize
+    const cfg = await program.account.marketplaceConfig.fetch(configPda);
+    await payAuctionDeposit(connection, wallet, auctionPda, Math.floor((auctionAccount.currentBid.toNumber() * cfg.depositBps) / 10_000));
+    auctionAccount = await program.account.auction.fetch(auctionPda);
+  }
   const nftMint: PublicKey = auctionAccount.nftMint;
   const seller: PublicKey = auctionAccount.seller;
   const currentBid: BN = auctionAccount.currentBid;
@@ -636,6 +677,7 @@ export async function defaultWinnerOnChain(
   const [configPda] = getConfigPda();
   const [escrowAuthority] = getAuctionEscrowAuthorityPda(auctionPda);
 
+  await ensureFinalized(program, auctionPda);
   const configAccount = await program.account.marketplaceConfig.fetch(configPda);
   const forfeitureRecipient: PublicKey = configAccount.forfeitureRecipient;
 

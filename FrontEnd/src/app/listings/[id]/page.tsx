@@ -9,7 +9,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { fetchListingById, type DirectListing } from "@/lib/data";
 import { buyListingOnChain } from "@/lib/marketplace";
-import { MARKETPLACE_FEE_BPS } from "@/lib/config";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 import { markArtworkAsSold } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 import { SolanaIcon } from "@/components/ui/Icons";
@@ -21,6 +21,7 @@ export default function ListingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { t, L } = useI18n();
+  const market = useMarketConfig();
   const { id } = use(params);
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -205,15 +206,15 @@ export default function ListingDetailPage({
                 </div>
                 <div className="mt-4 grid gap-3 rounded-2xl bg-accent/10 p-4 text-sm sm:grid-cols-2">
                   <div>
-                    <div className="text-xs font-semibold text-accent">{L("Phí app 5%", "Platform fee 5%")}</div>
+                    <div className="text-xs font-semibold text-accent">{L(`Phí sàn ${market.feePct}%`, `Platform fee ${market.feePct}%`)}</div>
                     <div className="mt-1 font-mono font-bold text-text">
-                      {((listing.priceLamports / 1e9) * MARKETPLACE_FEE_BPS / 10_000).toFixed(3)} SOL
+                      {((listing.priceLamports / 1e9) * market.feeBps / 10_000).toFixed(3)} SOL
                     </div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-accent">{L("Seller nhận", "Seller receives")}</div>
                     <div className="mt-1 font-mono font-bold text-text">
-                      {((listing.priceLamports / 1e9) * (1 - MARKETPLACE_FEE_BPS / 10_000)).toFixed(3)} SOL
+                      {((listing.priceLamports / 1e9) * (1 - market.feeBps / 10_000)).toFixed(3)} SOL
                     </div>
                   </div>
                 </div>

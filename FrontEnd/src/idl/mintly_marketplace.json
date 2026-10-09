@@ -2151,8 +2151,7 @@
         },
         {
           "name": "escrow_payment_account",
-          "writable": true,
-          "signer": true
+          "writable": true
         },
         {
           "name": "payment_mint"

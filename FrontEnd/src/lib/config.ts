@@ -14,7 +14,8 @@ export const RPC_ENDPOINT =
 export const NETWORK =
   process.env.NEXT_PUBLIC_SOLANA_NETWORK || (RPC_ENDPOINT.includes("devnet") ? "devnet" : "localnet");
 
-export const MARKETPLACE_FEE_BPS = 500;
+// Initial fee when the marketplace is first created (2.5%); the UI always shows the on-chain value.
+export const MARKETPLACE_FEE_BPS = 250;
 
 export const SEEDS = {
   CONFIG: Buffer.from("config"),
@@ -22,8 +23,14 @@ export const SEEDS = {
   LISTING: Buffer.from("listing"),
   AUCTION: Buffer.from("auction"),
   ESCROW: Buffer.from("escrow"),
+  ESCROW_PAY: Buffer.from("escrow-pay"),
   BID: Buffer.from("bid"),
 };
+
+/** PDA token account holding the bidders' payment for an auction (place_bid.rs, program version with ESCROW_PAY_SEED). */
+export function getAuctionEscrowPaymentPda(auctionPda: PublicKey, programId: PublicKey = PROGRAM_ID): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync([SEEDS.ESCROW_PAY, auctionPda.toBuffer()], programId);
+}
 
 export function getConfigPda(programId: PublicKey = PROGRAM_ID): [PublicKey, number] {
   return PublicKey.findProgramAddressSync([SEEDS.CONFIG], programId);

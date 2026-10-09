@@ -20,7 +20,13 @@ pub fn handler(ctx: Context<FinalizeAuction>) -> Result<()> {
         require!(current_time >= auction.end_time, MarketplaceError::AuctionStillActive);
 
         if auction.highest_bidder.is_some() {
-            auction.status = AuctionStatus::DEPOSIT_PENDING;
+            // The 10% deposit is taken when the bid is placed, so the winner goes straight to the balance payment
+            // (which also makes the deposit forfeitable by default_winner).
+            auction.status = if auction.deposit_paid > 0 {
+                AuctionStatus::PAYMENT_PENDING
+            } else {
+                AuctionStatus::DEPOSIT_PENDING
+            };
         } else {
             auction.status = AuctionStatus::REVEAL_OPEN;
         }

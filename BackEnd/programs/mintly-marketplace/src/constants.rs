@@ -19,6 +19,8 @@ pub const CONFIG_SEED: &[u8] = b"config";
 pub const TOKEN_SEED: &[u8] = b"token";
 pub const AUCTION_SEED: &[u8] = b"auction";
 pub const ESCROW_SEED: &[u8] = b"escrow";
+/// Seed of the per-auction PDA token account that holds bidders' payment (deposit + balance).
+pub const ESCROW_PAY_SEED: &[u8] = b"escrow-pay";
 pub const BID_SEED: &[u8] = b"bid";
 pub const BID_COMMITMENT_SEED: &[u8] = b"bid-commitment";
 pub const LISTING_SEED: &[u8] = b"listing";
