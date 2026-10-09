@@ -57,6 +57,13 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 | 4 | NFT Passport + đấu giá lại nhiều vòng | ✅ Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |
 | 5 | Bán giá cố định qua tab `/market` | ✅ Hoạt động | Seller đăng giá cứng từ `/portfolio`, NFT khóa trong listing escrow; buyer mua ngay, smart contract chia 5% phí sàn và 95% cho seller |
 | 6 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | ✅ Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
+| 8 | **Bảo hiểm bùng kèo** | ⚠️ Đã sửa code Rust, **chưa build/deploy** | `default_winner` chia cọc bị tịch thu: 70% cho seller (`SELLER_FORFEIT_BPS`), 30% cho quỹ sàn. Thêm account `seller_payment_account` (IDL + frontend đã cập nhật). Cần `anchor build && anchor deploy` mới dùng được |
+| 9 | **Chống bid sát giờ** | ⚠️ Đã sửa code Rust, **chưa build/deploy** | Bid trong 60s cuối đẩy `end_time` thành `now + 60s` (`place_bid.rs`) |
+| 10 | Đấu giá realtime | ✅ | `connection.onAccountChange` trên Auction PDA + thông báo gia hạn / bị vượt giá |
+| 11 | Proof-of-Creation | ✅ | Studio ghi time-lapse nét vẽ; SHA-256 của trace ghi vào thuộc tính Metaplex "Creation Proof"; passport replay + kiểm tra khớp mã băm. Chỉ là bằng chứng bổ sung, vẫn có thể dựng trace giả bằng kỹ thuật |
+| 12 | Uy tín người mua | ✅ (hiển thị) | Đếm auction `DEFAULTED` đọc từ chain + giao dịch đã thanh toán. Chưa ép buộc on-chain (cọc thích ứng cần sửa hợp đồng) |
+| 13 | Nhãn nguyên bản + khiếu nại | ✅ | Điểm AI hiện trên passport; khiếu nại ký bằng ví (Ed25519 `signMessage`); admin xử lý bằng chữ ký của `authority` đọc từ MarketplaceConfig |
+| 14 | Royalty bán lại | ❌ Chưa làm | Cách đúng trên Solana: đọc `seller_fee_basis_points` + `creators` từ Metaplex Token Metadata trong `pay_balance`; cần sửa hợp đồng và test |
 | 7 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?
