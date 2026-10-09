@@ -18,6 +18,7 @@ import {
 } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import { Lg } from "@/lib/i18n";
+import { assertExpectedCluster } from "@/lib/network";
 import {
   WSOL_MINT,
   MARKETPLACE_FEE_BPS,
@@ -28,7 +29,10 @@ import {
   getListingEscrowAuthorityPda,
   getListingPda,
   getTokenConfigPda,
+  NETWORK,
 } from "@/lib/config";
+
+const NETWORK_LABEL = NETWORK === "devnet" ? "Devnet" : NETWORK;
 
 function requireWallet(wallet: WalletContextState): PublicKey {
   if (!wallet.publicKey || !wallet.signTransaction) {
@@ -77,39 +81,46 @@ export async function ensureAta(
   return ata;
 }
 
+/**
+ * Makes sure the wallet's WSOL account holds at least `amountLamports`, wrapping only the shortfall from native
+ * SOL, and waits for confirmation before returning (later instructions depend on it).
+ */
 export async function wrapSol(
   connection: Connection,
   wallet: WalletContextState,
   amountLamports: number
 ): Promise<PublicKey> {
+  await assertExpectedCluster(connection);
   const owner = requireWallet(wallet);
   const ata = getAssociatedTokenAddressSync(WSOL_MINT, owner);
-  const tx = new Transaction();
 
   const info = await connection.getAccountInfo(ata);
-  if (!info) {
-    tx.add(
-      createAssociatedTokenAccountIdempotentInstruction(
-        owner,
-        ata,
-        owner,
-        WSOL_MINT,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
+  const have = info ? Number((await connection.getTokenAccountBalance(ata)).value.amount) : 0;
+  const shortfall = Math.max(0, amountLamports - have);
+  if (info && shortfall === 0) return ata;
+
+  const FEE_BUFFER = 5_000_000; // fees + rent for a possible new token account
+  const native = await connection.getBalance(owner);
+  if (native < shortfall + FEE_BUFFER) {
+    throw new Error(
+      Lg(
+        `Ví không đủ SOL trên ${NETWORK_LABEL}: cần khoảng ${((shortfall + FEE_BUFFER) / 1e9).toFixed(3)} SOL, hiện có ${(native / 1e9).toFixed(3)} SOL.`,
+        `Not enough SOL on ${NETWORK_LABEL}: about ${((shortfall + FEE_BUFFER) / 1e9).toFixed(3)} SOL needed, ${(native / 1e9).toFixed(3)} SOL available.`
       )
     );
   }
 
-  tx.add(
-    SystemProgram.transfer({
-      fromPubkey: owner,
-      toPubkey: ata,
-      lamports: amountLamports,
-    }),
-    createSyncNativeInstruction(ata)
-  );
-
-  await wallet.sendTransaction(tx, connection);
+  const tx = new Transaction();
+  if (!info) {
+    tx.add(
+      createAssociatedTokenAccountIdempotentInstruction(owner, ata, owner, WSOL_MINT, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID)
+    );
+  }
+  if (shortfall > 0) {
+    tx.add(SystemProgram.transfer({ fromPubkey: owner, toPubkey: ata, lamports: shortfall }), createSyncNativeInstruction(ata));
+  }
+  const signature = await wallet.sendTransaction(tx, connection);
+  await connection.confirmTransaction(signature, "confirmed");
   return ata;
 }
 
@@ -131,6 +142,7 @@ export async function createListingOnChain(
   expiryUnix: number
 ): Promise<{ signature: string; listingPda: string }> {
   const seller = requireWallet(wallet);
+  await assertExpectedCluster(connection);
   const program = getMarketplaceProgram(connection, wallet);
   const [configPda] = getConfigPda();
   const [tokenConfigPda] = getTokenConfigPda(configPda);
@@ -238,6 +250,7 @@ export async function createAuctionOnChain(
   durationSeconds = 3 * 24 * 60 * 60
 ): Promise<{ signature: string; auctionPda: string }> {
   const seller = requireWallet(wallet);
+  await assertExpectedCluster(connection);
   await assertAuctionCanBeCreated(connection, nftMint);
   const program = getMarketplaceProgram(connection, wallet);
   const [configPda] = getConfigPda();
@@ -352,6 +365,7 @@ export async function burnNftOnChain(
   nftMint: PublicKey
 ): Promise<string | null> {
   const owner = requireWallet(wallet);
+  await assertExpectedCluster(connection);
   const ata = getAssociatedTokenAddressSync(nftMint, owner);
   const bal = await connection.getTokenAccountBalance(ata).catch(() => null);
   if (!bal || bal.value.amount === "0") return null;
@@ -451,7 +465,21 @@ export async function placeBidOnChain(
     const meta = ix.keys.find((k: { pubkey: PublicKey }) => k.pubkey.equals(escrowPayment.address));
     if (meta) meta.isSigner = false;
   }
-  const signature = await wallet.sendTransaction(new Transaction().add(ix), connection, escrowPayment.signer ? { signers: [escrowPayment.signer] } : undefined);
+  const bidTx = new Transaction().add(ix);
+  const sendOpts = escrowPayment.signer ? { signers: [escrowPayment.signer] } : undefined;
+
+  // The program in the repo takes a 10% deposit, but the deployed Devnet build takes the full bid. Simulate first
+  // and top up the WSOL account only if the program really asks for more.
+  bidTx.feePayer = bidder;
+  bidTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  const sim = await connection.simulateTransaction(bidTx, escrowPayment.signer ? [escrowPayment.signer] : undefined);
+  if (sim.value.err && (sim.value.logs ?? []).some((l) => /insufficient funds/i.test(l))) {
+    await wrapSol(connection, wallet, amountLamports);
+  } else if (sim.value.err) {
+    throw new Error(sim.value.logs?.filter((l) => /error|failed/i.test(l)).slice(-2).join(" | ") || JSON.stringify(sim.value.err));
+  }
+
+  const signature = await wallet.sendTransaction(new Transaction().add(ix), connection, sendOpts);
   await connection.confirmTransaction(signature, "confirmed");
   return signature;
 }

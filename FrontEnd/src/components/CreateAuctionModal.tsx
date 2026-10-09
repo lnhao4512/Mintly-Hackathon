@@ -14,6 +14,7 @@ import {
 import { Keypair, SystemProgram, Transaction } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import { assertAuctionCanBeCreated } from "@/lib/marketplace";
+import { assertExpectedCluster } from "@/lib/network";
 import {
   MARKETPLACE_FEE_BPS,
   WSOL_MINT,
@@ -133,6 +134,7 @@ export function CreateAuctionModal({
         return;
       }
 
+      await assertExpectedCluster(connection);
       await assertAuctionCanBeCreated(connection, nftMint);
 
       const program = getMarketplaceProgram(connection, wallet);

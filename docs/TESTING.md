@@ -4,7 +4,7 @@
 1. `cd FrontEnd && npm install` (có thư viện mới `qrcode`).
 2. Tạo `FrontEnd/.env.local` với `MONGODB_URI` và `MONGODB_DB` (xem README mục 5).
 3. `npm run dev` → mở http://localhost:3000.
-4. Phantom chuyển sang **Devnet**, có SOL Devnet (airdrop). Cần **2 ví**: A (seller/tác giả), B (người mua). Dùng hai profile trình duyệt hoặc hai tài khoản Phantom.
+4. Phantom: Cài đặt > Nhà phát triển > bật **Chế độ Testnet** và chọn **Solana Devnet** (không dùng ví Mainnet), có SOL Devnet (airdrop). App tự chặn giao dịch nếu RPC không phải Devnet. Cần **2 ví**: A (seller/tác giả), B (người mua). Dùng hai profile trình duyệt hoặc hai tài khoản Phantom.
 5. Nếu muốn thử bảo hiểm bùng kèo / chống bid sát giờ: `cd BackEnd && anchor build && anchor deploy` trước.
 
 ## 1. Luồng chính (làm trước)

@@ -1,4 +1,5 @@
 import type { WalletContextState } from "@solana/wallet-adapter-react";
+import { assertExpectedCluster } from "@/lib/network";
 import { WalletError } from "@solana/wallet-adapter-base";
 import {
   Connection,
@@ -125,6 +126,7 @@ export async function mintNFT(
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error("Wallet not connected");
   }
+  await assertExpectedCluster(connection);
 
   const creatorAddress = creator || wallet.publicKey.toBase58();
   const metadataPayload = createNftMetadata(title, description, base64Image, creatorAddress, properties, extraAttributes);

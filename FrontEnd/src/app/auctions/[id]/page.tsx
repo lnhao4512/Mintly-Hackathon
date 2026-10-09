@@ -205,24 +205,7 @@ export default function AuctionDetailPage({
     setActionError(null);
 
     try {
-      const [balanceLamports, livePlatformVolume] = await Promise.all([
-        connection.getBalance(wallet.publicKey),
-        fetchTotalAuctionBidsVolume(connection),
-      ]);
-      const balanceSol = balanceLamports / 1e9;
-      setWalletSolBalance(balanceSol);
-
-      const effectiveTotalPlatformBids = Math.max(livePlatformVolume, amount);
-      const requiredEligibilitySol = effectiveTotalPlatformBids * 0.10;
-
-      if (balanceSol < requiredEligibilitySol) {
-        setActionError(
-          L(`Điều kiện không hợp lệ: Số dư ví (${balanceSol.toFixed(3)} SOL) phải lớn hơn hoặc bằng 10% (${requiredEligibilitySol.toFixed(3)} SOL) trên tổng số SOL đã đấu giá trên sàn trong tất cả giao dịch (${effectiveTotalPlatformBids.toFixed(3)} SOL).`, `Not eligible: wallet balance (${balanceSol.toFixed(3)} SOL) must be at least 10% (${requiredEligibilitySol.toFixed(3)} SOL) of all SOL bid on the platform (${effectiveTotalPlatformBids.toFixed(3)} SOL).`)
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
+      // Funds are verified inside placeBidOnChain (it reports exactly how much SOL is missing on Devnet).
       const depositSol = amount * 0.10;
       setActionStatus(L(`Đang chuyển 10% tiền cọc (${depositSol.toFixed(3)} SOL) vào Escrow PDA của sàn...`, `Moving the 10% deposit (${depositSol.toFixed(3)} SOL) into the marketplace escrow PDA...`));
       const amountLamports = Math.floor(amount * 1e9);
