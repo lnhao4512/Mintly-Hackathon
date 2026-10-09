@@ -29,6 +29,7 @@ import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales, N
 import { useI18n } from "@/lib/i18n";
 import { ReputationBadge } from "@/components/auction/ReputationBadge";
 import { Loading, Skeleton } from "@/components/ui/Loading";
+import { useMarketConfig } from "@/lib/useMarketConfig";
 
 type Phase =
   | "LIVE"
@@ -50,6 +51,9 @@ export default function AuctionDetailPage({
   const [auction, setAuction] = useState<Auction | null>(null);
   const [commitments, setCommitments] = useState<CommitmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmBidOpen, setConfirmBidOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const market = useMarketConfig();
   const [platformTotalBidsSol, setPlatformTotalBidsSol] = useState<number>(0);
   const [walletSolBalance, setWalletSolBalance] = useState<number>(0);
 
@@ -201,6 +205,15 @@ export default function AuctionDetailPage({
       return;
     }
 
+    setActionError(null);
+    setTermsAccepted(false);
+    setConfirmBidOpen(true);
+  }
+
+  async function executeBid() {
+    if (!wallet.publicKey || !auction) return;
+    const amount = parseFloat(bidAmountSol);
+    setConfirmBidOpen(false);
     setIsSubmitting(true);
     setActionError(null);
 
@@ -708,30 +721,9 @@ export default function AuctionDetailPage({
                       required
                     />
 
-                    {/* Deposit on Bid Escrow Info Card */}
-                    <div className="mt-3 rounded-2xl border border-accent/30 bg-accent/[0.04] p-4 text-xs space-y-2.5 backdrop-blur-md">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-accent flex items-center gap-1.5">
-                          <LineIcon name="shield" className="size-4" />
-                          <span>{L("Ký Cọc 10% Qua Smart Contract Escrow", "Sign a 10% deposit via the smart contract escrow")}</span>
-                        </span>
-                        <span className="rounded-full bg-accent/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-accent border border-accent/30">
-                          {L("Cọc 10%: ", "10% deposit: ")}{(parseFloat(bidAmountSol || minRequiredBid) * 0.10).toFixed(3)} SOL
-                        </span>
-                      </div>
-
-                      <ul className="space-y-1.5 text-[11px] text-text-dim list-disc list-inside leading-relaxed">
-                        <li>
-                          {locale === "vi" ? <>Khi bấm Xác Nhận, ví Phantom sẽ trừ <strong>10% tiền cọc ({(parseFloat(bidAmountSol || minRequiredBid) * 0.10).toFixed(3)} SOL)</strong> chuyển vào hợp đồng <strong>Escrow PDA</strong> của sàn.</> : <>When you confirm, Phantom moves <strong>a 10% deposit ({(parseFloat(bidAmountSol || minRequiredBid) * 0.10).toFixed(3)} SOL)</strong> into the marketplace <strong>escrow PDA</strong>.</>}
-                        </li>
-                        <li>
-                          {locale === "vi" ? <><strong>Tự Động Hoàn Cọc</strong>: Nếu bạn bị người khác đặt giá cao hơn, tiền cọc sẽ được hoàn trả 100% tự động về ví của bạn.</> : <><strong>Automatic refund</strong>: if someone outbids you, your deposit is returned in full to your wallet automatically.</>}
-                        </li>
-                        <li>
-                          {locale === "vi" ? <><strong>Khi Thắng Cuộc</strong>: Bạn chỉ cần thanh toán <strong>90% còn lại ({(parseFloat(bidAmountSol || minRequiredBid) * 0.90).toFixed(2)} SOL)</strong> để nhận NFT.</> : <><strong>If you win</strong>: you only pay the <strong>remaining 90% ({(parseFloat(bidAmountSol || minRequiredBid) * 0.90).toFixed(2)} SOL)</strong> to receive the NFT.</>}
-                        </li>
-                      </ul>
-                    </div>
+                    <p className="mt-2 text-[11px] text-text-dim">
+                      {L("Bạn sẽ xem lại mức cọc và điều kiện trước khi ví ký giao dịch.", "You will review the deposit and conditions before your wallet signs.")}
+                    </p>
                   </div>
 
                   <button
@@ -742,12 +734,12 @@ export default function AuctionDetailPage({
                     {isSubmitting ? (
                       <>
                         <span className="size-3.5 animate-spin rounded-full border-2 border-black border-t-transparent" />
-                        <span>{L("Đang Chuyển 10% Cọc Vào Escrow...", "Moving the 10% deposit into escrow...")}</span>
+                        <span>{L("Đang xử lý...", "Processing...")}</span>
                       </>
                     ) : (
                       <>
                         <LineIcon name="rocket" className="size-4" />
-                        <span>{L("Xác Nhận Đặt Giá", "Confirm bid")} {bidAmountSol ? `${bidAmountSol} SOL` : ""} ({L("Nạp Cọc 10%", "10% deposit")}: {(parseFloat(bidAmountSol || minRequiredBid) * 0.10).toFixed(3)} SOL)</span>
+                        <span>{L("Đặt giá", "Place bid")}</span>
                       </>
                     )}
                   </button>
@@ -949,6 +941,86 @@ export default function AuctionDetailPage({
         </div>
       </main>
       <Footer />
+
+      {confirmBidOpen && auction && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setConfirmBidOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            data-lenis-prevent
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-white/15 bg-[#121211] p-6 text-text shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="eyebrow text-accent">{L("Xác nhận đặt giá", "Confirm your bid")}</p>
+            <h2 className="mt-1 font-display text-3xl font-light tracking-[-0.03em]">{auction.title}</h2>
+
+            {(() => {
+              const bid = parseFloat(bidAmountSol) || 0;
+              const deposit = bid * 0.1;
+              return (
+                <dl className="mt-5 divide-y divide-white/10 border-y border-white/10 text-sm">
+                  <div className="flex justify-between py-3">
+                    <dt className="text-text-dim">{L("Giá bạn đặt", "Your bid")}</dt>
+                    <dd className="font-mono font-semibold">{bid.toFixed(2)} SOL</dd>
+                  </div>
+                  <div className="flex justify-between py-3">
+                    <dt className="text-text-dim">{L("Cọc 10% (khóa vào escrow ngay)", "10% deposit (locked in escrow now)")}</dt>
+                    <dd className="font-mono font-semibold text-accent">{deposit.toFixed(3)} SOL</dd>
+                  </div>
+                  <div className="flex justify-between py-3">
+                    <dt className="text-text-dim">{L("Còn lại nếu bạn thắng (90%)", "Due if you win (90%)")}</dt>
+                    <dd className="font-mono">{(bid - deposit).toFixed(3)} SOL</dd>
+                  </div>
+                </dl>
+              );
+            })()}
+
+            <ul className="mt-4 space-y-2 text-xs leading-5 text-text-dim">
+              <li>{L("Bị người khác đặt giá cao hơn: cọc được hoàn 100% tự động.", "If someone outbids you: the deposit is refunded 100% automatically.")}</li>
+              <li>{L("Bid trong 60 giây cuối sẽ gia hạn phiên thêm 60 giây.", "A bid in the last 60 seconds extends the auction by 60 seconds.")}</li>
+              <li>{L(`Phí sàn ${market.feePct}% tính trên giá chốt, trừ vào phần người bán nhận.`, `Platform fee ${market.feePct}% of the final price, taken from the seller's proceeds.`)}</li>
+              <li>{L("Mạng Solana Devnet: SOL thử nghiệm, không có giá trị thật.", "Solana Devnet: test SOL, no real value.")}</li>
+            </ul>
+
+            <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/[0.06] p-3 text-xs leading-5 text-red-200">
+              {L(
+                "Thắng mà không thanh toán 90% còn lại đúng hạn: bạn mất 10% cọc (70% cho người bán, 30% cho quỹ sàn).",
+                "If you win and do not pay the remaining 90% on time, you lose the 10% deposit (70% to the seller, 30% to the platform)."
+              )}
+            </div>
+
+            <label className="mt-4 flex cursor-pointer items-start gap-3 text-xs leading-5">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+              />
+              <span>
+                {L("Tôi đã đọc và đồng ý các điều kiện trên, kể cả việc có thể mất tiền cọc.", "I have read and agree to the conditions above, including that I may lose the deposit.")}
+              </span>
+            </label>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmBidOpen(false)}
+                className="flex-1 rounded-full border border-white/15 py-3 text-xs font-bold uppercase tracking-[0.12em] text-text-dim transition-colors hover:text-text"
+              >
+                {L("Hủy", "Cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={!termsAccepted}
+                onClick={executeBid}
+                className="flex-1 rounded-full bg-accent py-3 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a09] transition-all hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {L("Xác nhận & ký ví", "Confirm & sign")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
