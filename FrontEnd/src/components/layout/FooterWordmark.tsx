@@ -17,8 +17,8 @@ export function FooterWordmark({ image = "/museum2.jpg", className = "" }: { ima
     el.style.setProperty("--x", "-400px");
     el.style.setProperty("--y", "-400px");
     el.style.setProperty("--r", "0px");
-    const x = gsap.quickTo(el, "--x", { duration: 0.45, ease: "power3", unit: "px" } as gsap.TweenVars);
-    const y = gsap.quickTo(el, "--y", { duration: 0.45, ease: "power3", unit: "px" } as gsap.TweenVars);
+    const x = gsap.quickTo(el, "--x", { duration: 0.45, ease: "power3" } as gsap.TweenVars);
+    const y = gsap.quickTo(el, "--y", { duration: 0.45, ease: "power3" } as gsap.TweenVars);
 
     let entered = false;
     const move = (e: MouseEvent) => {
