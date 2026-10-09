@@ -15,6 +15,7 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import { Lg } from "@/lib/i18n";
@@ -472,7 +473,11 @@ export async function placeBidOnChain(
   // and top up the WSOL account only if the program really asks for more.
   bidTx.feePayer = bidder;
   bidTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  const sim = await connection.simulateTransaction(bidTx, escrowPayment.signer ? [escrowPayment.signer] : undefined);
+  // Unsigned simulation: legacy simulateTransaction(tx, signers) throws "!signature" unless the fee payer signs.
+  const sim = await connection.simulateTransaction(new VersionedTransaction(bidTx.compileMessage()), {
+    sigVerify: false,
+    replaceRecentBlockhash: true,
+  });
   if (sim.value.err && (sim.value.logs ?? []).some((l) => /insufficient funds/i.test(l))) {
     await wrapSol(connection, wallet, amountLamports);
   } else if (sim.value.err) {
