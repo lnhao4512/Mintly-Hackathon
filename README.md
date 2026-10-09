@@ -21,6 +21,14 @@ MINTLY là một marketplace NFT 1/1 (mỗi NFT là độc bản, không phải 
 - **Đấu giá lại (resale) nhiều vòng**: một NFT đã bán vẫn có thể được đưa lên đấu giá vòng tiếp theo, tái sử dụng cùng một Auction PDA trên chain.
 - **Bán giá cố định**: seller đăng tranh với giá cứng, người mua vào tab **Thị trường** để mua ngay; smart contract tự chia 5% phí sàn và 95% cho seller.
 - **Hộ chiếu NFT (Passport)**: xem thông tin on-chain của một NFT (mint, supply, decimals, chủ sở hữu) và lịch sử chuyển nhượng qua các vòng đấu giá.
+- **Bảo hiểm bùng kèo**: cọc bị tịch thu chia 70% cho tác giả/seller, 30% cho quỹ sàn *(cần deploy hợp đồng mới)*.
+- **Chống bid sát giờ**: bid trong 60 giây cuối tự gia hạn thêm 60 giây *(cần deploy hợp đồng mới)*.
+- **Đấu giá realtime**: giá và thời gian cập nhật ngay khi tài khoản Auction trên Solana thay đổi; thông báo khi bị vượt giá hoặc phiên được gia hạn.
+- **Proof-of-Creation**: Studio ghi time-lapse quá trình vẽ; mã băm SHA-256 được neo on-chain bằng SPL Memo trong giao dịch mint; passport phát lại quá trình vẽ và đối chiếu Memo.
+- **Vẽ trực tiếp (`/live`)**: phát canvas theo thời gian thực để người xem theo dõi và đặt giá khi tác phẩm lên sàn.
+- **Chặn sao chép khi mint**: ảnh trùng khớp bị từ chối; ảnh giống nhiều phải cam kết và ký bằng ví.
+- **Kiểm tra nguyên bản miễn phí (`/originality`)**: không cần ví, không mint.
+- **Uy tín người mua, nhãn nguyên bản, khiếu nại đạo nhái, thưởng báo cáo, QR hộ chiếu** — xem bảng ở mục 3.
 - **Trang quản trị (`/admin`)**: tạm dừng/mở lại toàn sàn, chỉ dành cho ví có quyền `authority`.
 
 ---
@@ -134,6 +142,12 @@ npm run dev
 
 Mở `http://localhost:3000`, kết nối ví Phantom (chuyển sang **Devnet**) để dùng thử.
 
+> **Trang & API mới:** `/live`, `/live/[ví]`, `/originality`, `/legal`; API `/api/proofs`, `/api/disputes`, `/api/live` (đều dùng MongoDB, cần `MONGODB_URI`).
+> **Thư viện mới:** `qrcode` (+ `@types/qrcode`) — chạy `npm install` sau khi pull.
+
+### Kiểm thử thủ công
+Xem [docs/TESTING.md](docs/TESTING.md) để chạy từng luồng chính và từng tính năng mới.
+
 ### BackEnd (chương trình Anchor)
 Yêu cầu: Rust, Solana CLI, Anchor CLI đã cài trên máy (xem script cài đặt tham khảo trong `BackEnd/scripts/install-solana.sh`).
 
@@ -170,9 +184,9 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 
 1. **Tạo tác phẩm** (`/create`): vẽ hoặc upload ảnh → AI quét trùng lặp → mint NFT lên Solana (SPL Token 1/1 + Memo bằng chứng sáng tác) → lưu metadata vào MongoDB.
 2. **Đưa lên đấu giá** (từ `/portfolio`): gọi `create_auction` — NFT bị khoá vào escrow PDA, tạo Auction on-chain, trạng thái `LIVE`.
-3. **Đặt giá** (`/auctions/[id]`): gọi `place_bid` — 10% giá đặt được chuyển vào escrow; người bị vượt giá trước đó được tự động hoàn 100% cọc ngay trong cùng transaction.
+3. **Đặt giá** (`/auctions/[id]`): gọi `place_bid` — 10% giá đặt được chuyển vào escrow (bid trong 60 giây cuối sẽ gia hạn phiên thêm 60 giây); người bị vượt giá trước đó được tự động hoàn 100% cọc ngay trong cùng transaction.
 4. **Hết giờ, người thắng thanh toán** (`pay_balance`): trả phần còn lại (giá thắng trừ cọc đã nạp) → sàn tự động chia phí (5%) cho treasury, phần còn lại cho seller, và chuyển NFT cho người thắng — tất cả trong 1 transaction.
-5. **Bùng kèo** (`default_winner`): nếu quá hạn thanh toán, ai cũng có thể gọi để tịch thu cọc 10% vào quỹ xử phạt của sàn.
+5. **Bùng kèo** (`default_winner`): nếu quá hạn thanh toán, ai cũng có thể gọi để tịch thu cọc 10%: **70% bồi thường cho seller, 30% vào quỹ sàn** (sau khi deploy hợp đồng mới).
 6. **Đấu giá lại**: seller (chủ mới) có thể đưa NFT đó lên đấu giá vòng tiếp — tái sử dụng đúng Auction PDA của NFT này.
 
 ---
@@ -183,10 +197,24 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 - AI kiểm tra trùng lặp: chưa bắt được ảnh vừa lật vừa đổi màu, hoặc ảnh thêm viền dày; embedding do trình duyệt tính nên có thể bị giả mạo (chấp nhận được vì chỉ cảnh báo). So sánh đang duyệt tuyến tính — khi có hàng chục nghìn NFT nên chuyển sang MongoDB Atlas Vector Search. NFT mint trước bản nâng cấp chỉ khớp theo SHA-256.
 - Commit-reveal sealed-bid đã có sẵn on-chain nhưng chưa được tích hợp vào UI đấu giá (đang dùng mô hình đấu giá công khai kiểu English auction).
 - Chưa có UI hủy listing (`cancel_listing`) — chỉ có hủy auction.
+- **Hợp đồng đã sửa nhưng chưa build/deploy** (bảo hiểm bùng kèo 70/30, chống bid sát giờ): cần `anchor build && anchor deploy`; tới khi đó nút xử lý bùng kèo trên frontend sẽ lỗi vì IDL đã thêm account `seller_payment_account`.
+- NFT là SPL mint thường, **không có Metaplex Token Metadata**; metadata hiện là data-URI (chưa lên IPFS/Arweave). Vì vậy chưa có royalty bán lại.
+- Cọc thích ứng theo uy tín chưa có (`place_bid` cố định 10%); điểm uy tín chỉ hiển thị, không ép buộc on-chain.
+- Chặn sao chép khi mint chỉ ở frontend; thưởng báo cáo đạo nhái mới ghi sổ, admin chi trả thủ công.
+- Phát trực tiếp dùng polling (~1.5s), chưa phải WebSocket.
+- Proof-of-Creation chứng minh tính toàn vẹn của dữ liệu quá trình vẽ, không chống được việc dựng dữ liệu giả có chủ đích.
+- Số liệu hiển thị là **Devnet / dữ liệu thử nghiệm**, không phải traction thị trường.
 
 ---
 
-## 8. Công nghệ sử dụng
+## 8. Tài liệu bổ sung
+
+- [docs/ECONOMICS.md](docs/ECONOMICS.md) — kinh tế đơn vị, điểm hòa vốn.
+- [docs/GTM.md](docs/GTM.md) — định vị và lộ trình tiếp cận thị trường.
+- [docs/TESTING.md](docs/TESTING.md) — hướng dẫn kiểm thử thủ công.
+- Trang `/legal` — ranh giới pháp lý và rủi ro (không phải cờ bạc, không phải chứng khoán).
+
+## 9. Công nghệ sử dụng
 
 - **On-chain**: Rust, Anchor Framework, SPL Token, Solana Devnet.
 - **FrontEnd**: Next.js 16 (App Router), TypeScript, Tailwind CSS, `@coral-xyz/anchor`, `@solana/wallet-adapter-react`, `@solana/web3.js`.
