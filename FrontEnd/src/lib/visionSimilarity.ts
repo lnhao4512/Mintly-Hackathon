@@ -94,7 +94,7 @@ export async function registerMintedArtwork(input: AnalyzeInput): Promise<boolea
 
     await saveFingerprint({
       fingerprint: sha256,
-      title: input.metadata?.name || "Tác phẩm NFT đã Mint",
+      title: input.metadata?.name || "",
       mint: input.metadata?.mint || "",
       ...features,
       embedding: normalizeEmbedding(input.embedding),

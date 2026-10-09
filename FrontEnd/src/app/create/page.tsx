@@ -30,6 +30,8 @@ export default function CreatorStudioPage() {
   const { setVisible } = useWalletModal();
 
   const [title, setTitle] = useState("");
+  const [titleError, setTitleError] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
   const [statement, setStatement] = useState("");
 
   // ---------------- drafts + leave guard ----------------
@@ -182,7 +184,7 @@ export default function CreatorStudioPage() {
       const res = await fetch("/api/live", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", creator, title: title || L("Tác phẩm đang vẽ", "Artwork in progress"), nonce, signature: btoa(String.fromCharCode(...sig)) }),
+        body: JSON.stringify({ action: "start", creator, title: title.trim() || L("Đang vẽ", "Drawing"), nonce, signature: btoa(String.fromCharCode(...sig)) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || L("Không thể bắt đầu phát", "Could not start broadcasting"));
@@ -293,6 +295,13 @@ export default function CreatorStudioPage() {
       return;
     }
 
+    if (!title.trim()) {
+      setRightOpen(true);
+      setTitleError(true);
+      titleRef.current?.focus();
+      return;
+    }
+
     // Generate preview from canvas (Base64)
     const base64Data = await actions.exportToBase64();
     if (base64Data) {
@@ -338,6 +347,7 @@ export default function CreatorStudioPage() {
   const handleConfirmMint = useCallback(
     async (onProgress?: (step: "preparing" | "awaiting-wallet" | "confirming" | "success") => void) => {
       if (!publicKey || !wallet) throw new Error("Wallet not connected");
+      if (!title.trim()) throw new Error("Artwork title is required");
 
       const base64Data = await actions.exportToBase64();
       if (!base64Data) throw new Error("Failed to export canvas");
@@ -387,8 +397,8 @@ export default function CreatorStudioPage() {
         // 1. Save to User Portfolio & Artwork Image Cache
         saveMintedArtwork({
           mintAddress: result.mintAddress,
-          title: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
-          description: statement || L("Tác phẩm kỹ thuật số được tạo từ MINTLY Studio.", "A digital artwork created in MINTLY Studio."),
+          title: title.trim(),
+          description: statement.trim(),
           imageUrl: base64Data,
           creator: publicKey.toBase58(),
           createdAt: Date.now(),
@@ -410,7 +420,7 @@ export default function CreatorStudioPage() {
 
         // 2. Register into AI similarity index
         registerMintedArtworkAI(base64Data, {
-          name: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
+          name: title.trim(),
           description: statement,
           mint: result.mintAddress,
         }).catch((err) => console.warn("Failed to register artwork in AI cache:", err));
@@ -634,21 +644,29 @@ export default function CreatorStudioPage() {
 
               {/* Title */}
               <label className="flex flex-col gap-3">
-                <span className="eyebrow">{t("create.artworkTitle")}</span>
+                <span className="eyebrow">{t("create.artworkTitle")} <span className="text-accent">*</span></span>
                 <input
+                  ref={titleRef}
+                  required
+                  maxLength={80}
+                  aria-invalid={titleError}
                   value={title}
                   onChange={(e) => {
                     setTitle(e.target.value);
+                    setTitleError(false);
                     setMetaDirty(true);
                   }}
                   placeholder={t("create.titlePlaceholder")}
-                  className="border-b border-white/10 bg-transparent pb-3 pt-2 font-sans text-lg text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent"
+                  className={`border-b ${titleError ? "border-red-400" : "border-white/10"} bg-transparent pb-3 pt-2 font-sans text-lg text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent`}
                 />
+                {titleError && (
+                  <span className="text-xs text-red-300">{L("Vui lòng nhập tên tác phẩm trước khi xuất bản.", "Please enter a title before publishing.")}</span>
+                )}
               </label>
 
           {/* Statement */}
           <label className="flex flex-col gap-3">
-            <span className="eyebrow">{t("create.statement")}</span>
+            <span className="eyebrow">{t("create.statement")} <span className="normal-case tracking-normal text-text-dim">({L("tùy chọn", "optional")})</span></span>
             <textarea
               value={statement}
               onChange={(e) => {

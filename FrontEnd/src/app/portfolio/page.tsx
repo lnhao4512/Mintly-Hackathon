@@ -26,6 +26,7 @@ import {
   hydrateAllCaches,
   type MintedArtworkRecord,
   NO_ARTWORK_IMAGE,
+  mintLabel,
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
 import { CreateListingModal } from "@/components/CreateListingModal";
@@ -182,8 +183,8 @@ export default function PortfolioPage() {
 
             onChainMints.push({
               mintAddress: mint,
-              title: existingArt?.title || L(`Tác phẩm Mint #${mint.slice(0, 4)}`, `Minted artwork #${mint.slice(0, 4)}`),
-              description: existingArt?.description || L("Tác phẩm NFT đã được thanh toán & ghi nhận quyền sở hữu on-chain trên ví của bạn.", "The NFT has been paid for and its ownership recorded on-chain in your wallet."),
+              title: existingArt?.title || mintLabel(mint),
+              description: existingArt?.description || "",
               imageUrl: cachedImage,
               creator: existingArt?.creator || walletStr,
               createdAt: existingArt?.createdAt || Date.now() - 600000,

@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
   if (!body?.mintAddress || !body?.creator) {
     return NextResponse.json({ error: "mintAddress and creator are required" }, { status: 400 });
   }
+  if (typeof body.title !== "string" || !body.title.trim()) {
+    return NextResponse.json({ error: "title is required" }, { status: 400 });
+  }
   await upsertArtwork(body);
   return NextResponse.json({ ok: true });
 }
