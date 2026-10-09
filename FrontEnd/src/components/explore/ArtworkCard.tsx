@@ -15,55 +15,49 @@ export type Artwork = {
   nftMint?: string;
 };
 
-export function ArtworkCard({ artwork }: { artwork: Artwork }) {
+/** Museum-label card: framed plate on top, specimen label underneath. */
+export function ArtworkCard({ artwork, index }: { artwork: Artwork; index?: number }) {
   const { t } = useI18n();
   const isLarge = artwork.size === "large";
-  const rarityTone =
-    artwork.rarity === "rare"
-      ? "border-[#f5d27b]/30 bg-[#f5d27b]/10 text-[#f5d27b]"
-      : artwork.rarity === "collector"
-        ? "border-[#c7b7ff]/30 bg-[#c7b7ff]/10 text-[#d9ceff]"
-        : "border-[#8ef7c0]/30 bg-[#8ef7c0]/10 text-[#8ef7c0]";
+  const lot = typeof index === "number" ? String(index + 1).padStart(2, "0") : null;
+  const direct = artwork.priceLabel === "Direct Sale";
 
   return (
-    <Link href={artwork.href || `/listings/${artwork.id}`} className="group block">
-      <div
-        className={`rainbow-border relative w-full overflow-hidden rounded-[30px] bg-[#111315] transition-all duration-300 group-hover:-translate-y-1 ${
-          isLarge ? "aspect-[16/13]" : "aspect-[4/3]"
-        }`}
-      >
+    <Link href={artwork.href || `/listings/${artwork.id}`} className="group block" data-cursor="img">
+      <div className={`relative overflow-hidden bg-bg-elevated ${isLarge ? "aspect-[4/5]" : "aspect-[5/4]"}`}>
         <Image
           src={artwork.image}
           alt={artwork.title}
           fill
-          sizes={isLarge ? "(max-width:768px) 100vw, 55vw" : "(max-width:768px) 100vw, 40vw"}
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+          sizes={isLarge ? "(max-width:768px) 100vw, 45vw" : "(max-width:768px) 100vw, 30vw"}
+          className="object-cover transition-transform duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#090b0d]/90 via-[#090b0d]/25 to-transparent" />
-
-        <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
-          <span className="rounded-full border border-[#d9d0ff]/20 bg-[#12131a]/70 px-3 py-1 backdrop-blur-sm">
-            <span className="eyebrow text-accent-strong">{artwork.priceLabel ?? "Live"}</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/55 via-transparent to-transparent opacity-70 transition-opacity duration-700 group-hover:opacity-30" />
+        <i className="reg left-3 top-3" />
+        <i className="reg right-3 top-3" />
+        <i className="reg bottom-3 left-3" />
+        <i className="reg bottom-3 right-3" />
+        <span className="absolute left-4 top-4 bg-ink/80 px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.16em] text-text backdrop-blur-sm">
+          {artwork.priceLabel ?? "Live"}
+        </span>
+        {artwork.rarity && (
+          <span className="absolute right-4 top-4 bg-accent px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.16em] text-ink">
+            {artwork.rarity}
           </span>
-          {artwork.rarity && (
-            <span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.18em] ${rarityTone}`}>
-              {artwork.rarity}
-            </span>
-          )}
-        </div>
+        )}
+      </div>
 
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
-          <div>
-            <div className="font-display text-xl leading-none text-text sm:text-2xl">{artwork.title}</div>
-            <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-text-dim">{t("card.by")} {artwork.artist}</div>
-          </div>
-          <div className="text-right">
-            <div className="font-sans text-lg font-semibold text-text">{artwork.price}</div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-text-dim">
-              {artwork.priceLabel === "Direct Sale" ? t("card.buyNow") : t("card.bid")}
-            </div>
-          </div>
-        </div>
+      <div className="mt-4 grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 border-t border-line pt-3">
+        <span className="font-mono-ui text-[10px] tracking-[0.14em] text-text-dim">{lot ? `№ ${lot}` : "№"}</span>
+        <h3 className="truncate font-display text-[clamp(1.3rem,2vw,1.9rem)] font-light leading-tight tracking-[-0.03em] transition-colors duration-500 group-hover:text-accent">
+          {artwork.title}
+        </h3>
+        <span className="font-mono-ui text-sm text-text">{artwork.price}</span>
+        <span />
+        <span className="eyebrow truncate">
+          {t("card.by")} {artwork.artist}
+        </span>
+        <span className="eyebrow text-right">{direct ? t("card.buyNow") : t("card.bid")}</span>
       </div>
     </Link>
   );

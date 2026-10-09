@@ -10,6 +10,7 @@ export interface MintedArtworkRecord {
   signature?: string;
   category?: string;
   rarity?: "rare" | "collector" | "trending";
+  originalityScore?: number | null;
 }
 
 async function collection() {

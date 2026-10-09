@@ -7,8 +7,11 @@ import { Footer } from "@/components/layout/Footer";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import { getConfigPda } from "@/lib/config";
 import { setMarketplacePaused } from "@/lib/marketplace";
+import { useI18n } from "@/lib/i18n";
+import { Loading, Skeleton } from "@/components/ui/Loading";
 
 export default function AdminPage() {
+  const { L } = useI18n();
   const { connection } = useConnection();
   const wallet = useWallet();
 
@@ -45,6 +48,38 @@ export default function AdminPage() {
     wallet.publicKey && authority && wallet.publicKey.toBase58() === authority
   );
 
+  const [disputes, setDisputes] = useState<{ id: string; mintAddress: string; reporter: string; reason: string; evidenceUrl?: string }[]>([]);
+
+  async function loadDisputes() {
+    try {
+      const res = await fetch("/api/disputes?status=open");
+      setDisputes(((await res.json()) as { disputes: typeof disputes }).disputes ?? []);
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    loadDisputes();
+  }, []);
+
+  async function resolve(id: string, status: "upheld" | "rejected") {
+    if (!wallet.publicKey || !wallet.signMessage) return;
+    setError(null);
+    try {
+      const sig = await wallet.signMessage(new TextEncoder().encode(`MINTLY_RESOLVE:${id}:${status}`));
+      const res = await fetch("/api/disputes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status, admin: wallet.publicKey.toBase58(), signature: btoa(String.fromCharCode(...sig)) }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || L("Xử lý thất bại", "Action failed"));
+      loadDisputes();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : L("Xử lý thất bại", "Action failed"));
+    }
+  }
+
   async function handleTogglePause() {
     if (!wallet.publicKey || !wallet.signTransaction) return;
     setSubmitting(true);
@@ -55,27 +90,27 @@ export default function AdminPage() {
       setTxHash(tx);
       await loadConfig();
     } catch (err: any) {
-      setError(err?.message || "Giao dịch thất bại.");
+      setError(err?.message || L("Giao dịch thất bại.", "Transaction failed."));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0b0d] text-text">
+    <div className="min-h-screen bg-[#0a0a09] text-text">
       <Navbar />
       <main className="mx-auto w-full max-w-[720px] px-4 pb-24 pt-28 sm:px-8 sm:pt-32">
-        <h1 className="font-display text-3xl text-text">Quản Trị Sàn MINTLY</h1>
+        <h1 className="font-display text-3xl text-text">{L("Quản Trị Sàn MINTLY", "MINTLY admin")}</h1>
         <p className="mt-2 text-sm text-text-dim">
-          Chỉ ví có quyền <span className="font-mono text-accent">authority</span> của MarketplaceConfig mới có thể tạm dừng/mở lại sàn.
+          {L("Chỉ ví có quyền ", "Only the wallet that is the MarketplaceConfig ")}<span className="font-mono text-accent">authority</span>{L(" của MarketplaceConfig mới có thể tạm dừng/mở lại sàn.", " can pause or resume the marketplace.")}
         </p>
 
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 space-y-4">
           {loading ? (
-            <p className="text-sm text-text-dim">Đang tải cấu hình...</p>
+            <Loading label={L("Đang tải cấu hình...", "Loading configuration...")} compact />
           ) : !authority ? (
             <p className="text-sm text-amber-300">
-              Marketplace chưa được khởi tạo trên Solana (chưa có ai tạo đấu giá/listing đầu tiên).
+              {L("Marketplace chưa được khởi tạo trên Solana (chưa có ai tạo đấu giá/listing đầu tiên).", "The marketplace has not been initialised on Solana yet (nobody has created the first auction or listing).")}
             </p>
           ) : (
             <>
@@ -88,28 +123,45 @@ export default function AdminPage() {
                 <span className="font-mono text-text break-all text-right">{treasury}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-dim">Trạng thái</span>
+                <span className="text-text-dim">{L("Trạng thái", "Status")}</span>
                 <span className={paused ? "font-bold text-red-400" : "font-bold text-green-400"}>
-                  {paused ? "⏸ Đang tạm dừng" : "▶ Đang hoạt động"}
+                  {paused ? L("⏸ Đang tạm dừng", "⏸ Paused") : L("▶ Đang hoạt động", "▶ Running")}
                 </span>
               </div>
 
               {!wallet.publicKey ? (
-                <p className="text-xs text-text-dim">Kết nối ví để quản trị.</p>
+                <p className="text-xs text-text-dim">{L("Kết nối ví để quản trị.", "Connect a wallet to administer.")}</p>
               ) : !isAuthority ? (
                 <p className="text-xs text-text-dim">
-                  Ví hiện tại ({wallet.publicKey.toBase58()}) không có quyền quản trị.
+                  {L("Ví hiện tại (", "Current wallet (")}{wallet.publicKey.toBase58()}{L(") không có quyền quản trị.", ") has no admin rights.")}
                 </p>
               ) : (
                 <button
                   onClick={handleTogglePause}
                   disabled={submitting}
                   className={`w-full rounded-full py-3 text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${
-                    paused ? "bg-accent text-[#0a0a0a] hover:bg-accent-strong" : "bg-red-600 text-white hover:bg-red-500"
+                    paused ? "bg-accent text-[#0a0a09] hover:bg-accent-strong" : "bg-red-600 text-white hover:bg-red-500"
                   }`}
                 >
-                  {submitting ? "Đang xử lý..." : paused ? "Mở Lại Sàn" : "Tạm Dừng Sàn"}
+                  {submitting ? L("Đang xử lý...", "Processing...") : paused ? L("Mở Lại Sàn", "Resume marketplace") : L("Tạm Dừng Sàn", "Pause marketplace")}
                 </button>
+              )}
+
+              {isAuthority && disputes.length > 0 && (
+                <div className="space-y-3 border-t border-white/10 pt-4">
+                  <p className="text-xs uppercase tracking-wider text-text-dim">{L("Khiếu nại đạo nhái đang chờ (", "Pending plagiarism disputes (")}{disputes.length})</p>
+                  {disputes.map((d) => (
+                    <div key={d.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-text-dim">
+                      <p className="break-all font-mono">{d.mintAddress}</p>
+                      <p className="mt-1 text-text">{d.reason}</p>
+                      {d.evidenceUrl && <a href={d.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{L("Bằng chứng", "Evidence")}</a>}
+                      <div className="mt-2 flex gap-2">
+                        <button onClick={() => resolve(d.id, "upheld")} className="rounded-full bg-red-600 px-3 py-1 text-white">{L("Chấp nhận", "Uphold")}</button>
+                        <button onClick={() => resolve(d.id, "rejected")} className="rounded-full border border-white/20 px-3 py-1">{L("Bác bỏ", "Reject")}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
 
               {txHash && (

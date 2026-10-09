@@ -3,8 +3,10 @@ import { WalletError } from "@solana/wallet-adapter-base";
 import {
   Connection,
   Keypair,
+  PublicKey,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -16,6 +18,13 @@ import {
 } from "@solana/spl-token";
 import { createArtworkProof, type CreationProof } from "@/lib/proof";
 import { NETWORK } from "@/lib/config";
+
+/** SPL Memo program — used to anchor the creation-proof hash on-chain inside the mint transaction. */
+export const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+
+export function creationProofMemo(mint: string, proofHash: string, method: string): string {
+  return `MINTLY:proof:v1:${mint}:${method}:${proofHash}`;
+}
 
 export interface NftMetadata {
   name: string;
@@ -103,7 +112,8 @@ export async function mintNFT(
   creator: string,
   properties?: NftProperties,
   onProgress?: (step: "preparing" | "awaiting-wallet" | "confirming" | "success") => void,
-  extraAttributes?: NftMetadata["attributes"]
+  extraAttributes?: NftMetadata["attributes"],
+  creationProof?: { hash: string; method: string }
 ): Promise<{ signature: string; mintAddress: string; metadataUri: string; metadata: NftMetadata; proof: CreationProof }> {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error("Wallet not connected");
@@ -170,6 +180,17 @@ export async function mintNFT(
       1
     )
   );
+
+  if (creationProof) {
+    // 5. Anchor the creation-proof hash on-chain (SPL Memo, signed by the creator)
+    tx.add(
+      new TransactionInstruction({
+        keys: [{ pubkey: wallet.publicKey, isSigner: true, isWritable: false }],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(creationProofMemo(mintKeypair.publicKey.toBase58(), creationProof.hash, creationProof.method), "utf-8"),
+      })
+    );
+  }
 
   tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
   tx.feePayer = wallet.publicKey;

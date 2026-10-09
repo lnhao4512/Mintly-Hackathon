@@ -51,36 +51,12 @@ export interface BidRecord {
 }
 
 const FALLBACK_ASSETS = [
-  {
-    title: "Messi: Symphony of Gold",
-    image: "/assets/messi-symphony.svg",
-    rarity: "rare" as const,
-  },
-  {
-    title: "Ronaldo: Dynasty Legacy",
-    image: "/assets/ronaldo-legacy.svg",
-    rarity: "collector" as const,
-  },
-  {
-    title: "Vietnam Rising: Golden Star",
-    image: "/assets/vietnam-rising.svg",
-    rarity: "trending" as const,
-  },
-  {
-    title: "Emerald Dash: 90th Minute",
-    image: "/assets/emerald-dash.svg",
-    rarity: "trending" as const,
-  },
-  {
-    title: "Final Whistle Drama",
-    image: "/assets/final-whistle.svg",
-    rarity: "collector" as const,
-  },
-  {
-    title: "Night Press",
-    image: "/assets/night-press.svg",
-    rarity: "rare" as const,
-  },
+  { title: "Concrete Solitude", image: "/assets/concrete-solitude.png", rarity: "rare" as const },
+  { title: "Digital Renaissance", image: "/assets/digital-renaissance.png", rarity: "collector" as const },
+  { title: "Silent Epoch", image: "/assets/silent-epoch.png", rarity: "trending" as const },
+  { title: "Synthetic Bloom", image: "/assets/synthetic-bloom.png", rarity: "trending" as const },
+  { title: "Void Geometry", image: "/assets/void-geometry.png", rarity: "collector" as const },
+  { title: "Prism Study", image: "/assets/hero-artwork.png", rarity: "rare" as const },
 ];
 
 export type DirectListing = {
@@ -231,12 +207,29 @@ export async function fetchLiveAuctions(connection: Connection): Promise<Auction
 /**
  * Fetches dynamic marketplace statistics aggregated directly from Solana program accounts.
  */
+/**
+ * Real settled volume: sum of prices of sales recorded after `pay_balance` succeeded.
+ * Returns 0 when nothing has settled — never an extrapolated figure.
+ */
+export async function fetchSettledVolumeSol(): Promise<{ volumeSol: number; salesCount: number }> {
+  try {
+    const res = await fetch("/api/sales");
+    if (!res.ok) return { volumeSol: 0, salesCount: 0 };
+    const { sales } = (await res.json()) as { sales: { priceSol?: number }[] };
+    const priced = sales.filter((s) => typeof s.priceSol === "number" && s.priceSol > 0);
+    return { volumeSol: priced.reduce((sum, s) => sum + (s.priceSol as number), 0), salesCount: sales.length };
+  } catch {
+    return { volumeSol: 0, salesCount: 0 };
+  }
+}
+
 export async function fetchMarketplaceStats(connection: Connection): Promise<MarketplaceStats> {
   try {
     const program = getMarketplaceProgram(connection);
-    const [listings, auctions] = await Promise.all([
+    const [listings, auctions, settled] = await Promise.all([
       program.account.listing.all(),
       program.account.auction.all(),
+      fetchSettledVolumeSol(),
     ]);
 
     const activeListings = listings.filter(
@@ -271,7 +264,7 @@ export async function fetchMarketplaceStats(connection: Connection): Promise<Mar
       activeAuctions: activeAuctions.length,
       highestBidSol: highestBid > 0 ? `${highestBid.toFixed(2)} SOL` : "0.00 SOL",
       floorPriceSol: floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL",
-      totalVolumeSol: highestBid > 0 ? `${(highestBid * 1.5).toFixed(2)} SOL` : "0.00 SOL",
+      totalVolumeSol: `${settled.volumeSol.toFixed(2)} SOL`,
       uniqueSellers: sellers.size,
     };
   } catch (error) {

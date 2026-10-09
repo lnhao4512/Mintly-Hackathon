@@ -3,9 +3,9 @@ import { AppProviders } from "@/components/providers/AppProviders";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MINTLY — On-Chain Solana Marketplace",
+  title: "MINTLY — Art that can prove itself",
   description:
-    "MINTLY is a decentralized marketplace for digital ownership on Solana. Discover, auction, and trade provenance-backed digital artifacts.",
+    "MINTLY is a 1/1 art auction house on Solana: drawn by hand, proven original, escrowed and insured.",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
@@ -24,7 +24,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>

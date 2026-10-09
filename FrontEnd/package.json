@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "sim:devnet": "node scripts/devnet_sim.mjs",
     "fingerprints": "node --experimental-strip-types --no-warnings scripts/build-site-fingerprints.mjs"
   },
   "dependencies": {
@@ -22,11 +23,15 @@
     "@solana/wallet-adapter-react": "^0.15.39",
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/web3.js": "^1.98.4",
+    "@types/qrcode": "^1.5.6",
     "bs58": "^6.0.0",
     "eventemitter3": "^5.0.4",
+    "gsap": "^3.12.7",
+    "lenis": "^1.1.20",
     "mongodb": "^7.7.0",
     "next": "16.3.3",
     "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "rpc-websockets": "^10.0.1",

@@ -180,7 +180,7 @@ export function MintModal({
               <button
                 onClick={handleConfirm}
                 disabled={isBusy}
-                className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)]"
+                className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)]"
               >
                 {t("mint.confirm")}
               </button>
@@ -226,7 +226,7 @@ export function MintModal({
                 <div className="flex w-full flex-col gap-2.5">
                   <Link
                     href="/portfolio"
-                    className="w-full rounded-full bg-accent px-6 py-4 text-center font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)]"
+                    className="w-full rounded-full bg-accent px-6 py-4 text-center font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)]"
                   >
                     {t("mint.viewPortfolio")} 🎨
                   </Link>
@@ -267,7 +267,7 @@ export function MintModal({
                 </button>
                 <button
                   onClick={() => setStatus("idle")}
-                  className="flex-1 rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong"
+                  className="flex-1 rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong"
                 >
                   {t("mint.tryAgain")}
                 </button>

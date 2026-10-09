@@ -15,6 +15,7 @@ export interface MintedArtworkRecord {
   signature?: string;
   category?: string;
   rarity?: "rare" | "collector" | "trending";
+  originalityScore?: number | null;
 }
 
 export interface SoldArtworkRecord {
@@ -122,7 +123,7 @@ export function getWonArtworksForBuyer(buyerWallet: string): MintedArtworkRecord
         description:
           art?.description ||
           `Tác phẩm NFT đã được thanh toán (${sale.priceSol ? `${sale.priceSol} SOL` : "90%"}) & ghi nhận quyền sở hữu on-chain trên ví của bạn.`,
-        imageUrl: art?.imageUrl || "/assets/messi-symphony.svg",
+        imageUrl: art?.imageUrl || "/assets/hero-artwork.png",
         creator: sale.buyer,
         createdAt: sale.soldAt || Date.now(),
         category: "Đấu Giá Thắng Cuộc",
@@ -175,7 +176,7 @@ export function markArtworkAsSold(record: SoldArtworkRecord): void {
     mintAddress: record.mintAddress,
     title: art?.title || `Tác phẩm #${record.mintAddress.slice(0, 4)}`,
     description: art?.description || `Tác phẩm NFT đã được thanh toán & ghi nhận quyền sở hữu on-chain trên ví của bạn.`,
-    imageUrl: art?.imageUrl || "/assets/messi-symphony.svg",
+    imageUrl: art?.imageUrl || "/assets/hero-artwork.png",
     creator: record.buyer,
     createdAt: record.soldAt || Date.now(),
     category: "Đấu Giá Thắng Cuộc",

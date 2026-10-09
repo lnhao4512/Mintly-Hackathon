@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 use crate::state::{Auction, AuctionStatus, MarketplaceConfig};
-use crate::constants::{CONFIG_SEED, ESCROW_SEED};
+use crate::constants::{BPS_DENOMINATOR, CONFIG_SEED, ESCROW_SEED, SELLER_FORFEIT_BPS};
 use crate::errors::MarketplaceError;
 use crate::events::AuctionDefaulted;
 
@@ -40,6 +40,14 @@ pub struct DefaultWinner<'info> {
     )]
     pub forfeiture_payment_account: Box<Account<'info, TokenAccount>>,
 
+    /// Seller's token account — receives the no-show compensation.
+    #[account(
+        mut,
+        token::mint = auction.payment_mint,
+        token::authority = auction.seller,
+    )]
+    pub seller_payment_account: Box<Account<'info, TokenAccount>>,
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -61,18 +69,39 @@ pub fn handler(ctx: Context<DefaultWinner>) -> Result<()> {
             ];
             let signer = &[&seeds[..]];
 
-            let cpi_accounts = Transfer {
-                from: ctx.accounts.escrow_payment_account.to_account_info(),
-                to: ctx.accounts.forfeiture_payment_account.to_account_info(),
-                authority: ctx.accounts.escrow_authority.to_account_info(),
-            };
-            let cpi_program = ctx.accounts.token_program.to_account_info();
-            let cpi_ctx = CpiContext::new_with_signer(
-                cpi_program,
-                cpi_accounts,
-                signer,
-            );
-            token::transfer(cpi_ctx, deposit_paid)?;
+            let seller_share = deposit_paid
+                .checked_mul(SELLER_FORFEIT_BPS)
+                .ok_or(MarketplaceError::Overflow)?
+                .checked_div(BPS_DENOMINATOR)
+                .ok_or(MarketplaceError::Underflow)?;
+            let platform_share = deposit_paid
+                .checked_sub(seller_share)
+                .ok_or(MarketplaceError::Underflow)?;
+
+            if seller_share > 0 {
+                let cpi_ctx = CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.escrow_payment_account.to_account_info(),
+                        to: ctx.accounts.seller_payment_account.to_account_info(),
+                        authority: ctx.accounts.escrow_authority.to_account_info(),
+                    },
+                    signer,
+                );
+                token::transfer(cpi_ctx, seller_share)?;
+            }
+            if platform_share > 0 {
+                let cpi_ctx = CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.escrow_payment_account.to_account_info(),
+                        to: ctx.accounts.forfeiture_payment_account.to_account_info(),
+                        authority: ctx.accounts.escrow_authority.to_account_info(),
+                    },
+                    signer,
+                );
+                token::transfer(cpi_ctx, platform_share)?;
+            }
         }
     } else if auction.status == AuctionStatus::DEPOSIT_PENDING {
         require!(current_time > auction.deposit_deadline, MarketplaceError::InvalidDeadline);

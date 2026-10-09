@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     sha256: body.sha256,
     embedding: body.embedding,
     metadata: body.metadata,
+    locale: body.locale === "en" ? "en" : "vi",
   };
 
   // Handle explicit indexing after on-chain minting

@@ -60,9 +60,9 @@ export function WalletConnectButton() {
     return (
       <button
         disabled
-        className="ml-2 flex items-center gap-2 rounded-full bg-accent/60 px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] animate-pulse"
+        className="ml-2 flex items-center gap-2 rounded-full bg-accent/60 px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] animate-pulse"
       >
-        <span className="size-2 rounded-full bg-[#141313] animate-ping" />
+        <span className="size-2 rounded-full bg-[#0a0a09] animate-ping" />
         {t("wallet.connecting")}
       </button>
     );
@@ -74,7 +74,7 @@ export function WalletConnectButton() {
       <div ref={dropdownRef} className="relative ml-2">
         <button
           onClick={() => setDropdownOpen((v) => !v)}
-          className="flex items-center gap-2.5 rounded-full border border-accent/30 bg-[rgba(184,165,255,0.08)] px-4 py-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.15em] text-accent-strong transition-all hover:border-accent/60 hover:shadow-[0_0_20px_-6px_rgba(184,165,255,0.4)]"
+          className="flex items-center gap-2.5 rounded-full border border-accent/30 bg-[rgba(255,77,31,0.08)] px-4 py-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.15em] text-accent-strong transition-all hover:border-accent/60 hover:shadow-[0_0_20px_-6px_rgba(255,77,31,0.4)]"
         >
           <span className="relative flex size-2">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-60" />
@@ -131,7 +131,7 @@ export function WalletConnectButton() {
   return (
     <button
       onClick={handleConnect}
-      className="ml-2 rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-10px_rgba(184,165,255,0.7)]"
+      className="ml-2 rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-10px_rgba(255,77,31,0.7)]"
     >
       {t("nav.connect")}
     </button>

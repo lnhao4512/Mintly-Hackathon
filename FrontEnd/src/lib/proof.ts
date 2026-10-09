@@ -70,3 +70,13 @@ function stripProof(metadata: unknown): unknown {
   delete copy.proof;
   return copy;
 }
+
+/** Deterministic hash of a creation trace (time-lapse frames + stroke stats). Stored in NFT metadata. */
+export async function hashCreationTrace(t: {
+  method: string;
+  strokes: number;
+  durationMs: number;
+  frames: string[];
+}): Promise<string> {
+  return sha256Hex(JSON.stringify({ method: t.method, strokes: t.strokes, durationMs: t.durationMs, frames: t.frames }));
+}

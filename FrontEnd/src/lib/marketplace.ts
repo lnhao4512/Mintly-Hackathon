@@ -15,6 +15,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
+import { Lg } from "@/lib/i18n";
 import {
   WSOL_MINT,
   MARKETPLACE_FEE_BPS,
@@ -299,7 +300,7 @@ export async function createAuctionOnChain(
   instructions.forEach((i) => tx.add(i));
 
   if (!wallet.signTransaction) {
-    throw new Error("Ví không hỗ trợ ký giao dịch");
+    throw new Error(Lg("Ví không hỗ trợ ký giao dịch", "The wallet cannot sign transactions"));
   }
   const signedTx = await wallet.signTransaction(tx);
   signedTx.partialSign(escrowNftAccount);
@@ -335,7 +336,7 @@ export async function cancelListingOnChain(
 
   const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
   if (!escrowNftAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow NFT của tin đăng này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow NFT của tin đăng này trên Solana.", "The NFT escrow account for this listing was not found on Solana."));
   }
   const sellerNftAccount = await ensureAta(connection, wallet, nftMint, seller);
 
@@ -396,7 +397,17 @@ export async function placeBidOnChain(
     builder.remainingAccounts([{ pubkey: prevBidderPaymentAccount, isWritable: true, isSigner: false }]);
   }
 
-  return builder.rpc();
+  // The IDL marks escrow_payment_account as a signer (it is `init_if_needed`). That is only true the
+  // first time, when a fresh keypair creates it. After that nobody holds its key, so it must not be
+  // a signer — otherwise every bid after the first fails with "Signature verification failed".
+  const ix = await builder.instruction();
+  if (!escrowPayment.signer) {
+    const meta = ix.keys.find((k: { pubkey: PublicKey }) => k.pubkey.equals(escrowPayment.address));
+    if (meta) meta.isSigner = false;
+  }
+  const signature = await wallet.sendTransaction(new Transaction().add(ix), connection, escrowPayment.signer ? { signers: [escrowPayment.signer] } : undefined);
+  await connection.confirmTransaction(signature, "confirmed");
+  return signature;
 }
 
 export async function buyListingOnChain(
@@ -505,15 +516,15 @@ export async function payAuctionBalance(
   const escrowPaymentAccount = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
   const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
   if (!escrowPaymentAccount || !escrowNftAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.", "The escrow account for this auction was not found on Solana."));
   }
 
   const treasuryPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, treasury, true);
   const sellerPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, seller, true);
 
-  // amount = 0 lets the program fall back to auction.current_bid (see pay_balance.rs)
+  // The IDL for pay_balance takes no arguments; the program settles at auction.current_bid.
   return program.methods
-    .payBalance(new BN(0))
+    .payBalance()
     .accounts({
       winner,
       config: configPda,
@@ -533,8 +544,8 @@ export async function payAuctionBalance(
 }
 
 /**
- * Forfeits the winner's 10% escrow deposit to the configured forfeiture recipient
- * when they fail to pay the remaining balance before the payment deadline (default_winner.rs).
+ * Forfeits the winner's 10% escrow deposit (70% to the seller, 30% to the platform's
+ * forfeiture recipient) when they fail to pay the remaining balance before the payment deadline (default_winner.rs).
  */
 export async function defaultWinnerOnChain(
   connection: Connection,
@@ -551,9 +562,13 @@ export async function defaultWinnerOnChain(
 
   const escrowPaymentAccount = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
   if (!escrowPaymentAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.", "The escrow account for this auction was not found on Solana."));
   }
   const forfeiturePaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, forfeitureRecipient, true);
+
+  // 70% of the forfeited deposit compensates the seller (no-show insurance) — see default_winner.rs
+  const auctionAccount = await program.account.auction.fetch(auctionPda);
+  const sellerPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, auctionAccount.seller, true);
 
   return program.methods
     .defaultWinner()
@@ -563,6 +578,7 @@ export async function defaultWinnerOnChain(
       escrowAuthority,
       escrowPaymentAccount,
       forfeiturePaymentAccount,
+      sellerPaymentAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
     })
     .rpc();
@@ -586,7 +602,7 @@ export async function cancelAuctionOnChain(
 
   const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
   if (!escrowNftAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow NFT của phiên đấu giá này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow NFT của phiên đấu giá này trên Solana.", "The NFT escrow account for this auction was not found on Solana."));
   }
   const sellerNftAccount = await ensureAta(connection, wallet, nftMint, seller);
 

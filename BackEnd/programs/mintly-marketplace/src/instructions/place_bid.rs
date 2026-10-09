@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use crate::state::{Auction, AuctionStatus, Bid, MarketplaceConfig, TokenConfig};
-use crate::constants::{BID_SEED, CONFIG_SEED, ESCROW_SEED, TOKEN_SEED};
+use crate::constants::{ANTI_SNIPE_EXTENSION, ANTI_SNIPE_WINDOW, BID_SEED, CONFIG_SEED, ESCROW_SEED, TOKEN_SEED};
 use crate::errors::MarketplaceError;
 use crate::events::{BidPlaced, PreviousBidderRefunded};
 
@@ -158,6 +158,13 @@ pub fn handler<'info>(
     auction.highest_bidder = Some(ctx.accounts.bidder.key());
     auction.current_bid = amount;
     auction.deposit_paid = deposit_amount;
+
+    // Anti-sniping: a late bid extends the auction so others can respond.
+    if auction.end_time - current_time < ANTI_SNIPE_WINDOW {
+        auction.end_time = current_time
+            .checked_add(ANTI_SNIPE_EXTENSION)
+            .ok_or(MarketplaceError::Overflow)?;
+    }
 
     // Update bid state
     let bid = &mut ctx.accounts.bid;

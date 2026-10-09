@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -8,14 +9,18 @@ import { Navbar } from "@/components/layout/Navbar";
 import { DotsIcon, PlusIcon, ChevronDownIcon, SolanaIcon } from "@/components/ui/Icons";
 import { useDrawingCanvas } from "@/hooks/useDrawingCanvas";
 import { CanvasToolbar } from "@/components/canvas/CanvasToolbar";
+import { BrushPanel } from "@/components/canvas/BrushPanel";
+import { LayersPanel } from "@/components/canvas/LayersPanel";
+import { deleteDraft, draftKey, loadDraft, saveDraft, type DraftPayload } from "@/lib/paint/draftStore";
 import { MintModal } from "@/components/canvas/MintModal";
 import { mintNFT } from "@/lib/mint";
 import { useI18n } from "@/lib/i18n";
 import { analyzeArtworkSimilarity, registerMintedArtworkAI, type AiStage, type ArtworkSimilarityResult } from "@/lib/ai";
 import { saveMintedArtwork } from "@/lib/artworkCache";
+import { hashCreationTrace, sha256Hex } from "@/lib/proof";
 
 export default function CreatorStudioPage() {
-  const { t } = useI18n();
+  const { t, L } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state, actions, handlers } = useDrawingCanvas(canvasRef);
 
@@ -26,7 +31,126 @@ export default function CreatorStudioPage() {
 
   const [title, setTitle] = useState("");
   const [statement, setStatement] = useState("");
+
+  // ---------------- drafts + leave guard ----------------
+  const router = useRouter();
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  // small screens start with the publish panel folded away so the canvas gets the room
+  useEffect(() => {
+    if (window.innerWidth < 1440) setRightOpen(false);
+  }, []);
+  const [metaDirty, setMetaDirty] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<DraftPayload | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<string | null>(null);
+  const dKey = draftKey(publicKey?.toBase58());
+  const unsaved = state.isDirty || metaDirty;
+  const unsavedRef = useRef(false);
+  unsavedRef.current = unsaved;
+
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    const payload = actions.serializeDraft({ title, statement });
+    if (!payload) return false;
+    setSavingDraft(true);
+    try {
+      await saveDraft(dKey, payload);
+      setSavedAt(payload.updatedAt);
+      actions.markClean();
+      setMetaDirty(false);
+      return true;
+    } catch (e) {
+      console.warn("Draft save failed:", e);
+      return false;
+    } finally {
+      setSavingDraft(false);
+    }
+  }, [actions, dKey, statement, title]);
+  const saveRef = useRef(saveNow);
+  saveRef.current = saveNow;
+  const mintOpenRef = useRef(false);
+
+  // offer to restore a saved draft when the studio opens
+  useEffect(() => {
+    if (!connected) return;
+    let alive = true;
+    loadDraft(dKey).then((d) => {
+      if (alive && d) setPendingDraft(d);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [connected, dKey]);
+
+  // autosave while there are unsaved changes (idle-time so drawing never stutters)
+  useEffect(() => {
+    if (!connected) return;
+    const run = () => {
+      if (!unsavedRef.current || mintOpenRef.current) return;
+      const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+      if (ric) ric(() => void saveRef.current(), { timeout: 4000 });
+      else void saveRef.current();
+    };
+    const id = window.setInterval(run, 20000);
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && unsavedRef.current) void saveRef.current();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [connected]);
+
+  // closing / reloading the tab
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!unsavedRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // clicking any in-app link (navbar, footer, menu...) while there is unsaved work
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!unsavedRef.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeaveTarget(url.pathname + url.search + url.hash);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
+  const leaveNow = useCallback(
+    (target: string) => {
+      unsavedRef.current = false;
+      actions.markClean();
+      setMetaDirty(false);
+      setLeaveTarget(null);
+      router.push(target);
+    },
+    [actions, router]
+  );
+
+  const saveAndLeave = useCallback(
+    async (target: string) => {
+      await saveNow();
+      leaveNow(target);
+    },
+    [leaveNow, saveNow]
+  );
   const [mintModalOpen, setMintModalOpen] = useState(false);
+  // (mirrored into a ref for the autosave timer)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fullscreenRef = useRef<HTMLElement>(null);
@@ -34,14 +158,68 @@ export default function CreatorStudioPage() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
+  // ---- Live drawing broadcast -------------------------------------------------
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const stopLive = useCallback(async () => {
+    const id = liveSessionId;
+    setLiveSessionId(null);
+    if (id) fetch("/api/live", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "end", sessionId: id }) }).catch(() => {});
+  }, [liveSessionId]);
+
+  const startLive = useCallback(async () => {
+    setLiveError(null);
+    if (!publicKey || !wallet.signMessage) {
+      setLiveError(L("Hãy kết nối ví hỗ trợ ký tin nhắn (ví dụ Phantom).", "Connect a wallet that can sign messages (e.g. Phantom)."));
+      return;
+    }
+    try {
+      const nonce = crypto.randomUUID();
+      const creator = publicKey.toBase58();
+      const sig = await wallet.signMessage(new TextEncoder().encode(`MINTLY_LIVE:${creator}:${nonce}`));
+      const res = await fetch("/api/live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", creator, title: title || L("Tác phẩm đang vẽ", "Artwork in progress"), nonce, signature: btoa(String.fromCharCode(...sig)) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || L("Không thể bắt đầu phát", "Could not start broadcasting"));
+      setLiveSessionId(data.sessionId);
+    } catch (e) {
+      setLiveError(e instanceof Error ? e.message : L("Không thể bắt đầu phát", "Could not start broadcasting"));
+    }
+  }, [publicKey, wallet, title]);
+
+  useEffect(() => {
+    if (!liveSessionId) return;
+    const timer = setInterval(() => {
+      const frame = actions.getLiveFrame();
+      if (!frame) return;
+      fetch("/api/live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "frame", sessionId: liveSessionId, frame, title: title || undefined }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [liveSessionId, actions, title]);
+
+  // ---- Originality gate: exact copies are blocked, near-copies need a signed attestation ----
+  const [blockReason, setBlockReason] = useState<string | null>(null);
+  const [attestOpen, setAttestOpen] = useState(false);
+  const [attestChecked, setAttestChecked] = useState(false);
+  const [attestSig, setAttestSig] = useState<string | null>(null);
+  const [attestError, setAttestError] = useState<string | null>(null);
   const [aiCheck, setAiCheck] = useState<ArtworkSimilarityResult | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
   const [aiStage, setAiStage] = useState<AiStage | null>(null);
   const aiStageLabel: Record<AiStage, string> = {
-    preparing: "Đang chuẩn bị ảnh...",
-    "loading-model": "Đang tải mô hình AI (chỉ lần đầu)...",
-    embedding: "AI đang phân tích hình ảnh...",
-    comparing: "Đang đối chiếu với kho tác phẩm...",
+    preparing: L("Đang chuẩn bị ảnh...", "Preparing the image..."),
+    "loading-model": L("Đang tải mô hình AI (chỉ lần đầu)...", "Loading the AI model (first time only)..."),
+    embedding: L("AI đang phân tích hình ảnh...", "AI is analysing the image..."),
+    comparing: L("Đang đối chiếu với kho tác phẩm...", "Comparing with existing artworks..."),
   };
 
   const runAiSimilarityCheck = useCallback(async () => {
@@ -120,8 +298,20 @@ export default function CreatorStudioPage() {
     if (base64Data) {
       setPreviewUrl(base64Data);
       setAiChecking(true);
+      setBlockReason(null);
       try {
-        setAiCheck(await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage));
+        const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage);
+        setAiCheck(result);
+        if (result.matchType === "EXACT") {
+          setBlockReason(L(`Ảnh này trùng khớp hoàn toàn với "${result.closestMatch?.title ?? "một tác phẩm đã có"}". {L("Không thể mint", "Cannot mint")} bản sao y hệt.`, `This image is an exact match for "${result.closestMatch?.title ?? "an existing artwork"}". An identical copy cannot be minted.`));
+          return;
+        }
+        if (result.status === "HIGH_SIMILARITY" && !attestSig) {
+          setAttestChecked(false);
+          setAttestError(null);
+          setAttestOpen(true);
+          return;
+        }
       } catch (error) {
         console.error("AI similarity check failed:", error);
       } finally {
@@ -129,7 +319,21 @@ export default function CreatorStudioPage() {
       }
     }
     setMintModalOpen(true);
-  }, [connected, actions, setVisible, title, statement]);
+  }, [connected, actions, setVisible, title, statement, attestSig]);
+
+  const confirmAttestation = useCallback(async () => {
+    if (!publicKey || !wallet.signMessage || !previewUrl) return;
+    setAttestError(null);
+    try {
+      const hash = await sha256Hex(previewUrl);
+      const sig = await wallet.signMessage(new TextEncoder().encode(`MINTLY_ATTEST:${publicKey.toBase58()}:${hash}`));
+      setAttestSig(btoa(String.fromCharCode(...sig)));
+      setAttestOpen(false);
+      setMintModalOpen(true);
+    } catch (e) {
+      setAttestError(e instanceof Error ? e.message : L("Không thể ký xác nhận", "Could not sign the confirmation"));
+    }
+  }, [publicKey, wallet, previewUrl]);
 
   const handleConfirmMint = useCallback(
     async (onProgress?: (step: "preparing" | "awaiting-wallet" | "confirming" | "success") => void) => {
@@ -141,12 +345,25 @@ export default function CreatorStudioPage() {
       // Final check on the exact pixels being minted; the fingerprint is written into the NFT
       // metadata (and therefore into the creation proof) so provenance order can be proven.
       const finalCheck = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }).catch(() => null);
+      if (finalCheck?.matchType === "EXACT") {
+        throw new Error(L("Ảnh trùng khớp hoàn toàn với tác phẩm đã có — không thể mint.", "The image exactly matches an existing artwork — it cannot be minted."));
+      }
       const provenanceAttributes = finalCheck?.perceptualHash
         ? [
             { trait_type: "Perceptual Hash", value: finalCheck.perceptualHash },
             { trait_type: "Originality Score", value: `${finalCheck.originalityScore ?? ""}` },
+            ...(attestSig ? [{ trait_type: "Originality Attestation", value: attestSig.slice(0, 44) }] : []),
           ]
         : [];
+
+      // Proof-of-creation: the hash of the time-lapse trace is anchored on-chain via the SPL Memo program in the mint tx;
+      // the frames themselves are stored off-chain (MongoDB).
+      const trace = actions.getCreationTrace();
+      const proofHash = await hashCreationTrace(trace);
+      const creationAttributes = [
+        { trait_type: "Creation Method", value: trace.method },
+        { trait_type: "Creation Proof", value: proofHash },
+      ];
 
       const result = await mintNFT(
         connection,
@@ -161,7 +378,8 @@ export default function CreatorStudioPage() {
           creators: [{ address: publicKey.toBase58(), share: 100 }],
         },
         onProgress,
-        provenanceAttributes
+        [...provenanceAttributes, ...creationAttributes],
+        { hash: proofHash, method: trace.method }
       );
 
       // Only now index and store artwork fingerprint into AI registry for copyright protection
@@ -169,19 +387,30 @@ export default function CreatorStudioPage() {
         // 1. Save to User Portfolio & Artwork Image Cache
         saveMintedArtwork({
           mintAddress: result.mintAddress,
-          title: title || "Tác phẩm MINTLY",
-          description: statement || "Tác phẩm kỹ thuật số được tạo từ MINTLY Studio.",
+          title: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
+          description: statement || L("Tác phẩm kỹ thuật số được tạo từ MINTLY Studio.", "A digital artwork created in MINTLY Studio."),
           imageUrl: base64Data,
           creator: publicKey.toBase58(),
           createdAt: Date.now(),
           signature: result.signature,
-          category: "Độc bản 1/1",
+          category: L("Độc bản 1/1", "1/1 original"),
           rarity: "rare",
+          originalityScore: finalCheck?.originalityScore ?? null,
         });
+
+        fetch("/api/proofs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...trace, mintAddress: result.mintAddress, creator: publicKey.toBase58(), proofHash, signature: result.signature }),
+        }).catch((err) => console.warn("Failed to store creation proof:", err));
+
+        void deleteDraft(dKey);
+        actions.markClean();
+        setMetaDirty(false);
 
         // 2. Register into AI similarity index
         registerMintedArtworkAI(base64Data, {
-          name: title || "Tác phẩm MINTLY",
+          name: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
           description: statement,
           mint: result.mintAddress,
         }).catch((err) => console.warn("Failed to register artwork in AI cache:", err));
@@ -189,8 +418,10 @@ export default function CreatorStudioPage() {
 
       return result;
     },
-    [publicKey, wallet, connection, actions, title, statement]
+    [publicKey, wallet, connection, actions, title, statement, attestSig, dKey]
   );
+
+  mintOpenRef.current = mintModalOpen;
 
   const handleCloseMint = useCallback(() => {
     setMintModalOpen(false);
@@ -200,39 +431,60 @@ export default function CreatorStudioPage() {
 
   const handleBackToCanvas = useCallback(() => {
     actions.clear();
+    void deleteDraft(dKey);
+    setMetaDirty(false);
+    setSavedAt(null);
     setTitle("");
     setStatement("");
     setPreviewUrl(null);
-  }, [actions]);
+  }, [actions, dKey]);
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden">
+    <div className="relative flex h-[calc(100svh-30px)] flex-col overflow-hidden">
       <Navbar />
 
-      <main className="flex flex-1 gap-8 overflow-y-auto px-4 pb-8 pt-28 md:px-8 md:pt-32">
+      <main className="flex min-h-0 flex-1 gap-3 overflow-hidden px-3 pb-4 pt-24 md:px-5 md:pt-24">
         {!connected ? (
-          <section className="rainbow-border flex flex-1 items-center justify-center rounded-2xl bg-[rgba(18,18,18,0.72)] p-8 text-center backdrop-blur-xl">
-            <div className="glass-panel flex w-full max-w-md flex-col items-center gap-5 rounded-2xl p-8">
-              <div className="flex size-14 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-2xl text-accent">
-                +
-              </div>
-              <div>
-                <h1 className="font-display text-3xl text-text">{t("create.connectTitle")}</h1>
-                <p className="mt-3 text-sm leading-6 text-text-dim">
-                  {t("create.connectText")}
-                </p>
-              </div>
-              <button
-                onClick={() => setVisible(true)}
-                className="rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)]"
-              >
-                {t("create.connectPhantom")}
+          <section className="relative flex flex-1 flex-col justify-between overflow-hidden border border-line p-6 sm:p-10">
+            <div className="flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
+              <span className="flex items-center gap-2 text-accent"><span className="size-1.5 rounded-full bg-accent" />Studio</span>
+              <span>{L("03 / Sáng tạo", "03 / Create")}</span>
+            </div>
+            <div>
+              <h1 className="mega text-[clamp(3rem,10vw,10rem)]">
+                {t("create.connectTitle")}
+              </h1>
+              <p className="mt-6 max-w-md text-[15px] leading-relaxed text-text-dim-2">{t("create.connectText")}</p>
+              <button onClick={() => setVisible(true)} className="btn mt-8">
+                {t("create.connectPhantom")} <span aria-hidden>→</span>
               </button>
             </div>
+            <i className="reg left-3 top-3" />
+            <i className="reg right-3 top-3" />
+            <i className="reg bottom-3 left-3" />
+            <i className="reg bottom-3 right-3" />
           </section>
         ) : (
           <>
-            {/* Canvas area */}
+            {/* Left: drawing tools — brushes, colour, layers */}
+            {leftOpen && (
+              <aside
+                data-lenis-prevent
+                className="flex w-[300px] shrink-0 flex-col gap-6 overflow-y-auto overflow-x-hidden overscroll-contain border border-line bg-[rgba(18,18,17,0.7)] p-5 backdrop-blur-md max-lg:hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-2xl font-light tracking-[-0.03em]">{L("Dụng cụ", "Tools")}</h2>
+                  <button type="button" onClick={() => setLeftOpen(false)} title={L("Thu gọn", "Collapse")} aria-label="collapse tools" className="flex size-8 items-center justify-center border border-line text-text-dim transition-colors hover:border-text hover:text-text">
+                    ‹
+                  </button>
+                </div>
+                <BrushPanel state={state} actions={actions} />
+                <div className="border-t border-line" />
+                <LayersPanel state={state} actions={actions} />
+              </aside>
+            )}
+
+            {/* Canvas area (centre) */}
             <section 
               ref={fullscreenRef}
               onDragOver={(e) => {
@@ -253,13 +505,13 @@ export default function CreatorStudioPage() {
                   }
                 }
               }}
-              className="relative flex flex-1 items-center justify-center overflow-hidden rounded-2xl border border-line-subtle bg-[#f8f8f8] shadow-[inset_0_2px_4px_1px_rgba(0,0,0,0.05)]"
+              className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden border border-line bg-[#171716]"
             >
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   backgroundImage:
-                    "linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)",
+                    "linear-gradient(rgba(236,231,218,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(236,231,218,0.045) 1px, transparent 1px)",
                   backgroundSize: "40px 40px",
                 }}
               />
@@ -277,11 +529,11 @@ export default function CreatorStudioPage() {
               )}
 
               {/* Canvas artboard with Native Scroll for Panning */}
-              <div className="relative size-full overflow-y-auto flex items-center justify-center py-8">
+              <div className="relative size-full overflow-auto flex items-start justify-center pt-5 pb-24">
                 <div 
                   className="relative aspect-square shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.35)] transition-all duration-200 ease-out"
                   style={{
-                    height: `calc(80% * ${state.zoomScale})`,
+                    height: `calc((100% - 6.5rem) * ${state.zoomScale})`,
                     minHeight: `calc(320px * ${state.zoomScale})`,
                   }}
                 >
@@ -296,11 +548,37 @@ export default function CreatorStudioPage() {
                 </div>
               </div>
 
+              {/* handles for collapsed side panels */}
+              {!leftOpen && (
+                <button
+                  type="button"
+                  onClick={() => setLeftOpen(true)}
+                  className="absolute left-4 top-16 z-10 border border-line bg-ink/90 px-3 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text backdrop-blur-sm transition-colors hover:border-accent max-lg:hidden"
+                >
+                  › {L("Dụng cụ", "Tools")}
+                </button>
+              )}
+              {!rightOpen && (
+                <button
+                  type="button"
+                  onClick={() => setRightOpen(true)}
+                  className="absolute right-4 top-4 z-10 border border-line bg-ink/90 px-3 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text backdrop-blur-sm transition-colors hover:border-accent max-lg:hidden"
+                >
+                  {L("Xuất bản", "Publish")} ‹
+                </button>
+              )}
+
               {/* Canvas status pill */}
               <div className="absolute left-4 top-4 flex items-center gap-3 rounded-full border border-line-glass bg-[rgba(34,34,34,0.55)] px-4 py-2 backdrop-blur-md">
                 <span className="size-2 rounded-full bg-[#e3e2e1]" />
                 <span className="eyebrow">
-                  {state.zoomScale !== 1 ? `${t("create.zoom")}: ${Math.round(state.zoomScale * 100)}%` : t("create.readyToDraw")}
+                  {state.zoomScale !== 1
+                    ? `${t("create.zoom")}: ${Math.round(state.zoomScale * 100)}%`
+                    : unsaved
+                      ? L("Chưa lưu", "Unsaved")
+                      : savedAt
+                        ? L("Đã lưu nháp", "Draft saved")
+                        : t("create.readyToDraw")}
                 </span>
               </div>
 
@@ -313,12 +591,16 @@ export default function CreatorStudioPage() {
               />
             </section>
 
-            {/* Metadata panel */}
-            <aside className="flex w-[382px] shrink-0 flex-col gap-8 overflow-auto rounded-2xl border border-line-glass bg-[rgba(34,34,34,0.4)] p-8 backdrop-blur-md max-lg:hidden">
+            {/* Right: publish — metadata, AI originality check, draft + mint */}
+            {rightOpen && (
+            <aside
+              data-lenis-prevent
+              className="flex w-[340px] shrink-0 flex-col gap-6 overflow-y-auto overflow-x-hidden overscroll-contain border border-line bg-[rgba(18,18,17,0.7)] p-5 backdrop-blur-md max-lg:hidden"
+            >
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-[32px] leading-10 text-text">{t("create.provenance")}</h2>
-                <button aria-label="More options" className="pb-2 text-text-dim hover:text-text">
-                  <DotsIcon width={18} height={18} />
+                <h2 className="font-display text-2xl font-light tracking-[-0.03em]">{L("Xuất bản", "Publish")}</h2>
+                <button type="button" onClick={() => setRightOpen(false)} title={L("Thu gọn", "Collapse")} aria-label="collapse publish" className="flex size-8 items-center justify-center border border-line text-text-dim transition-colors hover:border-text hover:text-text">
+                  ›
                 </button>
               </div>
 
@@ -355,7 +637,10 @@ export default function CreatorStudioPage() {
                 <span className="eyebrow">{t("create.artworkTitle")}</span>
                 <input
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    setMetaDirty(true);
+                  }}
                   placeholder={t("create.titlePlaceholder")}
                   className="border-b border-white/10 bg-transparent pb-3 pt-2 font-sans text-lg text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent"
                 />
@@ -366,7 +651,10 @@ export default function CreatorStudioPage() {
             <span className="eyebrow">{t("create.statement")}</span>
             <textarea
               value={statement}
-              onChange={(e) => setStatement(e.target.value)}
+              onChange={(e) => {
+                setStatement(e.target.value);
+                setMetaDirty(true);
+              }}
               placeholder={t("create.statementPlaceholder")}
               rows={4}
               className="resize-none rounded-[24px] border border-line-subtle bg-[rgba(32,31,31,0.3)] p-4 font-sans text-sm leading-6 text-text outline-none transition-colors placeholder:text-[rgba(196,199,199,0.5)] focus:border-accent"
@@ -460,12 +748,12 @@ export default function CreatorStudioPage() {
                         {aiCheck.status === "LOW_SIMILARITY"
                           ? t("ai.original")
                           : aiCheck.status === "MODERATE_SIMILARITY"
-                            ? "Độ tương đồng trung bình"
+                            ? L("Độ tương đồng trung bình", "Moderate similarity")
                             : t("ai.duplicateWarning")}
                       </span>
                     </div>
                     <span className="font-mono text-xs font-bold text-accent">
-                      {aiCheck.originalityScore ?? (100 - (aiCheck.similarity ?? 0)).toFixed(1)}% Nguyên bản
+                      {aiCheck.originalityScore ?? (100 - (aiCheck.similarity ?? 0)).toFixed(1)}% {L("Nguyên bản", "Original")}
                     </span>
                   </div>
 
@@ -476,8 +764,8 @@ export default function CreatorStudioPage() {
                         aiCheck.status === "LOW_SIMILARITY"
                           ? "bg-gradient-to-r from-emerald-400 to-accent"
                           : aiCheck.status === "MODERATE_SIMILARITY"
-                            ? "bg-gradient-to-r from-amber-400 to-orange-400"
-                            : "bg-gradient-to-r from-red-500 to-pink-500"
+                            ? "bg-gradient-to-r from-amber-400 to-accent-strong"
+                            : "bg-gradient-to-r from-red-500 to-accent"
                       }`}
                       style={{ width: `${aiCheck.originalityScore ?? 100 - (aiCheck.similarity ?? 0)}%` }}
                     />
@@ -486,7 +774,7 @@ export default function CreatorStudioPage() {
                   {/* Dominant Palette Swatches */}
                   {aiCheck.dominantColors && aiCheck.dominantColors.length > 0 && (
                     <div className="flex items-center justify-between rounded-xl bg-white/[0.02] p-2 border border-white/5">
-                      <span className="text-[10px] uppercase tracking-wider text-text-dim">Màu nhận diện:</span>
+                      <span className="text-[10px] uppercase tracking-wider text-text-dim">{L("Màu nhận diện:", "Dominant colours:")}</span>
                       <div className="flex items-center gap-1.5">
                         {aiCheck.dominantColors.map((hex) => (
                           <span
@@ -504,22 +792,22 @@ export default function CreatorStudioPage() {
                   {aiCheck.closestMatch && (
                     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2.5 text-[11px] text-text-dim">
                       <div className="flex justify-between">
-                        <span>Tác phẩm gần nhất:</span>
+                        <span>{L("Tác phẩm gần nhất:", "Closest artwork:")}</span>
                         <strong className="text-text">{aiCheck.closestMatch.title}</strong>
                       </div>
                       <div className="mt-1 flex justify-between text-[10px]">
-                        <span>Độ tương đồng tổng hợp:</span>
+                        <span>{L("Độ tương đồng tổng hợp:", "Overall similarity:")}</span>
                         <span className="text-accent">{aiCheck.similarity}%</span>
                       </div>
                       {aiCheck.matchType && aiCheck.matchType !== "DISTINCT" && (
                         <div className="mt-1 flex justify-between text-[10px]">
-                          <span>Loại trùng lặp:</span>
+                          <span>{L("Loại trùng lặp:", "Type of match:")}</span>
                           <span className="text-text">
                             {aiCheck.matchType === "EXACT"
-                              ? "Bản sao y hệt"
+                              ? L("Bản sao y hệt", "Exact copy")
                               : aiCheck.matchType === "NEAR_DUPLICATE"
-                                ? "Ảnh chỉnh sửa nhẹ"
-                                : "Nhái phong cách/bố cục"}
+                                ? L("Ảnh chỉnh sửa nhẹ", "Lightly edited copy")
+                                : L("Nhái phong cách/bố cục", "Style / layout imitation")}
                           </span>
                         </div>
                       )}
@@ -530,8 +818,8 @@ export default function CreatorStudioPage() {
                   <div className="grid grid-cols-4 gap-1.5 text-center">
                     {[
                       ["Hash", aiCheck.hashSimilarity],
-                      ["Bố cục", aiCheck.visualSimilarity],
-                      ["Màu", aiCheck.colorSimilarity],
+                      [L("Bố cục", "Layout"), aiCheck.visualSimilarity],
+                      [L("Màu", "Colour"), aiCheck.colorSimilarity],
                       ["AI", aiCheck.embeddingAvailable ? aiCheck.semanticSimilarity : null],
                     ].map(([label, value]) => (
                       <div key={label as string} className="rounded-lg border border-white/5 bg-white/[0.02] px-1 py-1.5">
@@ -576,31 +864,174 @@ export default function CreatorStudioPage() {
               </p>
               <button
                 onClick={() => setVisible(true)}
-                className="mt-3 w-full rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#141313] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)]"
+                className="mt-3 w-full rounded-full bg-accent px-6 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)]"
               >
                 {t("nav.connect")}
               </button>
             </div>
           )}
 
-          <div className="mt-auto flex gap-4 pt-8">
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-5">
+            <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text-dim">
+              {unsaved ? (
+                <span className="text-amber">● {L("Chưa lưu", "Unsaved changes")}</span>
+              ) : savedAt ? (
+                `✓ ${L("Đã lưu nháp", "Draft saved")} ${new Date(savedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+              ) : (
+                L("Chưa có bản nháp", "No draft yet")
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => void saveNow()}
+              disabled={savingDraft || !unsaved}
+              className="border border-line px-4 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text transition-colors hover:border-accent hover:text-accent disabled:pointer-events-none disabled:opacity-40"
+            >
+              {savingDraft ? L("Đang lưu…", "Saving…") : L("Lưu nháp", "Save draft")}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
             <button 
               onClick={handlePreview}
-              className="flex-1 rounded-full border border-white/10 px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-text transition-colors hover:border-text hover:bg-white/5"
+              className="border border-line px-3 py-3 font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-text transition-colors hover:border-text hover:bg-white/5"
             >
               {t("create.preview")}
             </button>
+            <div className="space-y-1">
+              <button
+                onClick={liveSessionId ? stopLive : startLive}
+                className={`h-full w-full border px-3 py-3 font-sans text-[10px] font-bold uppercase tracking-[0.14em] transition-all ${
+                  liveSessionId ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-white/15 text-text hover:border-white/30"
+                }`}
+              >
+                {liveSessionId ? L("● Đang live — dừng", "● Live — stop") : L("Phát trực tiếp", "Go live")}
+              </button>
+              {liveSessionId && publicKey && (
+                <a href={`/live/${publicKey.toBase58()}`} target="_blank" rel="noopener noreferrer" className="block text-center text-[11px] text-accent hover:underline">
+                  {L("Mở trang người xem", "Open the viewer page")}
+                </a>
+              )}
+              {liveError && <p className="text-center text-[11px] text-red-300">{liveError}</p>}
+            </div>
             <button
               onClick={handleOpenMint}
-              className="flex-1 rounded-full bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(184,165,255,0.7)] disabled:opacity-40 disabled:pointer-events-none"
+              className="col-span-2 bg-accent px-6 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-[#0a0a09] transition-all hover:bg-accent-strong hover:shadow-[0_10px_40px_-8px_rgba(255,77,31,0.7)] disabled:opacity-40 disabled:pointer-events-none"
             >
               {t("create.mintArtifact")}
             </button>
           </div>
             </aside>
+            )}
           </>
         )}
       </main>
+
+      {pendingDraft && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6">
+            <p className="eyebrow text-accent">{L("Bản nháp chưa hoàn thành", "Unfinished draft")}</p>
+            <p className="mt-2 font-display text-3xl font-light tracking-[-0.03em]">{pendingDraft.title || L("Chưa đặt tên", "Untitled")}</p>
+            <div className="mt-4 flex gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={pendingDraft.thumb} alt="" className="size-24 border border-line bg-white object-cover" />
+              <div className="text-sm text-text-dim-2">
+                <p>
+                  {pendingDraft.layers.length} {L("lớp", "layers")} · {pendingDraft.trace.strokes} {L("nét vẽ", "strokes")}
+                </p>
+                <p className="mt-1 text-text-dim">
+                  {L("Lưu lúc", "Saved")} {new Date(pendingDraft.updatedAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn flex-1 !py-3"
+                onClick={async () => {
+                  const d = pendingDraft;
+                  setPendingDraft(null);
+                  await actions.restoreDraft(d);
+                  setTitle(d.title);
+                  setStatement(d.statement);
+                  setSavedAt(d.updatedAt);
+                  setMetaDirty(false);
+                }}
+              >
+                {L("Tiếp tục vẽ", "Continue drawing")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost flex-1 !py-3"
+                onClick={() => {
+                  void deleteDraft(dKey);
+                  setPendingDraft(null);
+                }}
+              >
+                {L("Bắt đầu mới", "Start fresh")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {leaveTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6">
+            <p className="eyebrow text-amber">{L("Bạn có thay đổi chưa lưu", "You have unsaved changes")}</p>
+            <p className="mt-2 font-display text-3xl font-light tracking-[-0.03em]">{L("Rời khỏi Studio?", "Leave the Studio?")}</p>
+            <p className="mt-3 text-sm text-text-dim-2">
+              {L("Tranh đang vẽ sẽ mất nếu bạn rời đi mà không lưu. Lưu nháp để tiếp tục vẽ sau.", "Your drawing will be lost if you leave without saving. Save a draft to keep working later.")}
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button type="button" className="btn !py-3" disabled={savingDraft} onClick={() => void saveAndLeave(leaveTarget)}>
+                {savingDraft ? L("Đang lưu…", "Saving…") : L("Lưu nháp & rời đi", "Save draft & leave")}
+              </button>
+              <button type="button" className="btn btn-ghost !py-3" onClick={() => leaveNow(leaveTarget)}>
+                {L("Rời đi, không lưu", "Leave without saving")}
+              </button>
+              <button type="button" className="py-2 font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim hover:text-text" onClick={() => setLeaveTarget(null)}>
+                {L("Ở lại vẽ tiếp", "Stay and keep drawing")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {blockReason && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4" onClick={() => setBlockReason(null)}>
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6" onClick={(e) => e.stopPropagation()}>
+            <p className="font-display text-2xl text-red-300">{L("Không thể mint", "Cannot mint")}</p>
+            <p className="mt-3 text-sm text-text-dim">{blockReason}</p>
+            <button onClick={() => setBlockReason(null)} className="mt-5 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">{L("Đã hiểu", "Got it")}</button>
+          </div>
+        </div>
+      )}
+
+      {attestOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md border border-line bg-[#121211] p-6">
+            <p className="font-display text-2xl text-amber">{L("Ảnh rất giống tác phẩm khác", "This image closely resembles another artwork")}</p>
+            <p className="mt-3 text-sm text-text-dim">
+              {L(`AI thấy ảnh này giống ${Math.round(aiCheck?.similarity ?? 0)}% với \u201c${aiCheck?.closestMatch?.title ?? "một tác phẩm đã có"}\u201d. Nếu đây là tác phẩm của bạn, hãy xác nhận và ký bằng ví. Chữ ký được ghi vào metadata, và nếu bị khiếu nại đạo nhái, nó là bằng chứng bạn đã cam kết.`, `AI finds this image ${Math.round(aiCheck?.similarity ?? 0)}% similar to \u201c${aiCheck?.closestMatch?.title ?? "an existing artwork"}\u201d. If it is your own work, confirm and sign with your wallet. The signature is recorded in the metadata and is evidence of your commitment if a plagiarism dispute is raised.`)}
+            </p>
+            <label className="mt-4 flex items-start gap-2 text-sm text-text">
+              <input type="checkbox" checked={attestChecked} onChange={(e) => setAttestChecked(e.target.checked)} className="mt-1" />
+              {L("Tôi là tác giả và chịu trách nhiệm về tính nguyên bản của tác phẩm này.", "I am the author and take responsibility for the originality of this artwork.")}
+            </label>
+            {attestError && <p className="mt-3 text-xs text-red-300">{attestError}</p>}
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setAttestOpen(false)} className="flex-1 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">{L("Hủy", "Cancel")}</button>
+              <button
+                onClick={confirmAttestation}
+                disabled={!attestChecked}
+                className="flex-1 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a09] disabled:opacity-40"
+              >
+                {L("Ký & tiếp tục", "Sign & continue")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mint confirmation modal */}
       <MintModal

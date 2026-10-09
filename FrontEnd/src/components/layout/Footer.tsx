@@ -1,61 +1,69 @@
-import Link from "next/link";
-import Image from "next/image";
-import { ArrowUpIcon } from "@/components/ui/Icons";
-import { useI18n, type TranslationKey } from "@/lib/i18n";
+"use client";
 
-const columns = [
-  { links: ["footer.provenance", "footer.manifesto"] },
-  { links: ["footer.support", "footer.privacy", "footer.terms"] },
+import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
+import { FadeUp } from "@/components/motion/Reveal";
+import { FooterWordmark } from "@/components/layout/FooterWordmark";
+
+type Bi = [string, string];
+const cols: { title: Bi; links: { label: Bi; href: string }[] }[] = [
+  {
+    title: ["Thị trường", "Market"],
+    links: [
+      { label: ["Đấu giá", "Auctions"], href: "/auctions" },
+      { label: ["Giá cố định", "Fixed price"], href: "/market" },
+      { label: ["Vẽ trực tiếp", "Live drawing"], href: "/live" },
+    ],
+  },
+  {
+    title: ["Bằng chứng", "Proof"],
+    links: [
+      { label: ["Kiểm tra nguyên bản", "Originality check"], href: "/originality" },
+      { label: ["Xác minh mint", "Verify a mint"], href: "/verify" },
+      { label: ["Studio", "Studio"], href: "/create" },
+    ],
+  },
+  {
+    title: ["Điều khoản", "Fine print"],
+    links: [
+      { label: ["Pháp lý & rủi ro", "Legal & risk"], href: "/legal" },
+      { label: ["Kho tác phẩm", "Vault"], href: "/portfolio" },
+    ],
+  },
 ];
 
 export function Footer() {
-  const { t } = useI18n();
-
+  const { t, L } = useI18n();
   return (
-    <footer className="border-t border-[rgba(68,71,72,0.2)] bg-[#0a0d10] px-6 pb-20 pt-20 md:px-16">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-4 md:max-w-[320px]">
-          <div className="flex items-center gap-3">
-            <div className="relative size-10 overflow-hidden rounded-xl border border-white/15 bg-[#1f2b23] shadow-inner">
-              <Image
-                src="/logo.png"
-                alt="MINTLY Logo"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <p className="font-display text-[30px] leading-none text-text">MINTLY</p>
-          </div>
-          <p className="eyebrow leading-4 text-text-dim">
-            © 2026 MINTLY.
-            <br />
-            {t("footer.tagline")}
+    <footer className="relative mt-auto overflow-hidden border-t border-line px-5 pb-[calc(30px+1.25rem)] pt-12 sm:px-8 lg:px-12">
+      <div className="mx-auto w-full max-w-[1600px]">
+        <div className="grid gap-12 md:grid-cols-[1.2fr_2fr]">
+          <p className="max-w-sm font-display text-2xl font-light leading-snug tracking-[-0.02em] text-text-dim-2">
+            {t("footer.tagline")} <span className="text-text-dim">{L("Vẽ bằng tay. Chứng minh nguyên bản. Ký quỹ trên Solana.", "Drawn by hand. Proven original. Escrowed on Solana.")}</span>
           </p>
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+            {cols.map((c) => (
+              <div key={c.title[1]} className="flex flex-col gap-3">
+                <p className="eyebrow">{L(c.title[0], c.title[1])}</p>
+                {c.links.map((l) => (
+                  <Link key={l.href} href={l.href} className="link-draw w-fit text-sm text-text-dim-2 hover:text-text">
+                    {L(l.label[0], l.label[1])}
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-          {columns.map((col, i) => (
-            <div key={i} className="flex flex-col gap-4">
-              {col.links.map((link) => (
-                <Link
-                  key={link}
-                  href="#"
-                  className="eyebrow transition-colors duration-300 hover:text-text"
-                >
-                  {t(link as TranslationKey)}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </div>
+        <FadeUp className="mt-10">
+          <FooterWordmark />
+        </FadeUp>
 
-        <div className="flex items-start justify-start md:items-end md:justify-end">
-          <a
-            href="#top"
-            aria-label={t("footer.backToTop")}
-            className="flex size-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-text transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08]"
-          >
-            <ArrowUpIcon />
+        <div className="mt-8 flex flex-col gap-3 border-t border-line pt-5 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-text-dim sm:flex-row sm:justify-between">
+          <span>© 2026 Mintly — Mini Hackathon Solana</span>
+          <span>{L("Bản demo Devnet · không phải lời khuyên tài chính", "Devnet demo · not financial advice")}</span>
+          <a href="#top" className="link-draw w-fit text-text-dim-2 hover:text-text">
+            {t("footer.backToTop")} ↑
           </a>
         </div>
       </div>
