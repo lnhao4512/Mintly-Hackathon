@@ -13,6 +13,13 @@ export interface DrawingState {
   zoomScale: number;
 }
 
+export interface CreationTrace {
+  method: "drawn" | "imported";
+  strokes: number;
+  durationMs: number;
+  frames: string[];
+}
+
 export interface DrawingActions {
   setTool: (tool: "pencil" | "eraser" | "eyedropper" | "text" | "fill") => void;
   setColor: (color: string) => void;
@@ -25,6 +32,7 @@ export interface DrawingActions {
   clear: () => void;
   exportToBase64: () => Promise<string | null>;
   loadImage: (source: File | string) => Promise<boolean>;
+  getCreationTrace: () => CreationTrace;
 }
 
 interface Point {
@@ -34,6 +42,9 @@ interface Point {
 
 const MAX_HISTORY = 50;
 const CANVAS_RESOLUTION = 1080; // Standard NFT square size
+const TRACE_FRAME_SIZE = 240; // time-lapse thumbnail edge (px)
+const TRACE_MAX_FRAMES = 60;
+const TRACE_MIN_GAP_MS = 400;
 
 /**
  * Custom hook that manages an HTML5 Canvas drawing engine.
@@ -54,6 +65,15 @@ export function useDrawingCanvas(
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const isDrawingRef = useRef(false);
   const lastPointRef = useRef<Point | null>(null);
+
+  // Proof-of-creation trace: low-res time-lapse frames + stroke stats, recorded while the artist draws.
+  const traceRef = useRef<{ frames: string[]; strokes: number; startedAt: number; lastFrameAt: number; imported: boolean }>({
+    frames: [],
+    strokes: 0,
+    startedAt: 0,
+    lastFrameAt: 0,
+    imported: false,
+  });
 
   const [tool, setTool] = useState<"pencil" | "eraser" | "eyedropper" | "text" | "fill">("pencil");
   const [color, setColor] = useState("#141313");
@@ -116,6 +136,25 @@ export function useDrawingCanvas(
     const context = getContext();
     if (!context) return;
     const { canvas, ctx } = context;
+
+    // Record a time-lapse frame (throttled; when full, drop every other frame)
+    const trace = traceRef.current;
+    const now = Date.now();
+    if (!trace.startedAt) trace.startedAt = now;
+    if (now - trace.lastFrameAt >= TRACE_MIN_GAP_MS) {
+      const thumb = document.createElement("canvas");
+      thumb.width = TRACE_FRAME_SIZE;
+      thumb.height = TRACE_FRAME_SIZE;
+      const tctx = thumb.getContext("2d");
+      if (tctx) {
+        tctx.fillStyle = "#ffffff";
+        tctx.fillRect(0, 0, TRACE_FRAME_SIZE, TRACE_FRAME_SIZE);
+        tctx.drawImage(canvas, 0, 0, TRACE_FRAME_SIZE, TRACE_FRAME_SIZE);
+        trace.frames.push(thumb.toDataURL("image/webp", 0.6));
+        trace.lastFrameAt = now;
+        if (trace.frames.length > TRACE_MAX_FRAMES) trace.frames = trace.frames.filter((_, i) => i % 2 === 0);
+      }
+    }
 
     const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     setUndoStack((prev) => {
@@ -414,6 +453,7 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
     lastPointRef.current = null;
+    traceRef.current.strokes += 1;
     const context = getContext();
     if (context) {
       context.ctx.globalCompositeOperation = "source-over";
@@ -454,6 +494,8 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
     const context = getContext();
     if (!context) return;
     const { canvas, ctx } = context;
+
+    traceRef.current = { frames: [], strokes: 0, startedAt: 0, lastFrameAt: 0, imported: false };
 
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -518,6 +560,7 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
           return;
         }
         const { canvas, ctx } = context;
+        traceRef.current.imported = true;
 
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -599,6 +642,16 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
     [getContext, saveSnapshot]
   );
 
+  const getCreationTrace = useCallback((): CreationTrace => {
+    const t = traceRef.current;
+    return {
+      method: t.imported ? "imported" : "drawn",
+      strokes: t.strokes,
+      durationMs: t.startedAt ? Date.now() - t.startedAt : 0,
+      frames: [...t.frames],
+    };
+  }, []);
+
   // ---- Public API -----------------------------------------------------------
   const state: DrawingState = {
     tool,
@@ -623,6 +676,7 @@ function parseHexColor(hex: string): { r: number; g: number; b: number; a: numbe
     clear,
     exportToBase64,
     loadImage,
+    getCreationTrace,
   };
 
   const handlers = {

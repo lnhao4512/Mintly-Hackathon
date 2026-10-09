@@ -533,8 +533,8 @@ export async function payAuctionBalance(
 }
 
 /**
- * Forfeits the winner's 10% escrow deposit to the configured forfeiture recipient
- * when they fail to pay the remaining balance before the payment deadline (default_winner.rs).
+ * Forfeits the winner's 10% escrow deposit (70% to the seller, 30% to the platform's
+ * forfeiture recipient) when they fail to pay the remaining balance before the payment deadline (default_winner.rs).
  */
 export async function defaultWinnerOnChain(
   connection: Connection,
@@ -555,6 +555,10 @@ export async function defaultWinnerOnChain(
   }
   const forfeiturePaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, forfeitureRecipient, true);
 
+  // 70% of the forfeited deposit compensates the seller (no-show insurance) — see default_winner.rs
+  const auctionAccount = await program.account.auction.fetch(auctionPda);
+  const sellerPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, auctionAccount.seller, true);
+
   return program.methods
     .defaultWinner()
     .accounts({
@@ -563,6 +567,7 @@ export async function defaultWinnerOnChain(
       escrowAuthority,
       escrowPaymentAccount,
       forfeiturePaymentAccount,
+      sellerPaymentAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
     })
     .rpc();

@@ -11,6 +11,8 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { useI18n } from "@/lib/i18n";
 import { getArtworkImage, getArtworkByMint, hydrateArtworkByMint, fetchSaleHistoryForMint, type SoldArtworkRecord } from "@/lib/artworkCache";
 import { sha256Hex } from "@/lib/proof";
+import { CreationReplay } from "@/components/passport/CreationReplay";
+import { OriginalityPanel } from "@/components/passport/OriginalityPanel";
 
 export default function PassportPage({ params }: { params: Promise<{ mint: string }> }) {
   const { mint } = use(params);
@@ -252,6 +254,9 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                 </div>
               </dl>
             </article>
+
+            <CreationReplay mint={mint} />
+            <OriginalityPanel mint={mint} score={getArtworkByMint(mint)?.originalityScore} />
 
             {/* Provenance Trail: real chain of owners across auction rounds, from /api/sales (MongoDB) */}
             <section className="glass-panel rounded-3xl p-6 sm:p-8">

@@ -1307,6 +1307,10 @@
           "writable": true
         },
         {
+          "name": "seller_payment_account",
+          "writable": true
+        },
+        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }

@@ -51,7 +51,7 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 
 | # | Tính năng | Trạng thái | Ghi chú |
 |---|---|---|---|
-| 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | ✅ Đã nối thật vào chương trình Anchor (`place_bid`, `pay_balance`, `default_winner`) | Tiền phạt bùng kèo vào **quỹ xử phạt của sàn** (`config.forfeiture_recipient`), không tự động chuyển cho Seller |
+| 1 | Escrow PDA cọc 10%, auto-refund người bị vượt giá, thanh toán 90% + nhận NFT, phạt bùng kèo | ✅ Đã nối thật vào chương trình Anchor (`place_bid`, `pay_balance`, `default_winner`) | Sau khi deploy bản mới: 70% tiền phạt chuyển cho Seller, 30% vào quỹ sàn (`config.forfeiture_recipient`) |
 | 2 | Cơ chế Commit-Reveal đấu giá kín (SHA-256) | ⚙️ Có sẵn on-chain (`commit_bid.rs`, `reveal_bid.rs`) nhưng **không dùng trong luồng đấu giá hiện tại** | UI hiện tại hiển thị giá cao nhất công khai theo thời gian thực (English auction), không tương thích với mô hình "giấu giá tới khi hết giờ". Có thể làm tiếp ở bản v2 nếu muốn |
 | 3 | AI kiểm tra trùng lặp ảnh trước khi mint | ✅ Hoạt động | Đa tín hiệu: perceptual hash (pHash + dHash, nhận diện cả ảnh lật/cắt/resize/nén lại) + layout + màu + embedding CLIP chạy ngay trên trình duyệt. Chỉ cảnh báo, không chặn mint. Xem mục 5.1 |
 | 4 | NFT Passport + đấu giá lại nhiều vòng | ✅ Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |

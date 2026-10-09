@@ -45,6 +45,38 @@ export default function AdminPage() {
     wallet.publicKey && authority && wallet.publicKey.toBase58() === authority
   );
 
+  const [disputes, setDisputes] = useState<{ id: string; mintAddress: string; reporter: string; reason: string; evidenceUrl?: string }[]>([]);
+
+  async function loadDisputes() {
+    try {
+      const res = await fetch("/api/disputes?status=open");
+      setDisputes(((await res.json()) as { disputes: typeof disputes }).disputes ?? []);
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    loadDisputes();
+  }, []);
+
+  async function resolve(id: string, status: "upheld" | "rejected") {
+    if (!wallet.publicKey || !wallet.signMessage) return;
+    setError(null);
+    try {
+      const sig = await wallet.signMessage(new TextEncoder().encode(`MINTLY_RESOLVE:${id}:${status}`));
+      const res = await fetch("/api/disputes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status, admin: wallet.publicKey.toBase58(), signature: btoa(String.fromCharCode(...sig)) }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Xử lý thất bại");
+      loadDisputes();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Xử lý thất bại");
+    }
+  }
+
   async function handleTogglePause() {
     if (!wallet.publicKey || !wallet.signTransaction) return;
     setSubmitting(true);
@@ -110,6 +142,23 @@ export default function AdminPage() {
                 >
                   {submitting ? "Đang xử lý..." : paused ? "Mở Lại Sàn" : "Tạm Dừng Sàn"}
                 </button>
+              )}
+
+              {isAuthority && disputes.length > 0 && (
+                <div className="space-y-3 border-t border-white/10 pt-4">
+                  <p className="text-xs uppercase tracking-wider text-text-dim">Khiếu nại đạo nhái đang chờ ({disputes.length})</p>
+                  {disputes.map((d) => (
+                    <div key={d.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-text-dim">
+                      <p className="break-all font-mono">{d.mintAddress}</p>
+                      <p className="mt-1 text-text">{d.reason}</p>
+                      {d.evidenceUrl && <a href={d.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Bằng chứng</a>}
+                      <div className="mt-2 flex gap-2">
+                        <button onClick={() => resolve(d.id, "upheld")} className="rounded-full bg-red-600 px-3 py-1 text-white">Chấp nhận</button>
+                        <button onClick={() => resolve(d.id, "rejected")} className="rounded-full border border-white/20 px-3 py-1">Bác bỏ</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
 
               {txHash && (

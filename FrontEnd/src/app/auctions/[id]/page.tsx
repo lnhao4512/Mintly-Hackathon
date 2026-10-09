@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useRef, useState, useCallback, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -25,6 +25,7 @@ import {
 import { placeBidOnChain, payAuctionBalance, defaultWinnerOnChain, cancelAuctionOnChain } from "@/lib/marketplace";
 import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
+import { ReputationBadge } from "@/components/auction/ReputationBadge";
 
 type Phase =
   | "LIVE"
@@ -104,6 +105,41 @@ export default function AuctionDetailPage({
     const interval = setInterval(loadAuctionData, 30000);
     return () => clearInterval(interval);
   }, [loadAuctionData]);
+
+  // Realtime: re-read the auction the moment its on-chain account changes (new bid, anti-snipe extension, settlement).
+  useEffect(() => {
+    let subId: number | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const key = new PublicKey(id);
+      subId = connection.onAccountChange(key, () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(loadAuctionData, 300);
+      }, "confirmed");
+    } catch {
+      // id is not a valid public key; polling still works
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (subId !== null) connection.removeAccountChangeListener(subId).catch(() => {});
+    };
+  }, [connection, id, loadAuctionData]);
+
+  // Live notices: anti-sniping extension and being outbid
+  const [liveNotice, setLiveNotice] = useState<string | null>(null);
+  const prevAuctionRef = useRef<Auction | null>(null);
+  useEffect(() => {
+    const prev = prevAuctionRef.current;
+    if (prev && auction) {
+      const me = wallet.publicKey?.toBase58();
+      if (auction.endTime && prev.endTime && auction.endTime > prev.endTime) {
+        setLiveNotice("⏱️ Có bid phút chót — phiên đấu giá được gia hạn thêm 60 giây (chống bid sát giờ).");
+      } else if (me && prev.highestBidder === me && auction.highestBidder && auction.highestBidder !== me) {
+        setLiveNotice("⚠️ Bạn vừa bị vượt giá. Tiền cọc 10% đã được hoàn lại tự động.");
+      }
+    }
+    prevAuctionRef.current = auction;
+  }, [auction, wallet.publicKey]);
 
   // Compute Phase
   useEffect(() => {
@@ -620,6 +656,13 @@ export default function AuctionDetailPage({
               </div>
             )}
 
+            {liveNotice && (
+              <div className="flex items-start justify-between gap-3 rounded-2xl border border-amber/30 bg-amber/10 p-3 text-sm text-amber">
+                <span>{liveNotice}</span>
+                <button onClick={() => setLiveNotice(null)} aria-label="Đóng" className="text-amber/70 hover:text-amber">✕</button>
+              </div>
+            )}
+
             {/* Price & Countdown Card */}
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-md space-y-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -634,6 +677,12 @@ export default function AuctionDetailPage({
                     {effectiveHighestBidStr}{" "}
                     <span className="text-2xl text-accent">SOL</span>
                   </div>
+                  {auction.highestBidder && (
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-text-dim">
+                      <span className="font-mono">{auction.highestBidder.slice(0, 4)}…{auction.highestBidder.slice(-4)}</span>
+                      <ReputationBadge wallet={auction.highestBidder} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-right">

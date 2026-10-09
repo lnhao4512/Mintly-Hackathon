@@ -13,6 +13,7 @@ import { mintNFT } from "@/lib/mint";
 import { useI18n } from "@/lib/i18n";
 import { analyzeArtworkSimilarity, registerMintedArtworkAI, type AiStage, type ArtworkSimilarityResult } from "@/lib/ai";
 import { saveMintedArtwork } from "@/lib/artworkCache";
+import { hashCreationTrace } from "@/lib/proof";
 
 export default function CreatorStudioPage() {
   const { t } = useI18n();
@@ -148,6 +149,14 @@ export default function CreatorStudioPage() {
           ]
         : [];
 
+      // Proof-of-creation: hash of the time-lapse trace goes into the Metaplex metadata; frames are stored off-chain.
+      const trace = actions.getCreationTrace();
+      const proofHash = await hashCreationTrace(trace);
+      const creationAttributes = [
+        { trait_type: "Creation Method", value: trace.method },
+        { trait_type: "Creation Proof", value: proofHash },
+      ];
+
       const result = await mintNFT(
         connection,
         wallet,
@@ -161,7 +170,7 @@ export default function CreatorStudioPage() {
           creators: [{ address: publicKey.toBase58(), share: 100 }],
         },
         onProgress,
-        provenanceAttributes
+        [...provenanceAttributes, ...creationAttributes]
       );
 
       // Only now index and store artwork fingerprint into AI registry for copyright protection
@@ -177,7 +186,14 @@ export default function CreatorStudioPage() {
           signature: result.signature,
           category: "Độc bản 1/1",
           rarity: "rare",
+          originalityScore: finalCheck?.originalityScore ?? null,
         });
+
+        fetch("/api/proofs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...trace, mintAddress: result.mintAddress, creator: publicKey.toBase58(), proofHash }),
+        }).catch((err) => console.warn("Failed to store creation proof:", err));
 
         // 2. Register into AI similarity index
         registerMintedArtworkAI(base64Data, {
