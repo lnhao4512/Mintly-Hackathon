@@ -131,7 +131,7 @@ export default function PortfolioPage() {
           .filter(Boolean) as string[];
 
         if (settledSoldMints.length > 0) {
-          settledSoldMints.forEach((m) => deleteMintedArtwork(m, walletStr));
+          settledSoldMints.forEach((m) => deleteMintedArtwork(m, walletStr, false).catch(() => {}));
           setArtworks((prev) =>
             prev.filter((item) => !settledSoldMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr))
           );
@@ -223,11 +223,16 @@ export default function PortfolioPage() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
-  const handleDelete = (mintAddress: string) => {
+  const handleDelete = async (mintAddress: string) => {
     if (!publicKey) return;
     const walletStr = publicKey.toBase58();
-    deleteMintedArtwork(mintAddress, walletStr);
-    setArtworks((prev) => prev.filter((a) => a.mintAddress !== mintAddress));
+    try {
+      // only drop the card once the server confirmed the deletion
+      await deleteMintedArtwork(mintAddress, walletStr);
+      setArtworks((prev) => prev.filter((a) => a.mintAddress !== mintAddress));
+    } catch {
+      setListingActionMsg(L("Không xóa được tác phẩm trên máy chủ. Vui lòng thử lại.", "Could not delete the artwork on the server. Please try again."));
+    }
   };
 
   const handleDownload = (imageUrl: string, title: string) => {
