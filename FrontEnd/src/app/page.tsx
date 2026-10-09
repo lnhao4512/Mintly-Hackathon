@@ -421,7 +421,7 @@ export default function ExplorePage() {
               <article
                 key={step.t}
                 data-panel
-                className="relative flex min-h-[90svh] w-full flex-col justify-end overflow-hidden border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-screen lg:shrink-0 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
+                className="relative flex min-h-[90svh] w-full flex-col justify-end overflow-hidden border-b border-line px-5 pb-14 pt-24 sm:px-8 lg:h-full lg:w-screen lg:shrink-0 lg:flex-row lg:items-end lg:justify-start lg:gap-12 lg:border-b-0 lg:border-r lg:px-16 lg:pb-20"
               >
                 {/* photo as the background; it drifts sideways inside the panel while you scroll */}
                 <div data-step-img className="absolute inset-y-0 -left-[10%] w-[120%] will-change-transform">
@@ -433,12 +433,12 @@ export default function ExplorePage() {
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/60" />
 
                 <span
-                  className="pointer-events-none absolute right-5 top-16 select-none font-display text-[clamp(8rem,22vw,24rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:right-14 lg:top-[8%]"
-                  style={{ WebkitTextStroke: "1px rgba(236,231,218,0.45)" }}
+                  className="pointer-events-none absolute right-5 top-16 select-none font-display text-[clamp(8rem,22vw,24rem)] font-light leading-none tracking-[-0.06em] text-transparent lg:relative lg:right-auto lg:top-auto lg:shrink-0 lg:text-[clamp(8rem,18vw,20rem)] lg:leading-[0.78]"
+                  style={{ WebkitTextStroke: "1.5px rgba(236,231,218,0.85)" }}
                 >
                   0{i + 1}
                 </span>
-                <div className="relative max-w-2xl lg:max-w-[42%]">
+                <div className="relative max-w-2xl lg:max-w-[40%] lg:pl-4">
                   <p className="eyebrow mb-4 !text-text-dim-2">{`0${i + 1} / 04`}</p>
                   <h3 className="mega text-[clamp(3.5rem,9vw,9rem)]">
                     {step.t}

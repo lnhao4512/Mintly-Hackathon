@@ -257,6 +257,8 @@ textarea::placeholder {
   --y: -400px;
   --r: 0px;
   position: relative;
+  width: fit-content;
+  margin-inline: auto;
   font-family: var(--font-display);
   font-weight: 340;
   font-variation-settings: "opsz" 144;
