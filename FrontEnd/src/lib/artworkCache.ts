@@ -72,6 +72,12 @@ export async function hydrateArtworkByMint(mintAddress: string): Promise<void> {
   if (data?.artwork) upsertArtworkLocal(data.artwork);
 }
 
+/** Load artwork metadata (title/image) for mints we don't own, so every visitor sees the same picture. */
+export async function hydrateArtworksByMints(mints: string[]): Promise<void> {
+  const missing = Array.from(new Set(mints)).filter((m) => m && !getArtworkByMint(m));
+  await Promise.all(missing.map((m) => hydrateArtworkByMint(m)));
+}
+
 export async function hydrateSales(): Promise<void> {
   const data = await safeFetchJson<{ sales: SoldArtworkRecord[] }>("/api/sales");
   if (data?.sales) salesCache = data.sales;

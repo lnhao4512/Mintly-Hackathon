@@ -12,7 +12,7 @@ const w = JSON.parse(fs.readFileSync(path.join(__dirname, ".sim-wallets.json"), 
 const kp = Keypair.fromSecretKey(Uint8Array.from(w.seller ?? w.sellerSecret ?? Object.values(w)[0]));
 const conn = new Connection(process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com", "confirmed");
 const program = new Program(idl, new AnchorProvider(conn, new Wallet(kp), {}));
-const all = await program.account.auction.all([{ memcmp: { offset: 8, bytes: kp.publicKey.toBase58() } }]);
+const all = process.env.ALL ? await program.account.auction.all() : await program.account.auction.all([{ memcmp: { offset: 8, bytes: kp.publicKey.toBase58() } }]);
 for (const x of all) {
   const a = x.account;
   console.log(x.publicKey.toBase58().slice(0, 8), JSON.stringify(a.status), "bid", a.currentBid.toString(), "dep", a.depositPaid.toString(),

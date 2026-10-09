@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
 import type { Artwork } from "@/components/explore/ArtworkCard";
-import { getArtworkImage } from "@/lib/artworkCache";
+import { getArtworkImage, hydrateArtworksByMints } from "@/lib/artworkCache";
 
 export type Auction = {
   id: string;
@@ -87,7 +87,9 @@ function getVisualForMint(mintStr: string, index: number = 0) {
     hash = (hash << 5) - hash + mintStr.charCodeAt(i);
     hash |= 0;
   }
-  const assetIndex = Math.abs(hash + index) % FALLBACK_ASSETS.length;
+  // index is intentionally ignored: the same mint must get the same fallback picture on every page
+  void index;
+  const assetIndex = Math.abs(hash) % FALLBACK_ASSETS.length;
   const fallback = FALLBACK_ASSETS[assetIndex];
   return {
     ...fallback,
@@ -108,6 +110,7 @@ export async function fetchLiveListings(connection: Connection): Promise<Artwork
   try {
     const program = getMarketplaceProgram(connection);
     const rawListings = await program.account.listing.all();
+    await hydrateArtworksByMints(rawListings.map((i: any) => i.account.nftMint.toBase58()));
 
     return rawListings
       .filter((item: any) => parseListingStatus(item.account.status) === "ACTIVE")
@@ -157,6 +160,7 @@ export async function fetchLiveAuctions(connection: Connection): Promise<Auction
   try {
     const program = getMarketplaceProgram(connection);
     const rawAuctions = await program.account.auction.all();
+    await hydrateArtworksByMints(rawAuctions.map((i: any) => i.account.nftMint.toBase58()));
 
     const parsed: Auction[] = rawAuctions.map((item: any, idx: number) => {
       const nftMint = item.account.nftMint.toBase58();
@@ -344,6 +348,7 @@ export async function fetchAuctionById(
     if (!auctionAccount) return null;
 
     const nftMint = auctionAccount.nftMint.toBase58();
+    await hydrateArtworksByMints([nftMint]);
     const seller = auctionAccount.seller.toBase58();
     const startPriceLamports = auctionAccount.startPrice ? auctionAccount.startPrice.toNumber() : 0;
     const currentBidLamports = auctionAccount.currentBid ? auctionAccount.currentBid.toNumber() : 0;
@@ -475,6 +480,7 @@ export async function fetchListingById(
     if (!listingAccount) return null;
 
     const nftMint = listingAccount.nftMint.toBase58();
+    await hydrateArtworksByMints([nftMint]);
     const seller = listingAccount.seller.toBase58();
     const priceLamports = listingAccount.price.toNumber();
     const visual = getVisualForMint(nftMint, 0);
