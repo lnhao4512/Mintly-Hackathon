@@ -4,6 +4,9 @@
 
 Dự án làm cho **Mini Hackathon Solana**.
 
+> **Định vị:** Mintly là sàn đấu giá tác phẩm số 1/1 với *bằng chứng nguyên bản* — không phải game, DEX hay sản phẩm yield; không có LP/staking/play-to-earn. Số liệu hiển thị là **Devnet, dữ liệu thử nghiệm, không phải traction**. Xem [kinh tế đơn vị](docs/ECONOMICS.md), [định vị & GTM](docs/GTM.md) và trang `/legal` (rủi ro pháp lý tại Việt Nam).
+
+
 ---
 
 ## 1. Dự án này làm gì?

@@ -13,6 +13,7 @@ const links = [
   { key: "nav.explore", href: "/" },
   { key: "nav.create", href: "/create" },
   { key: "nav.auctions", href: "/auctions" },
+  { key: "nav.originality", href: "/originality" },
   { key: "nav.portfolio", href: "/portfolio" },
 ];
 

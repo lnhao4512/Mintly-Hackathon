@@ -226,12 +226,29 @@ export async function fetchLiveAuctions(connection: Connection): Promise<Auction
 /**
  * Fetches dynamic marketplace statistics aggregated directly from Solana program accounts.
  */
+/**
+ * Real settled volume: sum of prices of sales recorded after `pay_balance` succeeded.
+ * Returns 0 when nothing has settled — never an extrapolated figure.
+ */
+export async function fetchSettledVolumeSol(): Promise<{ volumeSol: number; salesCount: number }> {
+  try {
+    const res = await fetch("/api/sales");
+    if (!res.ok) return { volumeSol: 0, salesCount: 0 };
+    const { sales } = (await res.json()) as { sales: { priceSol?: number }[] };
+    const priced = sales.filter((s) => typeof s.priceSol === "number" && s.priceSol > 0);
+    return { volumeSol: priced.reduce((sum, s) => sum + (s.priceSol as number), 0), salesCount: sales.length };
+  } catch {
+    return { volumeSol: 0, salesCount: 0 };
+  }
+}
+
 export async function fetchMarketplaceStats(connection: Connection): Promise<MarketplaceStats> {
   try {
     const program = getMarketplaceProgram(connection);
-    const [listings, auctions] = await Promise.all([
+    const [listings, auctions, settled] = await Promise.all([
       program.account.listing.all(),
       program.account.auction.all(),
+      fetchSettledVolumeSol(),
     ]);
 
     const activeListings = listings.filter(
@@ -266,7 +283,7 @@ export async function fetchMarketplaceStats(connection: Connection): Promise<Mar
       activeAuctions: activeAuctions.length,
       highestBidSol: highestBid > 0 ? `${highestBid.toFixed(2)} SOL` : "0.00 SOL",
       floorPriceSol: floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL",
-      totalVolumeSol: highestBid > 0 ? `${(highestBid * 1.5).toFixed(2)} SOL` : "0.00 SOL",
+      totalVolumeSol: `${settled.volumeSol.toFixed(2)} SOL`,
       uniqueSellers: sellers.size,
     };
   } catch (error) {

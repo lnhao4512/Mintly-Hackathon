@@ -5,7 +5,7 @@ import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 const columns = [
   { links: ["footer.provenance", "footer.manifesto"] },
-  { links: ["footer.support", "footer.privacy", "footer.terms"] },
+  { links: ["footer.support", "footer.privacy", "footer.terms", "footer.legal"] },
 ];
 
 export function Footer() {
@@ -39,7 +39,7 @@ export function Footer() {
               {col.links.map((link) => (
                 <Link
                   key={link}
-                  href="#"
+                  href={link === "footer.privacy" || link === "footer.terms" || link === "footer.legal" ? "/legal" : "#"}
                   className="eyebrow transition-colors duration-300 hover:text-text"
                 >
                   {t(link as TranslationKey)}

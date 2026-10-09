@@ -11,7 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   fetchLiveListings,
   fetchLiveAuctions,
-  fetchMarketplaceStats,
+  fetchSettledVolumeSol,
   type Auction,
   type MarketplaceStats,
 } from "@/lib/data";
@@ -51,9 +51,10 @@ export default function ExplorePage() {
 
     async function loadData() {
       try {
-        const [listings, auctions] = await Promise.all([
+        const [listings, auctions, settled] = await Promise.all([
           fetchLiveListings(connection),
           fetchLiveAuctions(connection),
+          fetchSettledVolumeSol(),
         ]);
 
         if (!isMounted) return;
@@ -89,7 +90,7 @@ export default function ExplorePage() {
           activeAuctions: auctions.filter((a) => a.isLive).length,
           highestBidSol: highestBid > 0 ? `${highestBid.toFixed(2)} SOL` : "0.00 SOL",
           floorPriceSol: floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL",
-          totalVolumeSol: highestBid > 0 ? `${(highestBid * 1.5).toFixed(2)} SOL` : "0.00 SOL",
+          totalVolumeSol: `${settled.volumeSol.toFixed(2)} SOL`,
           uniqueSellers: sellers.size,
         });
       } catch (err) {
