@@ -43,7 +43,7 @@ async function main() {
   if (!configAccountInfo) {
     console.log("Initializing marketplace...");
     const tx = await program.methods
-      .initializeMarketplace(payer.publicKey, payer.publicKey, 250) // 2.5% fee
+      .initializeMarketplace(payer.publicKey, payer.publicKey, 500) // 5% fee
       .accounts({
         authority: payer.publicKey,
         config: configPda,

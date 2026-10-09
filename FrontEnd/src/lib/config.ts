@@ -14,6 +14,8 @@ export const RPC_ENDPOINT =
 export const NETWORK =
   process.env.NEXT_PUBLIC_SOLANA_NETWORK || (RPC_ENDPOINT.includes("devnet") ? "devnet" : "localnet");
 
+export const MARKETPLACE_FEE_BPS = 500;
+
 export const SEEDS = {
   CONFIG: Buffer.from("config"),
   TOKEN: Buffer.from("token"),

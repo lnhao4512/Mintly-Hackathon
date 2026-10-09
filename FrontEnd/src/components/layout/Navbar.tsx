@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 const links = [
-  { key: "nav.explore", href: "/" },
+  { key: "nav.market", href: "/market" },
   { key: "nav.create", href: "/create" },
   { key: "nav.auctions", href: "/auctions" },
   { key: "nav.originality", href: "/originality" },
@@ -188,4 +188,3 @@ export function Navbar() {
     </div>
   );
 }
-

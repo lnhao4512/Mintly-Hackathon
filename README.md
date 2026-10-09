@@ -19,6 +19,7 @@ MINTLY là một marketplace NFT 1/1 (mỗi NFT là độc bản, không phải 
 - **Thanh toán 90% còn lại + nhận NFT** khi thắng đấu giá — toàn bộ tiền và NFT đều di chuyển qua chương trình Anchor trên Solana, không phải giao dịch tay giữa hai ví.
 - **Phạt bùng kèo**: nếu người thắng không thanh toán đúng hạn, tiền cọc 10% bị tịch thu vào quỹ xử phạt của sàn.
 - **Đấu giá lại (resale) nhiều vòng**: một NFT đã bán vẫn có thể được đưa lên đấu giá vòng tiếp theo, tái sử dụng cùng một Auction PDA trên chain.
+- **Bán giá cố định**: seller đăng tranh với giá cứng, người mua vào tab **Thị trường** để mua ngay; smart contract tự chia 5% phí sàn và 95% cho seller.
 - **Hộ chiếu NFT (Passport)**: xem thông tin on-chain của một NFT (mint, supply, decimals, chủ sở hữu) và lịch sử chuyển nhượng qua các vòng đấu giá.
 - **Trang quản trị (`/admin`)**: tạm dừng/mở lại toàn sàn, chỉ dành cho ví có quyền `authority`.
 
@@ -54,8 +55,9 @@ Nguyên tắc thiết kế: **mọi thứ liên quan tới tiền và quyền s�
 | 2 | Cơ chế Commit-Reveal đấu giá kín (SHA-256) | ⚙️ Có sẵn on-chain (`commit_bid.rs`, `reveal_bid.rs`) nhưng **không dùng trong luồng đấu giá hiện tại** | UI hiện tại hiển thị giá cao nhất công khai theo thời gian thực (English auction), không tương thích với mô hình "giấu giá tới khi hết giờ". Có thể làm tiếp ở bản v2 nếu muốn |
 | 3 | AI kiểm tra trùng lặp ảnh trước khi mint | ✅ Hoạt động | Đa tín hiệu: perceptual hash (pHash + dHash, nhận diện cả ảnh lật/cắt/resize/nén lại) + layout + màu + embedding CLIP chạy ngay trên trình duyệt. Chỉ cảnh báo, không chặn mint. Xem mục 5.1 |
 | 4 | NFT Passport + đấu giá lại nhiều vòng | ✅ Hoạt động | Passport hiển thị dữ liệu mint thật từ Solana + chuỗi lịch sử chuyển nhượng thật từ MongoDB. Vòng đấu giá lại tạo **Auction on-chain thật**, tái sử dụng cùng PDA khi vòng trước đã `SETTLED`/`CANCELLED` |
-| 5 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | ✅ Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
-| 6 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
+| 5 | Bán giá cố định qua tab `/market` | ✅ Hoạt động | Seller đăng giá cứng từ `/portfolio`, NFT khóa trong listing escrow; buyer mua ngay, smart contract chia 5% phí sàn và 95% cho seller |
+| 6 | Trang quản trị `/admin` (pause/unpause sàn), hủy đấu giá khi chưa có ai đặt giá | ✅ Hoạt động | Chỉ ví `authority` của `MarketplaceConfig` mới thấy nút quản trị |
+| 7 | Test tự động (`anchor test`) | ❌ Chưa làm | `BackEnd/tests/marketplace.ts` hiện chỉ có test giả (`assert.ok(true)`); các script trong `BackEnd/scripts/` là script test tay trên devnet, không phải test suite CI |
 
 ### Vì sao dữ liệu giá/đấu giá không còn nằm trong database?
 Ban đầu một phần dữ liệu (bid, đấu giá lại, hộ chiếu) được giả lập bằng `localStorage`/bộ nhớ tạm để demo nhanh. Toàn bộ phần này đã được:
@@ -78,7 +80,7 @@ BackEnd/
   scripts/           # script chạy tay trên devnet (initialize, create-auction, place-bid...)
 
 FrontEnd/
-  src/app/           # Next.js App Router: /, /create, /auctions, /auctions/[id],
+  src/app/           # Next.js App Router: /, /market, /create, /auctions, /auctions/[id],
                      # /portfolio, /passport/[mint], /admin, /api/*
   src/lib/
     marketplace.ts   # gọi trực tiếp chương trình Anchor (đặt giá, thanh toán, hủy, admin...)
@@ -158,7 +160,7 @@ Biến môi trường tuỳ chọn: `MINTLY_AI_PROVIDER_URL` — nếu đặt, A
 1. **Tạo tác phẩm** (`/create`): vẽ hoặc upload ảnh → AI quét trùng lặp → mint NFT lên Solana (Metaplex) → lưu metadata vào MongoDB.
 2. **Đưa lên đấu giá** (từ `/portfolio`): gọi `create_auction` — NFT bị khoá vào escrow PDA, tạo Auction on-chain, trạng thái `LIVE`.
 3. **Đặt giá** (`/auctions/[id]`): gọi `place_bid` — 10% giá đặt được chuyển vào escrow; người bị vượt giá trước đó được tự động hoàn 100% cọc ngay trong cùng transaction.
-4. **Hết giờ, người thắng thanh toán** (`pay_balance`): trả phần còn lại (giá thắng trừ cọc đã nạp) → sàn tự động chia phí (2.5%) cho treasury, phần còn lại cho seller, và chuyển NFT cho người thắng — tất cả trong 1 transaction.
+4. **Hết giờ, người thắng thanh toán** (`pay_balance`): trả phần còn lại (giá thắng trừ cọc đã nạp) → sàn tự động chia phí (5%) cho treasury, phần còn lại cho seller, và chuyển NFT cho người thắng — tất cả trong 1 transaction.
 5. **Bùng kèo** (`default_winner`): nếu quá hạn thanh toán, ai cũng có thể gọi để tịch thu cọc 10% vào quỹ xử phạt của sàn.
 6. **Đấu giá lại**: seller (chủ mới) có thể đưa NFT đó lên đấu giá vòng tiếp — tái sử dụng đúng Auction PDA của NFT này.
 

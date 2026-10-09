@@ -54,19 +54,19 @@ pub struct BuyListing<'info> {
     )]
     pub buyer_nft_account: Box<Account<'info, TokenAccount>>,
 
-    /// CHECK: treasury
     #[account(
         mut,
-        constraint = *treasury_payment_account.owner == config.treasury @ MarketplaceError::InvalidTreasury,
+        token::mint = payment_mint,
+        token::authority = config.treasury,
     )]
-    pub treasury_payment_account: AccountInfo<'info>, // Token account for treasury
+    pub treasury_payment_account: Box<Account<'info, TokenAccount>>,
 
-    /// CHECK: seller
     #[account(
         mut,
-        constraint = *seller_payment_account.owner == listing.seller @ MarketplaceError::UnauthorizedSeller,
+        token::mint = payment_mint,
+        token::authority = listing.seller,
     )]
-    pub seller_payment_account: AccountInfo<'info>, // Token account for seller
+    pub seller_payment_account: Box<Account<'info, TokenAccount>>,
 
     pub payment_mint: Box<Account<'info, Mint>>,
     pub nft_mint: Box<Account<'info, Mint>>,
@@ -89,7 +89,7 @@ pub fn handler(ctx: Context<BuyListing>) -> Result<()> {
     if fee > 0 {
         let fee_cpi_accounts = Transfer {
             from: ctx.accounts.buyer_payment_account.to_account_info(),
-            to: ctx.accounts.treasury_payment_account.clone(),
+            to: ctx.accounts.treasury_payment_account.to_account_info(),
             authority: ctx.accounts.buyer.to_account_info(),
         };
         let fee_cpi_ctx = CpiContext::new(cpi_program.clone(), fee_cpi_accounts);
@@ -100,7 +100,7 @@ pub fn handler(ctx: Context<BuyListing>) -> Result<()> {
     if seller_proceeds > 0 {
         let seller_cpi_accounts = Transfer {
             from: ctx.accounts.buyer_payment_account.to_account_info(),
-            to: ctx.accounts.seller_payment_account.clone(),
+            to: ctx.accounts.seller_payment_account.to_account_info(),
             authority: ctx.accounts.buyer.to_account_info(),
         };
         let seller_cpi_ctx = CpiContext::new(cpi_program.clone(), seller_cpi_accounts);

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { PublicKey } from "@solana/web3.js";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SolanaIcon, DotsIcon } from "@/components/ui/Icons";
@@ -24,34 +25,43 @@ import {
   type MintedArtworkRecord,
 } from "@/lib/artworkCache";
 import { CreateAuctionModal } from "@/components/CreateAuctionModal";
+import { CreateListingModal } from "@/components/CreateListingModal";
+import { cancelListingOnChain } from "@/lib/marketplace";
 import {
   getUserActiveBids,
   getAllSavedBidsForAuction,
   hydrateBidSecretsForBidder,
   type SavedBidSecret,
 } from "@/lib/auction-crypto";
-import { fetchAuctionById, fetchLiveAuctions, type Auction } from "@/lib/data";
+import { fetchLiveAuctions, fetchSellerListings, type Auction, type DirectListing } from "@/lib/data";
 
 export default function PortfolioPage() {
   const { t } = useI18n();
-  const { publicKey, connected } = useWallet();
+  const wallet = useWallet();
+  const { publicKey, connected } = wallet;
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
 
   const [artworks, setArtworks] = useState<MintedArtworkRecord[]>([]);
+  const [sellerListings, setSellerListings] = useState<DirectListing[]>([]);
   const [allLiveAuctions, setAllLiveAuctions] = useState<Auction[]>([]);
   const [solBalance, setSolBalance] = useState<number>(0);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "bidding">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "selling" | "bidding">("all");
   const [myActiveBids, setMyActiveBids] = useState<SavedBidSecret[]>([]);
   const [auctionMap, setAuctionMap] = useState<Record<string, Auction>>({});
   const [isLoadingOnChain, setIsLoadingOnChain] = useState<boolean>(true);
   const [selectedArtworkForAuction, setSelectedArtworkForAuction] = useState<MintedArtworkRecord | null>(null);
   const [isAuctionModalOpen, setIsAuctionModalOpen] = useState(false);
+  const [selectedArtworkForListing, setSelectedArtworkForListing] = useState<MintedArtworkRecord | null>(null);
+  const [isListingModalOpen, setIsListingModalOpen] = useState(false);
+  const [listingActionMsg, setListingActionMsg] = useState<string | null>(null);
+  const [cancelingListingId, setCancelingListingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!publicKey || !connection) {
       setArtworks([]);
+      setSellerListings([]);
       setIsLoadingOnChain(false);
       return;
     }
@@ -76,7 +86,17 @@ export default function PortfolioPage() {
         (item) => !freshHiddenMints.includes(item.mintAddress) && !isArtworkSoldBySeller(item.mintAddress, walletStr)
       );
 
-      setArtworks(localList);
+      const sellerListingsList = await fetchSellerListings(connection, walletKey);
+      if (!isMounted) return;
+      setSellerListings(sellerListingsList);
+
+      const listedMintSet = new Set(
+        sellerListingsList
+          .filter((listing) => listing.status === "ACTIVE")
+          .map((listing) => listing.nftMint.toLowerCase())
+      );
+
+      setArtworks(localList.filter((item) => !listedMintSet.has(item.mintAddress.toLowerCase())));
 
       // Fetch user's active bids
       const bids = getUserActiveBids(walletStr);
@@ -142,7 +162,11 @@ export default function PortfolioPage() {
           if (!amount || amount === "0" || tokenAmount?.uiAmount === 0) continue;
 
           // Check if hidden or sold by this seller
-          if (freshHiddenMints.includes(mint) || isArtworkSoldBySeller(mint, walletStr)) continue;
+          if (
+            freshHiddenMints.includes(mint) ||
+            listedMintSet.has(mint.toLowerCase()) ||
+            isArtworkSoldBySeller(mint, walletStr)
+          ) continue;
 
           // NFT 1/1 condition (0 decimals)
           if (decimals === 0) {
@@ -169,7 +193,7 @@ export default function PortfolioPage() {
           setArtworks((prev) => {
             const combined = [...prev, ...onChainMints];
             return Array.from(new Map(combined.map((item) => [item.mintAddress, item])).values()).filter(
-              (item) => !isArtworkSoldBySeller(item.mintAddress, walletStr)
+              (item) => !listedMintSet.has(item.mintAddress.toLowerCase()) && !isArtworkSoldBySeller(item.mintAddress, walletStr)
             );
           });
         }
@@ -208,10 +232,37 @@ export default function PortfolioPage() {
     link.click();
   };
 
+  const handleCancelListing = async (listingId: string) => {
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      setListingActionMsg("Vui lòng kết nối ví để hủy tin bán.");
+      return;
+    }
+
+    setCancelingListingId(listingId);
+    setListingActionMsg(null);
+    try {
+      const signature = await cancelListingOnChain(connection, wallet, new PublicKey(listingId));
+      setListingActionMsg(`Đã hủy tin bán thành công. Tx: ${signature.slice(0, 18)}...`);
+      const fresh = await fetchSellerListings(connection, wallet.publicKey);
+      setSellerListings(fresh);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setListingActionMsg(msg || "Không thể hủy tin bán.");
+    } finally {
+      setCancelingListingId(null);
+    }
+  };
+
   const walletStr = publicKey ? publicKey.toBase58() : "";
-  const filteredArtworks = (activeFilter === "all" ? artworks : artworks.slice(0, 6)).filter(
-    (item) => !isArtworkSoldBySeller(item.mintAddress, walletStr)
+  const activeListingMintSet = new Set(
+    sellerListings
+      .filter((listing) => listing.status === "ACTIVE")
+      .map((listing) => listing.nftMint.toLowerCase())
   );
+  const filteredArtworks = (activeFilter === "all" ? artworks : artworks.slice(0, 6)).filter(
+    (item) => !activeListingMintSet.has(item.mintAddress.toLowerCase()) && !isArtworkSoldBySeller(item.mintAddress, walletStr)
+  );
+  const activeSellerListings = sellerListings.filter((listing) => listing.status === "ACTIVE");
 
   return (
     <div className="min-h-screen bg-[#0a0b0d] text-text">
@@ -340,6 +391,17 @@ export default function PortfolioPage() {
                 </button>
 
                 <button
+                  onClick={() => setActiveFilter("selling")}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    activeFilter === "selling"
+                      ? "bg-[#8ef7c0] text-black font-bold shadow-[0_0_20px_rgba(142,247,192,0.35)]"
+                      : "text-text-dim hover:bg-white/5 hover:text-text"
+                  }`}
+                >
+                  <span>Đang Bán ({activeSellerListings.length})</span>
+                </button>
+
+                <button
                   onClick={() => setActiveFilter("bidding")}
                   className={`rounded-full px-4 py-2 text-xs font-semibold transition-all flex items-center gap-1.5 ${
                     activeFilter === "bidding"
@@ -360,6 +422,88 @@ export default function PortfolioPage() {
                 <span>{t("portfolio.createNow")}</span>
               </Link>
             </div>
+
+            {activeFilter === "selling" && (
+              <div className="mt-8">
+                {listingActionMsg && (
+                  <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-text">
+                    {listingActionMsg}
+                  </div>
+                )}
+
+                {activeSellerListings.length === 0 ? (
+                  <section className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.01] py-20 text-center">
+                    <div className="flex size-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-4xl">
+                      ◎
+                    </div>
+                    <h3 className="mt-6 font-display text-2xl text-text">
+                      Chưa có tranh đang bán
+                    </h3>
+                    <p className="mt-2 max-w-md text-sm text-text-dim">
+                      Vào tab tác phẩm, chọn một NFT trong kho và đăng bán với giá cố định.
+                    </p>
+                  </section>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {activeSellerListings.map((listing) => (
+                      <article
+                        key={listing.id}
+                        className="group overflow-hidden rounded-3xl border border-[#8ef7c0]/25 bg-[rgba(19,29,25,0.78)] shadow-[0_18px_50px_-30px_rgba(142,247,192,0.28)] transition-all hover:-translate-y-1 hover:border-[#8ef7c0]/45"
+                      >
+                        <div className="relative aspect-square overflow-hidden bg-[#111]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={listing.image}
+                            alt={listing.title}
+                            className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
+                          <div className="absolute left-3 top-3 rounded-full border border-[#8ef7c0]/40 bg-[#8ef7c0]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#8ef7c0] backdrop-blur-md">
+                            Đang bán
+                          </div>
+                        </div>
+
+                        <div className="p-4">
+                          <h4 className="line-clamp-1 font-display text-lg text-text">{listing.title}</h4>
+                          <p className="mt-1 truncate font-mono text-[10px] text-text-dim">
+                            Mint: {listing.nftMint.slice(0, 6)}...{listing.nftMint.slice(-6)}
+                          </p>
+
+                          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-text-dim">Giá niêm yết</span>
+                              <span className="font-mono font-bold text-text">{listing.price}</span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-xs">
+                              <span className="text-text-dim">Phí sàn 5%</span>
+                              <span className="font-mono text-[#8ef7c0]">
+                                {(listing.priceLamports * 0.05 / 1e9).toFixed(3)} SOL
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Link
+                              href={`/listings/${listing.id}`}
+                              className="rounded-xl bg-[#8ef7c0] px-3 py-2 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a]"
+                            >
+                              Xem tin
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => void handleCancelListing(listing.id)}
+                              disabled={cancelingListingId === listing.id}
+                              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-text-dim transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-60"
+                            >
+                              {cancelingListingId === listing.id ? "Đang hủy..." : "Hủy bán"}
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Bidding Filter View */}
             {activeFilter === "bidding" && (
@@ -677,16 +821,26 @@ export default function PortfolioPage() {
                               <span>Đang Trên Sàn Đấu Giá (Xem Ngay) ↗</span>
                             </Link>
                           ) : (
-                            <button
-                              onClick={() => {
-                                setSelectedArtworkForAuction(item);
-                                setIsAuctionModalOpen(true);
-                              }}
-                              className="flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_8px_25px_-5px_rgba(184,165,255,0.7)]"
-                            >
-                              <span>🔨</span>
-                              <span>Đưa Lên Đấu Giá (Start Auction)</span>
-                            </button>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedArtworkForListing(item);
+                                  setIsListingModalOpen(true);
+                                }}
+                                className="flex items-center justify-center rounded-xl bg-[#8ef7c0] px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:shadow-[0_8px_25px_-5px_rgba(142,247,192,0.45)]"
+                              >
+                                Đăng bán giá cứng
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedArtworkForAuction(item);
+                                  setIsAuctionModalOpen(true);
+                                }}
+                                className="flex items-center justify-center rounded-xl bg-accent px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0a0a0a] transition-all hover:bg-accent-strong hover:shadow-[0_8px_25px_-5px_rgba(184,165,255,0.7)]"
+                              >
+                                Đấu giá
+                              </button>
+                            </div>
                           )}
 
                           <div className="grid grid-cols-2 gap-2">
@@ -725,6 +879,15 @@ export default function PortfolioPage() {
         onClose={() => {
           setIsAuctionModalOpen(false);
           setSelectedArtworkForAuction(null);
+        }}
+      />
+
+      <CreateListingModal
+        artwork={selectedArtworkForListing}
+        isOpen={isListingModalOpen}
+        onClose={() => {
+          setIsListingModalOpen(false);
+          setSelectedArtworkForListing(null);
         }}
       />
 

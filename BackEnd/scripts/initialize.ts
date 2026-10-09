@@ -40,7 +40,7 @@ async function main() {
     console.log("Initializing Marketplace on-chain...");
     const treasury = keypair.publicKey;
     const forfeitureRecipient = keypair.publicKey;
-    const feeBps = 250; // 2.5%
+    const feeBps = 500; // 5%
 
     const tx = await (program.methods as any)
       .initializeMarketplace(treasury, forfeitureRecipient, feeBps)
