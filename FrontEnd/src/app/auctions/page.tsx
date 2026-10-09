@@ -21,7 +21,7 @@ import { useI18n } from "@/lib/i18n";
 import { getSavedBidSecret, getAllSavedBidsForAuction, hydrateAllBidSecrets } from "@/lib/auction-crypto";
 
 export default function AuctionsPage() {
-  const { t } = useI18n();
+  const { t, L } = useI18n();
   const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
@@ -102,16 +102,16 @@ export default function AuctionsPage() {
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
         <PageHero
           eyebrow={t("auctions.eyebrow")}
-          index="02 / Auctions"
-          lines={["Live", <em key="a">auctions</em>]}
+          index={L("02 / Đấu giá", "02 / Auctions")}
+          lines={[L("Đấu giá", "Live"), <em key="a">{L("trực tiếp", "auctions")}</em>]}
           description={t("auctions.description")}
           actions={
             <>
               <button onClick={handleStartAuctionClick} className="btn">
-                Tạo đấu giá từ kho <span aria-hidden>→</span>
+                {L("Tạo đấu giá từ kho ", "Create an auction from your vault ")}<span aria-hidden>→</span>
               </button>
               <Link href="/portfolio" className="btn btn-ghost">
-                Kho tác phẩm
+                {L("Kho tác phẩm", "Vault")}
               </Link>
             </>
           }
@@ -123,12 +123,12 @@ export default function AuctionsPage() {
         ) : auctions.length === 0 ? (
           <section className="border border-line px-6 py-28 text-center">
             <p className="mega text-[clamp(4rem,12vw,10rem)] text-text-dim/40">00</p>
-            <h2 className="mt-6 font-display text-3xl font-light tracking-[-0.03em]">Chưa có phiên đấu giá</h2>
+            <h2 className="mt-6 font-display text-3xl font-light tracking-[-0.03em]">{L("Chưa có phiên đấu giá", "No auctions yet")}</h2>
             <p className="mx-auto mt-3 max-w-md text-text-dim-2">
-              Chọn một tác phẩm độc bản từ kho cá nhân để khởi chạy phiên đấu giá on-chain đầu tiên.
+              {L("Chọn một tác phẩm độc bản từ kho cá nhân để khởi chạy phiên đấu giá on-chain đầu tiên.", "Pick a one-of-a-kind artwork from your vault to launch the first on-chain auction.")}
             </p>
             <button onClick={handleStartAuctionClick} className="btn mt-8">
-              Chọn tác phẩm từ kho →
+              {L("Chọn tác phẩm từ kho →", "Pick an artwork from your vault →")}
             </button>
           </section>
         ) : (
@@ -172,12 +172,12 @@ export default function AuctionsPage() {
                         }`}
                       >
                         {state === "LIVE" && <span className="size-1.5 animate-pulse rounded-full bg-ink" />}
-                        {state === "LIVE" ? t("auctions.liveBidding") : state === "SOLD" ? "Đã bán" : "Đã kết thúc"}
+                        {state === "LIVE" ? t("auctions.liveBidding") : state === "SOLD" ? L("Đã bán", "Sold") : L("Đã kết thúc", "Ended")}
                       </span>
 
                       {myBid && (
                         <span className="absolute inset-x-4 bottom-4 bg-ink/85 px-3 py-2 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text backdrop-blur-sm">
-                          {isSettled ? `Bạn thắng · ${myBid.bidAmountSol.toFixed(2)} SOL` : `Bạn đang dẫn · ${myBid.bidAmountSol.toFixed(2)} SOL`}
+                          {isSettled ? L(`Bạn thắng · ${myBid.bidAmountSol.toFixed(2)} SOL`, `You won · ${myBid.bidAmountSol.toFixed(2)} SOL`) : L(`Bạn đang dẫn · ${myBid.bidAmountSol.toFixed(2)} SOL`, `You are leading · ${myBid.bidAmountSol.toFixed(2)} SOL`)}
                         </span>
                       )}
                     </div>
@@ -192,7 +192,7 @@ export default function AuctionsPage() {
                       <span className="eyebrow truncate">
                         {t("auctions.seller")} {auction.artist}
                       </span>
-                      <span className="eyebrow text-right">{isSettled ? "Giá chốt" : isEnded ? "Giá cuối" : t("auctions.currentBid")}</span>
+                      <span className="eyebrow text-right">{isSettled ? L("Giá chốt", "Final price") : isEnded ? L("Giá cuối", "Final bid") : t("auctions.currentBid")}</span>
                     </div>
                   </Link>
                 </FadeUp>
@@ -209,10 +209,10 @@ export default function AuctionsPage() {
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <h3 className="font-display text-xl text-text">
-                  Chọn Tác Phẩm Từ Kho Cá Nhân
+                  {L("Chọn Tác Phẩm Từ Kho Cá Nhân", "Pick an artwork from your vault")}
                 </h3>
                 <p className="text-xs text-text-dim">
-                  Chọn tác phẩm 1/1 bạn sở hữu để đưa lên sàn đấu giá on-chain
+                  {L("Chọn tác phẩm 1/1 bạn sở hữu để đưa lên sàn đấu giá on-chain", "Pick a 1/1 artwork you own to put it up for on-chain auction")}
                 </p>
               </div>
               <button
@@ -226,12 +226,12 @@ export default function AuctionsPage() {
             <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-3">
               {userArtworks.length === 0 ? (
                 <div className="py-12 text-center text-text-dim">
-                  <p className="text-sm">Bạn chưa có tác phẩm nào trong kho.</p>
+                  <p className="text-sm">{L("Bạn chưa có tác phẩm nào trong kho.", "You have no artworks in your vault yet.")}</p>
                   <Link
                     href="/portfolio"
                     className="mt-4 inline-block rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase text-[#0a0a09]"
                   >
-                    Xem Kho Tác Phẩm
+                    {L("Xem Kho Tác Phẩm", "Open vault")}
                   </Link>
                 </div>
               ) : (
@@ -262,7 +262,7 @@ export default function AuctionsPage() {
                           {item.mintAddress.slice(0, 6)}...{item.mintAddress.slice(-6)}
                         </p>
                         <span className="mt-1 inline-block text-[10px] font-semibold text-accent">
-                          Chọn tác phẩm này &rarr;
+                          {L("Chọn tác phẩm này", "Pick this artwork")} &rarr;
                         </span>
                       </div>
                     </div>

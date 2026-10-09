@@ -19,7 +19,7 @@ export default function ListingDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { t } = useI18n();
+  const { t, L } = useI18n();
   const { id } = use(params);
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -109,7 +109,7 @@ export default function ListingDetailPage({
           <section className="rainbow-border max-w-lg rounded-[30px] bg-[rgba(18,18,18,0.72)] p-10 backdrop-blur-xl">
             <h1 className="font-display text-4xl text-text">Listing Not Found</h1>
             <p className="mt-3 text-text-dim">
-              The requested account is not an active direct sale listing on-chain.
+              {L("Tài khoản được yêu cầu không phải tin bán giá cố định đang hoạt động trên chain.", "The requested account is not an active direct sale listing on-chain.")}
             </p>
             <Link
               href="/auctions"
@@ -204,13 +204,13 @@ export default function ListingDetailPage({
                 </div>
                 <div className="mt-4 grid gap-3 rounded-2xl bg-accent/10 p-4 text-sm sm:grid-cols-2">
                   <div>
-                    <div className="text-xs font-semibold text-accent">Phí app 5%</div>
+                    <div className="text-xs font-semibold text-accent">{L("Phí app 5%", "Platform fee 5%")}</div>
                     <div className="mt-1 font-mono font-bold text-text">
                       {((listing.priceLamports / 1e9) * MARKETPLACE_FEE_BPS / 10_000).toFixed(3)} SOL
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-accent">Seller nhận</div>
+                    <div className="text-xs font-semibold text-accent">{L("Seller nhận", "Seller receives")}</div>
                     <div className="mt-1 font-mono font-bold text-text">
                       {((listing.priceLamports / 1e9) * (1 - MARKETPLACE_FEE_BPS / 10_000)).toFixed(3)} SOL
                     </div>

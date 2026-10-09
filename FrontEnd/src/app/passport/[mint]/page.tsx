@@ -18,7 +18,7 @@ import { OriginalityPanel } from "@/components/passport/OriginalityPanel";
 export default function PassportPage({ params }: { params: Promise<{ mint: string }> }) {
   const { mint } = use(params);
   const { connection } = useConnection();
-  const { t } = useI18n();
+  const { t, L } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [valid, setValid] = useState<boolean | null>(null);
@@ -28,7 +28,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
   const [artworkImage, setArtworkImage] = useState<string | null>(null);
   const [artworkHash, setArtworkHash] = useState<string | null>(null);
   const [metadataHash, setMetadataHash] = useState<string | null>(null);
-  const [artworkTitle, setArtworkTitle] = useState<string>("Tác phẩm NFT Độc bản");
+  const [artworkTitle, setArtworkTitle] = useState<string>(L("Tác phẩm NFT Độc bản", "Original 1/1 NFT artwork"));
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [originalCreator, setOriginalCreator] = useState<string | null>(null);
   const [saleHistory, setSaleHistory] = useState<SoldArtworkRecord[]>([]);
@@ -157,7 +157,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                   />
                   <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-semibold text-accent backdrop-blur-md">
                     <span>✨</span>
-                    <span>Độc bản 1/1</span>
+                    <span>{L("Độc bản 1/1", "1/1 original")}</span>
                   </div>
                 </div>
 
@@ -192,7 +192,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                       onClick={() => handleCopy(mint, "mint")}
                       className="shrink-0 text-[11px] text-accent hover:underline"
                     >
-                      {copiedText === "mint" ? "Đã sao chép!" : "Sao chép"}
+                      {copiedText === "mint" ? L("Đã sao chép!", "Copied!") : L("Sao chép", "Copy")}
                     </button>
                   </dd>
                 </div>
@@ -205,16 +205,16 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                     </dd>
                   </div>
                   <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3.5">
-                    <dt className="text-xs text-text-dim uppercase tracking-wider">Decimals (Độ phân rã)</dt>
+                    <dt className="text-xs text-text-dim uppercase tracking-wider">{L("Decimals (Độ phân rã)", "Decimals")}</dt>
                     <dd className="mt-1 font-display text-lg font-bold text-text">
-                      {valid ? decimals : 0} (NFT Chuẩn)
+                      {valid ? decimals : 0}{L(" (NFT Chuẩn)", " (standard NFT)")}
                     </dd>
                   </div>
                 </div>
 
                 {ownerAccount && (
                   <div>
-                    <dt className="text-xs text-text-dim uppercase tracking-wider">Tài khoản Token Sở hữu (ATA)</dt>
+                    <dt className="text-xs text-text-dim uppercase tracking-wider">{L("Tài khoản Token Sở hữu (ATA)", "Owning token account (ATA)")}</dt>
                     <dd className="mt-1 break-all rounded-xl border border-white/5 bg-white/[0.02] px-3.5 py-2 font-mono text-xs text-text-dim">
                       {ownerAccount}
                     </dd>
@@ -236,21 +236,21 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                 <div>
                   <dt className="text-xs text-text-dim uppercase tracking-wider">{t("passport.artworkHash")} (SHA-256)</dt>
                   <dd className="mt-1 break-all rounded-xl border border-white/5 bg-white/[0.02] px-3.5 py-2 font-mono text-xs text-text">
-                    {artworkHash || "Đang tính toán mã băm SHA-256..."}
+                    {artworkHash || L("Đang tính toán mã băm SHA-256...", "Computing SHA-256 hash...")}
                   </dd>
                 </div>
 
                 <div>
                   <dt className="text-xs text-text-dim uppercase tracking-wider">{t("passport.metadataHash")} (SHA-256)</dt>
                   <dd className="mt-1 break-all rounded-xl border border-white/5 bg-white/[0.02] px-3.5 py-2 font-mono text-xs text-text">
-                    {metadataHash || "Đang tính toán mã băm metadata..."}
+                    {metadataHash || L("Đang tính toán mã băm metadata...", "Computing metadata hash...")}
                   </dd>
                 </div>
 
                 <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 text-xs text-green-300 flex items-center gap-3">
                   <span className="text-lg">🛡️</span>
                   <span>
-                    Bằng chứng nguồn gốc đã được xác thực mã hóa Ed25519 và bảo đảm toàn vẹn dữ liệu trên Solana Devnet.
+                    {L("Bằng chứng nguồn gốc đã được xác thực mã hóa Ed25519 và bảo đảm toàn vẹn dữ liệu trên Solana Devnet.", "Provenance is verified with Ed25519 signatures and its integrity is guaranteed on Solana Devnet.")}
                   </span>
                 </div>
               </dl>
@@ -267,11 +267,11 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                 <div className="relative">
                   <span className="absolute -left-[26px] mt-1 size-2.5 rounded-full bg-accent" />
                   <p className="text-text font-semibold">
-                    {valid ? "Mint được tạo trên Solana Blockchain" : "Đang đồng bộ trạng thái tài khoản..."}
+                    {valid ? L("Mint được tạo trên Solana Blockchain", "Mint created on the Solana blockchain") : L("Đang đồng bộ trạng thái tài khoản...", "Syncing account state...")}
                   </p>
                   {originalCreator && (
                     <p className="mt-0.5 font-mono text-xs text-text-dim break-all">
-                      Người tạo: {originalCreator}
+                      {L("Người tạo: ", "Creator: ")}{originalCreator}
                     </p>
                   )}
                 </div>
@@ -280,8 +280,8 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                   <div key={`${sale.mintAddress}-${sale.soldAt}-${idx}`} className="relative">
                     <span className="absolute -left-[26px] mt-1 size-2.5 rounded-full bg-green-400" />
                     <p className="text-text font-semibold">
-                      Vòng đấu giá #{idx + 1}: đã chuyển nhượng
-                      {sale.priceSol ? ` với giá ${sale.priceSol.toFixed(2)} SOL` : ""}
+                      {L("Vòng đấu giá", "Auction round")} #{idx + 1}: {L("đã chuyển nhượng", "transferred")}
+                      {sale.priceSol ? L(` với giá ${sale.priceSol.toFixed(2)} SOL`, ` for ${sale.priceSol.toFixed(2)} SOL`) : ""}
                     </p>
                     <p className="mt-0.5 font-mono text-xs break-all">
                       {sale.seller} <span className="text-accent">&rarr;</span> {sale.buyer}
@@ -294,7 +294,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
 
                 {saleHistory.length === 0 && (
                   <p className="text-xs leading-5">
-                    Tác phẩm chưa được sang tay qua đấu giá — hiện vẫn thuộc quyền sở hữu của người tạo ban đầu.
+                    {L("Tác phẩm chưa được sang tay qua đấu giá — hiện vẫn thuộc quyền sở hữu của người tạo ban đầu.", "This artwork has not changed hands through an auction — it is still owned by its original creator.")}
                   </p>
                 )}
               </div>

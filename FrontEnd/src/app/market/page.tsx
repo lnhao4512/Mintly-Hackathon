@@ -10,8 +10,10 @@ import { PageHero } from "@/components/layout/PageHero";
 import { FadeUp } from "@/components/motion/Reveal";
 import { fetchLiveListings, fetchLiveAuctions, type Auction } from "@/lib/data";
 import type { Artwork } from "@/components/explore/ArtworkCard";
+import { useI18n } from "@/lib/i18n";
 
 export default function MarketPage() {
+  const { L } = useI18n();
   const { connection } = useConnection();
   const [listings, setListings] = useState<Artwork[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
@@ -57,36 +59,36 @@ export default function MarketPage() {
 
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
         <PageHero
-          eyebrow="Thị trường mua ngay"
-          index="01 / Market"
-          lines={["Fixed", <em key="p">price</em>]}
-          description="Người bán đặt một mức giá cứng, người mua thanh toán trực tiếp. Smart contract tự chia phí sàn và phần còn lại cho seller trong cùng một giao dịch."
+          eyebrow={L("Thị trường mua ngay", "Buy it now")}
+          index={L("01 / Thị trường", "01 / Market")}
+          lines={[L("Giá", "Fixed"), <em key="p">{L("cố định", "price")}</em>]}
+          description={L("Người bán đặt một mức giá cứng, người mua thanh toán trực tiếp. Smart contract tự chia phí sàn và phần còn lại cho seller trong cùng một giao dịch.", "The seller sets a fixed price and the buyer pays directly. The smart contract splits the platform fee and the remainder to the seller in the same transaction.")}
           actions={
             <>
               <Link href="/portfolio" className="btn">
-                Đăng bán từ kho <span aria-hidden>→</span>
+                {L("Đăng bán từ kho ", "List from your vault ")}<span aria-hidden>→</span>
               </Link>
               <Link href="/auctions" className="btn btn-ghost">
-                Xem đấu giá
+                {L("Xem đấu giá", "View auctions")}
               </Link>
             </>
           }
           stats={[
-            { label: "Tin đang bán", value: loading ? "—" : `${listings.length}` },
-            { label: "Giá sàn", value: loading ? "—" : floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL" },
-            { label: "Đấu giá live", value: loading ? "—" : `${auctions.length}` },
+            { label: L("Tin đang bán", "Listings"), value: loading ? "—" : `${listings.length}` },
+            { label: L("Giá sàn", "Floor price"), value: loading ? "—" : floorPrice > 0 ? `${floorPrice.toFixed(2)} SOL` : "0.00 SOL" },
+            { label: L("Đấu giá live", "Live auctions"), value: loading ? "—" : `${auctions.length}` },
           ]}
         />
 
         {loading ? (
-          <p className="py-24 font-display text-4xl font-light italic text-text-dim animate-pulse">Đang đồng bộ listing từ Solana…</p>
+          <p className="py-24 font-display text-4xl font-light italic text-text-dim animate-pulse">{L("Đang đồng bộ listing từ Solana…", "Syncing listings from Solana…")}</p>
         ) : listings.length === 0 ? (
           <section className="border border-line px-6 py-28 text-center">
             <p className="mega text-[clamp(4rem,12vw,10rem)] text-text-dim/40">00</p>
-            <h2 className="mt-6 font-display text-3xl font-light tracking-[-0.03em]">Chưa có tranh đăng bán</h2>
-            <p className="mx-auto mt-3 max-w-md text-text-dim-2">Vào kho tác phẩm để đăng bán giá cố định đầu tiên.</p>
+            <h2 className="mt-6 font-display text-3xl font-light tracking-[-0.03em]">{L("Chưa có tranh đăng bán", "Nothing listed yet")}</h2>
+            <p className="mx-auto mt-3 max-w-md text-text-dim-2">{L("Vào kho tác phẩm để đăng bán giá cố định đầu tiên.", "Open your vault to make the first fixed-price listing.")}</p>
             <Link href="/portfolio" className="btn mt-8">
-              Vào kho tác phẩm →
+              {L("Vào kho tác phẩm →", "Open vault →")}
             </Link>
           </section>
         ) : (
@@ -106,7 +108,7 @@ export default function MarketPage() {
                     <i className="reg right-3 top-3" />
                     <i className="reg bottom-3 left-3" />
                     <i className="reg bottom-3 right-3" />
-                    <span className="absolute left-4 top-4 bg-ink/80 px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.16em] backdrop-blur-sm">Mua ngay</span>
+                    <span className="absolute left-4 top-4 bg-ink/80 px-2 py-1 font-mono-ui text-[9px] uppercase tracking-[0.16em] backdrop-blur-sm">{L("Mua ngay", "Buy now")}</span>
                   </div>
                   <div className="mt-4 grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 border-t border-line pt-3">
                     <span className="font-mono-ui text-[10px] tracking-[0.14em] text-text-dim">№ {String(idx + 1).padStart(2, "0")}</span>
@@ -114,7 +116,7 @@ export default function MarketPage() {
                     <span className="font-mono-ui text-sm">{item.price}</span>
                     <span />
                     <span className="eyebrow truncate">Seller {item.artist}</span>
-                    <span className="eyebrow text-right">Giá bán</span>
+                    <span className="eyebrow text-right">{L("Giá bán", "Price")}</span>
                   </div>
                 </Link>
               </FadeUp>

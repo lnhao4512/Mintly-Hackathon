@@ -7,6 +7,7 @@ import { PublicKey } from "@solana/web3.js";
 import { createListingOnChain } from "@/lib/marketplace";
 import { MARKETPLACE_FEE_BPS } from "@/lib/config";
 import type { MintedArtworkRecord } from "@/lib/artworkCache";
+import { useI18n } from "@/lib/i18n";
 
 interface CreateListingModalProps {
   artwork: MintedArtworkRecord | null;
@@ -19,6 +20,7 @@ function toLamports(sol: number) {
 }
 
 export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingModalProps) {
+  const { L } = useI18n();
   const router = useRouter();
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -39,7 +41,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
     e.preventDefault();
     if (!artwork) return;
     if (!wallet.publicKey || !wallet.signTransaction) {
-      setErrorMsg("Vui lòng kết nối ví Solana trước khi đăng bán.");
+      setErrorMsg(L("Vui lòng kết nối ví Solana trước khi đăng bán.", "Please connect a Solana wallet before listing."));
       return;
     }
 
@@ -47,7 +49,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
     const days = Math.max(1, Number.parseInt(durationDays || "7", 10) || 7);
 
     if (!Number.isFinite(price) || price <= 0) {
-      setErrorMsg("Giá bán phải lớn hơn 0 SOL.");
+      setErrorMsg(L("Giá bán phải lớn hơn 0 SOL.", "The price must be greater than 0 SOL."));
       return;
     }
 
@@ -59,7 +61,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
       const nftMint = new PublicKey(artwork.mintAddress);
       const mintInfo = await connection.getAccountInfo(nftMint);
       if (!mintInfo) {
-        setErrorMsg("NFT mint chưa tồn tại trên Solana Devnet. Vui lòng kiểm tra lại tác phẩm.");
+        setErrorMsg(L("NFT mint chưa tồn tại trên Solana Devnet. Vui lòng kiểm tra lại tác phẩm.", "This NFT mint does not exist on Solana Devnet. Please check the artwork."));
         return;
       }
 
@@ -79,7 +81,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
     } catch (err: unknown) {
       console.warn("Create listing error:", err);
       const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg || "Giao dịch đăng bán thất bại.");
+      setErrorMsg(msg || L("Giao dịch đăng bán thất bại.", "Listing failed."));
     } finally {
       setIsSubmitting(false);
     }
@@ -99,13 +101,13 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
 
         <div className="pr-10">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
-            Bán giá cố định
+            {L("Bán giá cố định", "Fixed price sale")}
           </p>
           <h2 className="mt-1 font-display text-2xl text-text">
-            Đăng bán tác phẩm
+            {L("Đăng bán tác phẩm", "List artwork")}
           </h2>
           <p className="mt-1 text-sm text-text-dim">
-            NFT được khóa vào escrow; người mua thanh toán đủ giá niêm yết, sàn thu 5%.
+            {L("NFT được khóa vào escrow; người mua thanh toán đủ giá niêm yết, sàn thu 5%.", "The NFT is locked in escrow; the buyer pays the full list price and the platform takes 5%.")}
           </p>
         </div>
 
@@ -126,7 +128,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-bold uppercase tracking-[0.12em] text-text-dim">
-                Giá bán cứng (SOL)
+                {L("Giá bán cứng (SOL)", "Fixed price (SOL)")}
               </label>
               <input
                 type="number"
@@ -141,7 +143,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
 
             <div>
               <label className="text-xs font-bold uppercase tracking-[0.12em] text-text-dim">
-                Hiệu lực tin bán
+                {L("Hiệu lực tin bán", "Listing valid for")}
               </label>
               <select
                 value={durationDays}
@@ -149,30 +151,30 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
                 disabled={isSubmitting}
                 className="mt-2 w-full rounded-2xl border border-line bg-bg-elevated px-4 py-3 text-sm text-text outline-none transition-colors focus:border-accent"
               >
-                <option value="1">1 ngày</option>
-                <option value="3">3 ngày</option>
-                <option value="7">7 ngày</option>
-                <option value="14">14 ngày</option>
-                <option value="30">30 ngày</option>
+                <option value="1">{L("1 ngày", "1 day")}</option>
+                <option value="3">{L("3 ngày", "3 days")}</option>
+                <option value="7">{L("7 ngày", "7 days")}</option>
+                <option value="14">{L("14 ngày", "14 days")}</option>
+                <option value="30">{L("30 ngày", "30 days")}</option>
               </select>
             </div>
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-line bg-accent/10 p-4 text-sm sm:grid-cols-3">
             <div>
-              <div className="text-xs font-semibold text-accent">Người mua trả</div>
+              <div className="text-xs font-semibold text-accent">{L("Người mua trả", "Buyer pays")}</div>
               <div className="mt-1 font-mono text-base font-bold text-text">
                 {Number.isFinite(parsedPrice) ? parsedPrice.toFixed(2) : "0.00"} SOL
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-accent">Phí sàn 5%</div>
+              <div className="text-xs font-semibold text-accent">{L("Phí sàn 5%", "Platform fee 5%")}</div>
               <div className="mt-1 font-mono text-base font-bold text-text">
                 {feeSol.toFixed(3)} SOL
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-accent">Seller nhận</div>
+              <div className="text-xs font-semibold text-accent">{L("Seller nhận", "Seller receives")}</div>
               <div className="mt-1 font-mono text-base font-bold text-text">
                 {sellerReceives.toFixed(3)} SOL
               </div>
@@ -181,7 +183,7 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
 
           {successTx && (
             <div className="rounded-2xl border border-success/30 bg-success/10 p-3 text-xs text-success">
-              Đăng bán thành công. Tx: <span className="font-mono">{successTx.slice(0, 18)}...</span>
+              {L("Đăng bán thành công. Tx: ", "Listed. Tx: ")}<span className="font-mono">{successTx.slice(0, 18)}...</span>
             </div>
           )}
 
@@ -198,14 +200,14 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
               disabled={isSubmitting}
               className="rounded-full border border-line bg-bg-elevated px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-text-dim-2 transition-colors hover:text-text"
             >
-              Hủy
+              {L("Hủy", "Cancel")}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-full bg-accent text-ink px-6 py-3 text-xs font-bold uppercase tracking-[0.12em] transition-transform hover:-translate-y-0.5 disabled:opacity-60"
             >
-              {isSubmitting ? "Đang đăng bán..." : "Đăng bán ngay"}
+              {isSubmitting ? L("Đang đăng bán...", "Listing...") : L("Đăng bán ngay", "List now")}
             </button>
           </div>
         </form>

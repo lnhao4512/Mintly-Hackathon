@@ -27,7 +27,7 @@ export function Navbar() {
   const { publicKey, connected, disconnect } = useWallet();
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
-  const { locale, toggleLocale, t } = useI18n();
+  const { locale, toggleLocale, t, L } = useI18n();
   const [solBalance, setSolBalance] = useState(0);
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -114,9 +114,9 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-50 transition-[transform,background] duration-500 ${
-          hidden ? "-translate-y-full" : "translate-y-0"
-        } ${scrolled ? "bg-ink/80 backdrop-blur-md" : "bg-transparent"}`}
+        className={`fixed inset-x-0 top-0 transition-[transform,background,color] duration-500 ${
+          open ? "z-[70] text-ink" : "z-50"
+        } ${hidden ? "-translate-y-full" : "translate-y-0"} ${scrolled && !open ? "bg-ink/80 backdrop-blur-md" : "bg-transparent"}`}
         style={{ transitionTimingFunction: "var(--ease-out-expo)" }}
       >
         <div className="mx-auto flex h-[68px] w-full max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-12">
@@ -129,7 +129,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-9 lg:flex">
+          <nav className={`hidden items-center gap-9 transition-opacity duration-300 lg:flex ${open ? "pointer-events-none opacity-0" : ""}`}>
             {primary.map((link, i) => (
               <Link
                 key={link.href}
@@ -138,7 +138,7 @@ export function Navbar() {
                   isActive(link.href) ? "text-accent" : "text-text-dim-2 hover:text-text"
                 }`}
               >
-                <span className="mr-1.5 text-text-dim">0{i + 1}</span>
+                <span className={`mr-1.5 transition-colors ${isActive(link.href) ? "text-accent" : "text-text-dim"}`}>0{i + 1}</span>
                 {t(link.key as TranslationKey)}
               </Link>
             ))}
@@ -149,19 +149,21 @@ export function Navbar() {
               type="button"
               onClick={toggleLocale}
               aria-label={t("nav.language")}
-              className="hidden font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim transition-colors hover:text-text sm:block"
+              className={`hidden font-mono-ui text-[11px] uppercase tracking-[0.16em] text-text-dim transition-opacity hover:text-text sm:block ${open ? "pointer-events-none opacity-0" : ""}`}
             >
               {locale === "en" ? "VI" : "EN"}
             </button>
-            <div className="hidden sm:block">{wallet}</div>
+            <div className={`hidden transition-opacity sm:block ${open ? "pointer-events-none opacity-0" : ""}`}>{wallet}</div>
             <button
               type="button"
               aria-label={t("nav.menu")}
               aria-expanded={open}
               onClick={() => setOpen((v) => !v)}
-              className="relative z-[70] flex h-10 items-center gap-3 border border-line px-4 font-mono-ui text-[11px] uppercase tracking-[0.16em] transition-colors hover:border-accent"
+              className={`relative flex h-10 items-center gap-3 border px-4 font-mono-ui text-[11px] uppercase tracking-[0.16em] transition-colors hover:border-accent ${
+                open ? "border-ink/40" : "border-line"
+              }`}
             >
-              {open ? "Close" : "Menu"}
+              {open ? L("Đóng", "Close") : "Menu"}
               <span className="relative block h-2 w-5">
                 <span className={`absolute left-0 h-px w-full bg-current transition-all duration-500 ${open ? "top-1 rotate-45" : "top-0"}`} />
                 <span className={`absolute left-0 h-px w-full bg-current transition-all duration-500 ${open ? "top-1 -rotate-45" : "top-2"}`} />
@@ -172,8 +174,13 @@ export function Navbar() {
       </header>
 
       {/* Full-screen menu */}
-      <div ref={overlayRef} className="fixed inset-0 z-[65] hidden flex-col justify-between bg-bone px-5 pb-12 pt-28 text-ink sm:px-8 lg:px-12" style={{ clipPath: "inset(0 0 100% 0)" }}>
-        <nav className="flex flex-col">
+      <div
+        ref={overlayRef}
+        data-lenis-prevent
+        className="fixed inset-0 z-[65] hidden flex-col overflow-y-auto overscroll-contain bg-bone px-5 pb-10 pt-24 text-ink sm:px-8 lg:px-12"
+        style={{ clipPath: "inset(0 0 100% 0)" }}
+      >
+        <nav className="flex shrink-0 flex-col">
           {all.map((link, i) => (
             <Link
               key={link.href}
@@ -183,14 +190,14 @@ export function Navbar() {
             >
               <span data-menu-item className="flex items-baseline gap-5 py-2 sm:gap-8">
                 <span className="font-mono-ui text-[11px] tracking-[0.16em] text-ink/50">0{i + 1}</span>
-                <span className="font-display text-[clamp(2.4rem,8vw,6.5rem)] font-light leading-[1] tracking-[-0.04em] transition-all duration-500 group-hover:translate-x-4 group-hover:italic group-hover:text-accent">
+                <span className="font-display text-[clamp(1.9rem,5.4vw,4.6rem)] font-light leading-[1.05] tracking-[-0.04em] transition-all duration-500 group-hover:translate-x-4 group-hover:italic group-hover:text-accent">
                   {t(link.key as TranslationKey)}
                 </span>
               </span>
             </Link>
           ))}
         </nav>
-        <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="mt-auto flex shrink-0 flex-wrap items-end justify-between gap-6 pt-8">
           <div className="flex items-center gap-4 sm:hidden">
             {wallet}
           </div>

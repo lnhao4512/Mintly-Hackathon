@@ -41,8 +41,8 @@ export default function LegalPage() {
       <Navbar />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
         <PageHero
-          eyebrow="Fine print"
-          index="05 / Legal"
+          eyebrow={locale === "vi" ? "Điều khoản" : "Fine print"}
+          index={locale === "vi" ? "05 / Pháp lý" : "05 / Legal"}
           lines={[c.title.split(" & ")[0] + " &", <em key="r">{c.title.split(" & ")[1]}</em>]}
         />
         <div className="border-t border-line">

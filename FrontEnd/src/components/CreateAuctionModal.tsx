@@ -21,6 +21,7 @@ import {
 } from "@/lib/config";
 import type { MintedArtworkRecord } from "@/lib/artworkCache";
 import { clearBidsForAuction } from "@/lib/auction-crypto";
+import { useI18n } from "@/lib/i18n";
 
 interface CreateAuctionModalProps {
   artwork: MintedArtworkRecord | null;
@@ -33,6 +34,7 @@ export function CreateAuctionModal({
   isOpen,
   onClose,
 }: CreateAuctionModalProps) {
+  const { L } = useI18n();
   const router = useRouter();
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -69,7 +71,7 @@ export function CreateAuctionModal({
     e.preventDefault();
     if (!artwork) return;
     if (!wallet.publicKey || !wallet.signTransaction) {
-      setErrorMsg("Vui lòng kết nối ví Solana trước khi tạo đấu giá.");
+      setErrorMsg(L("Vui lòng kết nối ví Solana trước khi tạo đấu giá.", "Please connect a Solana wallet before creating an auction."));
       return;
     }
 
@@ -80,15 +82,15 @@ export function CreateAuctionModal({
     const paymentSecs = toTotalSeconds(paymentDays, paymentHours, paymentMinutes);
 
     if (isNaN(startPrice) || startPrice <= 0) {
-      setErrorMsg("Giá khởi điểm phải lớn hơn 0 SOL.");
+      setErrorMsg(L("Giá khởi điểm phải lớn hơn 0 SOL.", "The starting price must be greater than 0 SOL."));
       return;
     }
     if (auctionSecs < 60) {
-      setErrorMsg("Thời gian đấu giá tối thiểu là 1 phút.");
+      setErrorMsg(L("Thời gian đấu giá tối thiểu là 1 phút.", "The auction must last at least 1 minute."));
       return;
     }
     if (paymentSecs < 60) {
-      setErrorMsg("Thời hạn thanh toán sau khi thắng tối thiểu là 1 phút.");
+      setErrorMsg(L("Thời hạn thanh toán sau khi thắng tối thiểu là 1 phút.", "The payment window after winning must be at least 1 minute."));
       return;
     }
 
@@ -112,7 +114,7 @@ export function CreateAuctionModal({
       const mintInfo = await connection.getAccountInfo(nftMint);
       if (!mintInfo) {
         setErrorMsg(
-          `❌ Tác phẩm "${artwork.title}" (Mint: ${artwork.mintAddress}) chưa được Mint on-chain thực tế trên Solana Devnet. Vui lòng vào trang Tạo Tác Phẩm (/create) để Mint tác phẩm lên mạng trước khi đưa lên sàn đấu giá.`
+          L(`❌ Tác phẩm "${artwork.title}" (Mint: ${artwork.mintAddress}) chưa được Mint on-chain thực tế trên Solana Devnet. Vui lòng vào trang Tạo Tác Phẩm (/create) để Mint tác phẩm lên mạng trước khi đưa lên sàn đấu giá.`, `❌ The artwork "${artwork.title}" (Mint: ${artwork.mintAddress}) has not actually been minted on Solana Devnet. Go to Create (/create) and mint it before listing it for auction.`)
         );
         setIsSubmitting(false);
         return;
@@ -122,7 +124,7 @@ export function CreateAuctionModal({
       const ataInfo = await connection.getAccountInfo(sellerTokenAccount);
       if (!ataInfo) {
         setErrorMsg(
-          `❌ Ví của bạn chưa sở hữu tài khoản Token Account cho NFT này trên Solana Devnet. Vui lòng kiểm tra lại quyền sở hữu.`
+          L(`❌ Ví của bạn chưa sở hữu tài khoản Token Account cho NFT này trên Solana Devnet. Vui lòng kiểm tra lại quyền sở hữu.`, `❌ Your wallet has no token account for this NFT on Solana Devnet. Please check ownership.`)
         );
         setIsSubmitting(false);
         return;
@@ -238,13 +240,13 @@ export function CreateAuctionModal({
       console.warn("Create auction error:", err);
       const errStr = String(err?.message || "") + " " + JSON.stringify(err?.logs || []) + " " + String(err);
 
-      let msg = err?.message || "Giao dịch tạo đấu giá thất bại. Vui lòng kiểm tra ví.";
+      let msg = err?.message || L("Giao dịch tạo đấu giá thất bại. Vui lòng kiểm tra ví.", "Creating the auction failed. Please check your wallet.");
       if (errStr.includes("AuctionStillActive") || errStr.includes("6010")) {
-        msg = "Phiên đấu giá trước đó cho tác phẩm này vẫn chưa kết thúc/hủy trên Solana, chưa thể mở vòng đấu giá lại.";
+        msg = L("Phiên đấu giá trước đó cho tác phẩm này vẫn chưa kết thúc/hủy trên Solana, chưa thể mở vòng đấu giá lại.", "The previous auction for this artwork has not ended or been cancelled on Solana, so a new round cannot open yet.");
       } else if (errStr.includes("Blockhash not found")) {
-        msg = "Phiên giao dịch đã hết hạn xác thực (Blockhash expired do để popup ví quá lâu). Vui lòng bấm '🚀 Kích Hoạt Phiên Đấu Giá' và bấm 'Xác nhận' trên ví trong vòng 60 giây.";
+        msg = L("Phiên giao dịch đã hết hạn xác thực (Blockhash expired do để popup ví quá lâu). Vui lòng bấm '🚀 Kích Hoạt Phiên Đấu Giá' và bấm 'Xác nhận' trên ví trong vòng 60 giây.", "The transaction expired (blockhash expired because the wallet popup stayed open too long). Press '🚀 Activate auction' again and confirm in your wallet within 60 seconds.");
       } else if (errStr.includes("User rejected") || errStr.includes("WalletSignTransactionError")) {
-        msg = "Bạn đã hủy yêu cầu ký giao dịch tạo đấu giá trên ví Phantom.";
+        msg = L("Bạn đã hủy yêu cầu ký giao dịch tạo đấu giá trên ví Phantom.", "You cancelled the auction signature in Phantom.");
       }
       setErrorMsg(msg);
     } finally {
@@ -270,10 +272,10 @@ export function CreateAuctionModal({
           </div>
           <div>
             <h2 className="font-display text-xl text-text">
-              Khởi Tạo Đấu Giá On-chain
+              {L("Khởi Tạo Đấu Giá On-chain", "Create an on-chain auction")}
             </h2>
             <p className="text-xs text-text-dim">
-              Lấy tác phẩm từ Kho • Khóa NFT vào Escrow PDA • Cơ chế Commit-Reveal
+              {L("Lấy tác phẩm từ Kho • Khóa NFT vào Escrow PDA • Cơ chế Commit-Reveal", "Take the artwork from your vault • Lock the NFT in an escrow PDA • Public English auction")}
             </p>
           </div>
         </div>
@@ -290,7 +292,7 @@ export function CreateAuctionModal({
           </div>
           <div className="flex-1 min-w-0">
             <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-semibold text-accent">
-              ✨ Tác phẩm từ Kho cá nhân
+              {L("✨ Tác phẩm từ Kho cá nhân", "✨ Artwork from your vault")}
             </span>
             <h3 className="mt-1 font-display text-base text-text truncate">
               {artwork.title}
@@ -307,7 +309,7 @@ export function CreateAuctionModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-text-dim">
-                Giá Khởi Điểm (SOL) *
+                {L("Giá Khởi Điểm (SOL) *", "Starting price (SOL) *")}
               </label>
               <input
                 type="number"
@@ -324,7 +326,7 @@ export function CreateAuctionModal({
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-text-dim">
-                Bước Nhảy Tối Thiểu (SOL)
+                {L("Bước Nhảy Tối Thiểu (SOL)", "Minimum increment (SOL)")}
               </label>
               <input
                 type="number"
@@ -344,7 +346,7 @@ export function CreateAuctionModal({
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
                 <span>⏱️</span>
-                <span>Cấu Hình Thời Gian (Ngày / Giờ / Phút)</span>
+                <span>{L("Cấu Hình Thời Gian (Ngày / Giờ / Phút)", "Timing (days / hours / minutes)")}</span>
               </h4>
             </div>
 
@@ -352,14 +354,14 @@ export function CreateAuctionModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-text">
-                  1. Thời Gian Đấu Giá (Hết giờ là chốt deal)
+                  {L("1. Thời Gian Đấu Giá (Hết giờ là chốt deal)", "1. Auction length (the deal closes when time runs out)")}
                 </label>
                 <div className="flex gap-1">
                   {[
-                    { label: "10 Phút", d: "0", h: "0", m: "10" },
-                    { label: "1 Giờ", d: "0", h: "1", m: "0" },
-                    { label: "1 Ngày", d: "1", h: "0", m: "0" },
-                    { label: "3 Ngày", d: "3", h: "0", m: "0" },
+                    { label: L("10 Phút", "10 min"), d: "0", h: "0", m: "10" },
+                    { label: L("1 Giờ", "1 hour"), d: "0", h: "1", m: "0" },
+                    { label: L("1 Ngày", "1 day"), d: "1", h: "0", m: "0" },
+                    { label: L("3 Ngày", "3 days"), d: "3", h: "0", m: "0" },
                   ].map((p) => (
                     <button
                       type="button"
@@ -379,7 +381,7 @@ export function CreateAuctionModal({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[10px] uppercase text-text-dim mb-1">Ngày</label>
+                  <label className="block text-[10px] uppercase text-text-dim mb-1">{L("Ngày", "Days")}</label>
                   <input
                     type="number"
                     min="0"
@@ -391,7 +393,7 @@ export function CreateAuctionModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-text-dim mb-1">Giờ</label>
+                  <label className="block text-[10px] uppercase text-text-dim mb-1">{L("Giờ", "Hours")}</label>
                   <input
                     type="number"
                     min="0"
@@ -404,7 +406,7 @@ export function CreateAuctionModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-text-dim mb-1">Phút</label>
+                  <label className="block text-[10px] uppercase text-text-dim mb-1">{L("Phút", "Minutes")}</label>
                   <input
                     type="number"
                     min="0"
@@ -423,14 +425,14 @@ export function CreateAuctionModal({
             <div className="space-y-2 pt-2 border-t border-white/5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-text">
-                  2. Hạn Chót Thanh Toán Sau Khi Thắng
+                  {L("2. Hạn Chót Thanh Toán Sau Khi Thắng", "2. Payment deadline after winning")}
                 </label>
                 <div className="flex gap-1">
                   {[
-                    { label: "1 Giờ", d: "0", h: "1", m: "0" },
-                    { label: "1 Ngày", d: "1", h: "0", m: "0" },
-                    { label: "2 Ngày", d: "2", h: "0", m: "0" },
-                    { label: "3 Ngày", d: "3", h: "0", m: "0" },
+                    { label: L("1 Giờ", "1 hour"), d: "0", h: "1", m: "0" },
+                    { label: L("1 Ngày", "1 day"), d: "1", h: "0", m: "0" },
+                    { label: L("2 Ngày", "2 days"), d: "2", h: "0", m: "0" },
+                    { label: L("3 Ngày", "3 days"), d: "3", h: "0", m: "0" },
                   ].map((p) => (
                     <button
                       type="button"
@@ -450,7 +452,7 @@ export function CreateAuctionModal({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[10px] uppercase text-text-dim mb-1">Ngày</label>
+                  <label className="block text-[10px] uppercase text-text-dim mb-1">{L("Ngày", "Days")}</label>
                   <input
                     type="number"
                     min="0"
@@ -462,7 +464,7 @@ export function CreateAuctionModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-text-dim mb-1">Giờ</label>
+                  <label className="block text-[10px] uppercase text-text-dim mb-1">{L("Giờ", "Hours")}</label>
                   <input
                     type="number"
                     min="0"
@@ -475,7 +477,7 @@ export function CreateAuctionModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase text-text-dim mb-1">Phút</label>
+                  <label className="block text-[10px] uppercase text-text-dim mb-1">{L("Phút", "Minutes")}</label>
                   <input
                     type="number"
                     min="0"
@@ -495,10 +497,10 @@ export function CreateAuctionModal({
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 space-y-1.5">
                 <div className="font-bold flex items-center gap-1.5 text-amber-300">
                   <span>🛡️</span>
-                  <span>Quy Định Thanh Toán 100% & Phạt 10% Quá Hạn</span>
+                  <span>{L("Quy Định Thanh Toán 100% & Phạt 10% Quá Hạn", "Payment rules: 100% due, 10% forfeited if late")}</span>
                 </div>
                 <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                  Sau khi hết giờ đấu giá, người thắng phải thanh toán <strong>100% số tiền đã đấu giá</strong> trong thời hạn đã thiết lập để nhận NFT. Chỉ khi <strong>không trả đúng hạn</strong> thì người thắng mới bị <strong>phạt mất 10% số tiền</strong> trên tổng số tiền đã đấu giá!
+                  {L("Sau khi hết giờ đấu giá, người thắng phải thanh toán 100% số tiền đã đấu giá trong thời hạn đã thiết lập để nhận NFT. Chỉ khi không trả đúng hạn thì người thắng mới bị phạt mất 10% số tiền trên tổng số tiền đã đấu giá (70% bồi thường cho tác giả)!", "After the auction ends, the winner must pay 100% of the winning bid within the deadline to receive the NFT. Only if they fail to pay on time do they lose 10% of the bid (70% of it compensates the artist)!")}
                 </p>
               </div>
             </div>
@@ -508,7 +510,7 @@ export function CreateAuctionModal({
           {successTx && (
             <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-xs text-green-300 space-y-2">
               <div className="font-bold flex items-center gap-2">
-                <span>✓</span> Đã khởi tạo đấu giá thành công trên Solana!
+                <span>✓</span>{L(" Đã khởi tạo đấu giá thành công trên Solana!", " Auction created on Solana!")}
               </div>
               <div className="font-mono text-[11px] break-all">
                 Tx: {successTx}
@@ -519,7 +521,7 @@ export function CreateAuctionModal({
                 </div>
               )}
               <p className="text-[11px] text-text-dim animate-pulse">
-                Đang chuyển hướng đến trang đấu giá...
+                {L("Đang chuyển hướng đến trang đấu giá...", "Redirecting to the auction page...")}
               </p>
             </div>
           )}
@@ -539,7 +541,7 @@ export function CreateAuctionModal({
               disabled={isSubmitting}
               className="rounded-full border border-white/15 px-6 py-3 text-xs font-semibold text-text-dim hover:bg-white/5 hover:text-white"
             >
-              Hủy Bỏ
+              {L("Hủy Bỏ", "Cancel")}
             </button>
             <button
               type="submit"
@@ -549,12 +551,12 @@ export function CreateAuctionModal({
               {isSubmitting ? (
                 <>
                   <span className="size-3.5 animate-spin rounded-full border-2 border-black border-t-transparent" />
-                  <span>Đang Khởi Tạo Đấu Giá...</span>
+                  <span>{L("Đang Khởi Tạo Đấu Giá...", "Creating the auction...")}</span>
                 </>
               ) : (
                 <>
                   <span>🚀</span>
-                  <span>Tạo Đấu Giá Ngay</span>
+                  <span>{L("Tạo Đấu Giá Ngay", "Create auction now")}</span>
                 </>
               )}
             </button>

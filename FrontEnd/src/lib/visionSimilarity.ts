@@ -60,6 +60,7 @@ export interface AnalyzeInput {
   sha256?: string; // sha256 of the full-resolution export, computed in the browser
   embedding?: unknown; // CLIP image embedding computed in the browser
   metadata?: { name?: string; description?: string; mint?: string };
+  locale?: "vi" | "en";
 }
 
 interface ReferenceItem extends Partial<ImageFeatures> {
@@ -173,13 +174,14 @@ export async function analyzeArtwork(input: AnalyzeInput): Promise<SimilarityAna
   scored.sort((a, b) => b.score - a.score);
   const best = scored[0];
 
+  const L = (vi: string, en: string) => (input.locale === "en" ? en : vi);
   const reasonFor = (s: Scored) => {
-    if (s.exact) return "Trùng khớp 100% dữ liệu tệp gốc.";
-    if (s.matchType === "EXACT") return `Ảnh gần như y hệt (khác ${s.dist} bit hash) — có thể chỉ đổi định dạng/kích thước.`;
+    if (s.exact) return L("Trùng khớp 100% dữ liệu tệp gốc.", "100% match with the original file data.");
+    if (s.matchType === "EXACT") return L(`Ảnh gần như y hệt (khác ${s.dist} bit hash) — có thể chỉ đổi định dạng/kích thước.`, `Almost identical (${s.dist} hash bits differ) — possibly just a format or size change.`);
     if (s.matchType === "NEAR_DUPLICATE")
-      return `Cùng một ảnh đã bị chỉnh sửa (resize / nén / lật / cắt / đổi màu)${s.mirrored ? " — phát hiện lật ngược" : ""} — khoảng cách hash ${s.dist}/64.`;
-    if (s.emb >= 0.4) return `AI nhận diện bố cục & phong cách tương tự (${pct(s.emb)}%).`;
-    return `Tương đồng ${pct(s.score)}% về ${s.color > s.struct ? "tông màu" : "bố cục thị giác"}.`;
+      return L(`Cùng một ảnh đã bị chỉnh sửa (resize / nén / lật / cắt / đổi màu)${s.mirrored ? " — phát hiện lật ngược" : ""} — khoảng cách hash ${s.dist}/64.`, `The same image, edited (resized / compressed / flipped / cropped / recoloured)${s.mirrored ? " — mirrored" : ""} — hash distance ${s.dist}/64.`);
+    if (s.emb >= 0.4) return L(`AI nhận diện bố cục & phong cách tương tự (${pct(s.emb)}%).`, `AI detects a similar layout and style (${pct(s.emb)}%).`);
+    return L(`Tương đồng ${pct(s.score)}% về ${s.color > s.struct ? "tông màu" : "bố cục thị giác"}.`, `${pct(s.score)}% similar in ${s.color > s.struct ? "colour palette" : "visual layout"}.`);
   };
 
   const similarItems = scored
@@ -202,16 +204,16 @@ export async function analyzeArtwork(input: AnalyzeInput): Promise<SimilarityAna
   const matchType: MatchType = best && finalSimilarity >= MODERATE_THRESHOLD ? best.matchType : "DISTINCT";
   const closestTitle = best?.item.title ?? "";
 
-  let message = `Tác phẩm độc bản: đã đối chiếu ${references.length} tác phẩm, tính nguyên bản ${originalityScore}%. Đạt chuẩn NFT 1/1.`;
+  let message = L(`Tác phẩm độc bản: đã đối chiếu ${references.length} tác phẩm, tính nguyên bản ${originalityScore}%. Đạt chuẩn NFT 1/1.`, `Original work: compared with ${references.length} artworks, originality ${originalityScore}%. Meets the 1/1 NFT standard.`);
   if (status === "HIGH_SIMILARITY") {
     message =
       matchType === "SEMANTIC"
-        ? `Cảnh báo: AI nhận thấy tác phẩm giống bố cục/phong cách "${closestTitle}" (${finalSimilarity}%). Có thể là bản nhái hoặc vẽ lại.`
-        : `Cảnh báo: tác phẩm trùng hoặc là bản chỉnh sửa của "${closestTitle}" (${finalSimilarity}%).`;
+        ? L(`Cảnh báo: AI nhận thấy tác phẩm giống bố cục/phong cách "${closestTitle}" (${finalSimilarity}%). Có thể là bản nhái hoặc vẽ lại.`, `Warning: AI finds the layout/style similar to "${closestTitle}" (${finalSimilarity}%). It may be an imitation or a redraw.`)
+        : L(`Cảnh báo: tác phẩm trùng hoặc là bản chỉnh sửa của "${closestTitle}" (${finalSimilarity}%).`, `Warning: the work duplicates or is an edit of "${closestTitle}" (${finalSimilarity}%).`);
   } else if (status === "MODERATE_SIMILARITY") {
-    message = `Có nét tương đồng vừa phải (${finalSimilarity}%) với "${closestTitle}". Nên kiểm tra lại trước khi mint.`;
+    message = L(`Có nét tương đồng vừa phải (${finalSimilarity}%) với "${closestTitle}". Nên kiểm tra lại trước khi mint.`, `Moderate similarity (${finalSimilarity}%) with "${closestTitle}". Review before minting.`);
   }
-  if (!queryEmbedding) message += " (Chưa có phân tích AI embedding — kết quả chỉ dựa trên hash & màu sắc.)";
+  if (!queryEmbedding) message += L(" (Chưa có phân tích AI embedding — kết quả chỉ dựa trên hash & màu sắc.)", " (No AI embedding analysis yet — result based on hash and colour only.)");
 
     return {
     status,
@@ -243,15 +245,15 @@ export async function analyzeArtwork(input: AnalyzeInput): Promise<SimilarityAna
       { type: "perceptual_hash", value: query.phash },
       { type: "difference_hash", value: query.dhash },
       ...(best ? [{ type: "closest_hash_distance", value: `${best.dist}/64 bit` }] : []),
-      { type: "database_items_scanned", value: `${references.length} tác phẩm (catalogue + NFT đã mint)` },
+      { type: "database_items_scanned", value: L(`${references.length} tác phẩm (catalogue + NFT đã mint)`, `${references.length} artworks (catalogue + minted NFTs)`) },
     ],
     message,
     metadataAnalysis: input.metadata?.name
-      ? `Metadata hợp lệ cho "${input.metadata.name}".`
-      : "Metadata chưa đầy đủ tên tác phẩm.",
+      ? L(`Metadata hợp lệ cho "${input.metadata.name}".`, `Valid metadata for "${input.metadata.name}".`)
+      : L("Metadata chưa đầy đủ tên tác phẩm.", "Metadata is missing the artwork title."),
     provenanceAnalysis:
       status === "HIGH_SIMILARITY"
-        ? "Không đảm bảo Độc bản 1/1 — tồn tại tác phẩm rất giống trong hệ thống."
-        : "Fingerprint (SHA-256 + perceptual hash + AI embedding) sẵn sàng để ghi nhận quyền tác giả.",
+        ? L("Không đảm bảo Độc bản 1/1 — tồn tại tác phẩm rất giống trong hệ thống.", "A 1/1 original is not guaranteed — a very similar artwork exists in the system.")
+        : L("Fingerprint (SHA-256 + perceptual hash + AI embedding) sẵn sàng để ghi nhận quyền tác giả.", "Fingerprint (SHA-256 + perceptual hash + AI embedding) is ready to record authorship."),
   };
 }

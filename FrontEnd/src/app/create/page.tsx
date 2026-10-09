@@ -16,7 +16,7 @@ import { saveMintedArtwork } from "@/lib/artworkCache";
 import { hashCreationTrace, sha256Hex } from "@/lib/proof";
 
 export default function CreatorStudioPage() {
-  const { t } = useI18n();
+  const { t, L } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state, actions, handlers } = useDrawingCanvas(canvasRef);
 
@@ -49,7 +49,7 @@ export default function CreatorStudioPage() {
   const startLive = useCallback(async () => {
     setLiveError(null);
     if (!publicKey || !wallet.signMessage) {
-      setLiveError("Hãy kết nối ví hỗ trợ ký tin nhắn (ví dụ Phantom).");
+      setLiveError(L("Hãy kết nối ví hỗ trợ ký tin nhắn (ví dụ Phantom).", "Connect a wallet that can sign messages (e.g. Phantom)."));
       return;
     }
     try {
@@ -59,13 +59,13 @@ export default function CreatorStudioPage() {
       const res = await fetch("/api/live", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", creator, title: title || "Tác phẩm đang vẽ", nonce, signature: btoa(String.fromCharCode(...sig)) }),
+        body: JSON.stringify({ action: "start", creator, title: title || L("Tác phẩm đang vẽ", "Artwork in progress"), nonce, signature: btoa(String.fromCharCode(...sig)) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể bắt đầu phát");
+      if (!res.ok) throw new Error(data.error || L("Không thể bắt đầu phát", "Could not start broadcasting"));
       setLiveSessionId(data.sessionId);
     } catch (e) {
-      setLiveError(e instanceof Error ? e.message : "Không thể bắt đầu phát");
+      setLiveError(e instanceof Error ? e.message : L("Không thể bắt đầu phát", "Could not start broadcasting"));
     }
   }, [publicKey, wallet, title]);
 
@@ -93,10 +93,10 @@ export default function CreatorStudioPage() {
   const [aiChecking, setAiChecking] = useState(false);
   const [aiStage, setAiStage] = useState<AiStage | null>(null);
   const aiStageLabel: Record<AiStage, string> = {
-    preparing: "Đang chuẩn bị ảnh...",
-    "loading-model": "Đang tải mô hình AI (chỉ lần đầu)...",
-    embedding: "AI đang phân tích hình ảnh...",
-    comparing: "Đang đối chiếu với kho tác phẩm...",
+    preparing: L("Đang chuẩn bị ảnh...", "Preparing the image..."),
+    "loading-model": L("Đang tải mô hình AI (chỉ lần đầu)...", "Loading the AI model (first time only)..."),
+    embedding: L("AI đang phân tích hình ảnh...", "AI is analysing the image..."),
+    comparing: L("Đang đối chiếu với kho tác phẩm...", "Comparing with existing artworks..."),
   };
 
   const runAiSimilarityCheck = useCallback(async () => {
@@ -180,7 +180,7 @@ export default function CreatorStudioPage() {
         const result = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }, setAiStage);
         setAiCheck(result);
         if (result.matchType === "EXACT") {
-          setBlockReason(`Ảnh này trùng khớp hoàn toàn với "${result.closestMatch?.title ?? "một tác phẩm đã có"}". Không thể mint bản sao y hệt.`);
+          setBlockReason(L(`Ảnh này trùng khớp hoàn toàn với "${result.closestMatch?.title ?? "một tác phẩm đã có"}". {L("Không thể mint", "Cannot mint")} bản sao y hệt.`, `This image is an exact match for "${result.closestMatch?.title ?? "an existing artwork"}". An identical copy cannot be minted.`));
           return;
         }
         if (result.status === "HIGH_SIMILARITY" && !attestSig) {
@@ -208,7 +208,7 @@ export default function CreatorStudioPage() {
       setAttestOpen(false);
       setMintModalOpen(true);
     } catch (e) {
-      setAttestError(e instanceof Error ? e.message : "Không thể ký xác nhận");
+      setAttestError(e instanceof Error ? e.message : L("Không thể ký xác nhận", "Could not sign the confirmation"));
     }
   }, [publicKey, wallet, previewUrl]);
 
@@ -223,7 +223,7 @@ export default function CreatorStudioPage() {
       // metadata (and therefore into the creation proof) so provenance order can be proven.
       const finalCheck = await analyzeArtworkSimilarity(base64Data, { name: title, description: statement }).catch(() => null);
       if (finalCheck?.matchType === "EXACT") {
-        throw new Error("Ảnh trùng khớp hoàn toàn với tác phẩm đã có — không thể mint.");
+        throw new Error(L("Ảnh trùng khớp hoàn toàn với tác phẩm đã có — không thể mint.", "The image exactly matches an existing artwork — it cannot be minted."));
       }
       const provenanceAttributes = finalCheck?.perceptualHash
         ? [
@@ -264,13 +264,13 @@ export default function CreatorStudioPage() {
         // 1. Save to User Portfolio & Artwork Image Cache
         saveMintedArtwork({
           mintAddress: result.mintAddress,
-          title: title || "Tác phẩm MINTLY",
-          description: statement || "Tác phẩm kỹ thuật số được tạo từ MINTLY Studio.",
+          title: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
+          description: statement || L("Tác phẩm kỹ thuật số được tạo từ MINTLY Studio.", "A digital artwork created in MINTLY Studio."),
           imageUrl: base64Data,
           creator: publicKey.toBase58(),
           createdAt: Date.now(),
           signature: result.signature,
-          category: "Độc bản 1/1",
+          category: L("Độc bản 1/1", "1/1 original"),
           rarity: "rare",
           originalityScore: finalCheck?.originalityScore ?? null,
         });
@@ -283,7 +283,7 @@ export default function CreatorStudioPage() {
 
         // 2. Register into AI similarity index
         registerMintedArtworkAI(base64Data, {
-          name: title || "Tác phẩm MINTLY",
+          name: title || L("Tác phẩm MINTLY", "MINTLY artwork"),
           description: statement,
           mint: result.mintAddress,
         }).catch((err) => console.warn("Failed to register artwork in AI cache:", err));
@@ -316,7 +316,7 @@ export default function CreatorStudioPage() {
           <section className="relative flex flex-1 flex-col justify-between overflow-hidden border border-line p-6 sm:p-10">
             <div className="flex items-center justify-between font-mono-ui text-[10px] uppercase tracking-[0.18em] text-text-dim">
               <span className="flex items-center gap-2 text-accent"><span className="size-1.5 rounded-full bg-accent" />Studio</span>
-              <span>03 / Create</span>
+              <span>{L("03 / Sáng tạo", "03 / Create")}</span>
             </div>
             <div>
               <h1 className="mega text-[clamp(3rem,10vw,10rem)]">
@@ -562,12 +562,12 @@ export default function CreatorStudioPage() {
                         {aiCheck.status === "LOW_SIMILARITY"
                           ? t("ai.original")
                           : aiCheck.status === "MODERATE_SIMILARITY"
-                            ? "Độ tương đồng trung bình"
+                            ? L("Độ tương đồng trung bình", "Moderate similarity")
                             : t("ai.duplicateWarning")}
                       </span>
                     </div>
                     <span className="font-mono text-xs font-bold text-accent">
-                      {aiCheck.originalityScore ?? (100 - (aiCheck.similarity ?? 0)).toFixed(1)}% Nguyên bản
+                      {aiCheck.originalityScore ?? (100 - (aiCheck.similarity ?? 0)).toFixed(1)}% {L("Nguyên bản", "Original")}
                     </span>
                   </div>
 
@@ -588,7 +588,7 @@ export default function CreatorStudioPage() {
                   {/* Dominant Palette Swatches */}
                   {aiCheck.dominantColors && aiCheck.dominantColors.length > 0 && (
                     <div className="flex items-center justify-between rounded-xl bg-white/[0.02] p-2 border border-white/5">
-                      <span className="text-[10px] uppercase tracking-wider text-text-dim">Màu nhận diện:</span>
+                      <span className="text-[10px] uppercase tracking-wider text-text-dim">{L("Màu nhận diện:", "Dominant colours:")}</span>
                       <div className="flex items-center gap-1.5">
                         {aiCheck.dominantColors.map((hex) => (
                           <span
@@ -606,22 +606,22 @@ export default function CreatorStudioPage() {
                   {aiCheck.closestMatch && (
                     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2.5 text-[11px] text-text-dim">
                       <div className="flex justify-between">
-                        <span>Tác phẩm gần nhất:</span>
+                        <span>{L("Tác phẩm gần nhất:", "Closest artwork:")}</span>
                         <strong className="text-text">{aiCheck.closestMatch.title}</strong>
                       </div>
                       <div className="mt-1 flex justify-between text-[10px]">
-                        <span>Độ tương đồng tổng hợp:</span>
+                        <span>{L("Độ tương đồng tổng hợp:", "Overall similarity:")}</span>
                         <span className="text-accent">{aiCheck.similarity}%</span>
                       </div>
                       {aiCheck.matchType && aiCheck.matchType !== "DISTINCT" && (
                         <div className="mt-1 flex justify-between text-[10px]">
-                          <span>Loại trùng lặp:</span>
+                          <span>{L("Loại trùng lặp:", "Type of match:")}</span>
                           <span className="text-text">
                             {aiCheck.matchType === "EXACT"
-                              ? "Bản sao y hệt"
+                              ? L("Bản sao y hệt", "Exact copy")
                               : aiCheck.matchType === "NEAR_DUPLICATE"
-                                ? "Ảnh chỉnh sửa nhẹ"
-                                : "Nhái phong cách/bố cục"}
+                                ? L("Ảnh chỉnh sửa nhẹ", "Lightly edited copy")
+                                : L("Nhái phong cách/bố cục", "Style / layout imitation")}
                           </span>
                         </div>
                       )}
@@ -632,8 +632,8 @@ export default function CreatorStudioPage() {
                   <div className="grid grid-cols-4 gap-1.5 text-center">
                     {[
                       ["Hash", aiCheck.hashSimilarity],
-                      ["Bố cục", aiCheck.visualSimilarity],
-                      ["Màu", aiCheck.colorSimilarity],
+                      [L("Bố cục", "Layout"), aiCheck.visualSimilarity],
+                      [L("Màu", "Colour"), aiCheck.colorSimilarity],
                       ["AI", aiCheck.embeddingAvailable ? aiCheck.semanticSimilarity : null],
                     ].map(([label, value]) => (
                       <div key={label as string} className="rounded-lg border border-white/5 bg-white/[0.02] px-1 py-1.5">
@@ -699,11 +699,11 @@ export default function CreatorStudioPage() {
                   liveSessionId ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-white/15 text-text hover:border-white/30"
                 }`}
               >
-                {liveSessionId ? "● Đang phát trực tiếp — bấm để dừng" : "Phát trực tiếp phiên vẽ"}
+                {liveSessionId ? L("● Đang phát trực tiếp — bấm để dừng", "● Live — click to stop") : L("Phát trực tiếp phiên vẽ", "Go live while drawing")}
               </button>
               {liveSessionId && publicKey && (
                 <a href={`/live/${publicKey.toBase58()}`} target="_blank" rel="noopener noreferrer" className="block text-center text-[11px] text-accent hover:underline">
-                  Mở trang người xem
+                  {L("Mở trang người xem", "Open the viewer page")}
                 </a>
               )}
               {liveError && <p className="text-center text-[11px] text-red-300">{liveError}</p>}
@@ -723,9 +723,9 @@ export default function CreatorStudioPage() {
       {blockReason && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4" onClick={() => setBlockReason(null)}>
           <div className="glass-panel max-w-md rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <p className="font-display text-2xl text-red-300">Không thể mint</p>
+            <p className="font-display text-2xl text-red-300">{L("Không thể mint", "Cannot mint")}</p>
             <p className="mt-3 text-sm text-text-dim">{blockReason}</p>
-            <button onClick={() => setBlockReason(null)} className="mt-5 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">Đã hiểu</button>
+            <button onClick={() => setBlockReason(null)} className="mt-5 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">{L("Đã hiểu", "Got it")}</button>
           </div>
         </div>
       )}
@@ -733,24 +733,23 @@ export default function CreatorStudioPage() {
       {attestOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4">
           <div className="glass-panel max-w-md rounded-2xl p-6">
-            <p className="font-display text-2xl text-amber">Ảnh rất giống tác phẩm khác</p>
+            <p className="font-display text-2xl text-amber">{L("Ảnh rất giống tác phẩm khác", "This image closely resembles another artwork")}</p>
             <p className="mt-3 text-sm text-text-dim">
-              AI thấy ảnh này giống {Math.round(aiCheck?.similarity ?? 0)}% với &quot;{aiCheck?.closestMatch?.title ?? "một tác phẩm đã có"}&quot;. Nếu đây là tác phẩm của bạn,
-              hãy xác nhận và ký bằng ví. Chữ ký được ghi vào metadata, và nếu bị khiếu nại đạo nhái, nó là bằng chứng bạn đã cam kết.
+              {L(`AI thấy ảnh này giống ${Math.round(aiCheck?.similarity ?? 0)}% với \u201c${aiCheck?.closestMatch?.title ?? "một tác phẩm đã có"}\u201d. Nếu đây là tác phẩm của bạn, hãy xác nhận và ký bằng ví. Chữ ký được ghi vào metadata, và nếu bị khiếu nại đạo nhái, nó là bằng chứng bạn đã cam kết.`, `AI finds this image ${Math.round(aiCheck?.similarity ?? 0)}% similar to \u201c${aiCheck?.closestMatch?.title ?? "an existing artwork"}\u201d. If it is your own work, confirm and sign with your wallet. The signature is recorded in the metadata and is evidence of your commitment if a plagiarism dispute is raised.`)}
             </p>
             <label className="mt-4 flex items-start gap-2 text-sm text-text">
               <input type="checkbox" checked={attestChecked} onChange={(e) => setAttestChecked(e.target.checked)} className="mt-1" />
-              Tôi là tác giả và chịu trách nhiệm về tính nguyên bản của tác phẩm này.
+              {L("Tôi là tác giả và chịu trách nhiệm về tính nguyên bản của tác phẩm này.", "I am the author and take responsibility for the originality of this artwork.")}
             </label>
             {attestError && <p className="mt-3 text-xs text-red-300">{attestError}</p>}
             <div className="mt-5 flex gap-3">
-              <button onClick={() => setAttestOpen(false)} className="flex-1 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">Hủy</button>
+              <button onClick={() => setAttestOpen(false)} className="flex-1 rounded-full border border-white/15 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text">{L("Hủy", "Cancel")}</button>
               <button
                 onClick={confirmAttestation}
                 disabled={!attestChecked}
                 className="flex-1 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#0a0a09] disabled:opacity-40"
               >
-                Ký & tiếp tục
+                {L("Ký & tiếp tục", "Sign & continue")}
               </button>
             </div>
           </div>

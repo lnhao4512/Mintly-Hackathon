@@ -72,12 +72,17 @@ interface I18nContextValue {
   setLocale: (locale: Locale) => void;
   toggleLocale: () => void;
   t: (key: TranslationKey) => string;
+  /** Inline bilingual text: L(vietnamese, english). */
+  L: (vi: string, en: string) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("vi");
+  // Only persist after the saved choice has been read — otherwise the default "vi" overwrites it
+  // (React StrictMode runs effects twice in dev, which made the saved language reset).
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
@@ -88,25 +93,46 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore storage errors
     }
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       window.localStorage.setItem("mintly-locale", locale);
       document.documentElement.lang = locale;
     } catch {
       // Ignore storage errors
     }
-  }, [locale]);
+  }, [locale, hydrated]);
 
   const value = useMemo<I18nContextValue>(() => ({
     locale,
     setLocale: (nextLocale) => setLocaleState(nextLocale),
     toggleLocale: () => setLocaleState((current) => current === "en" ? "vi" : "en"),
     t: (key) => translations[locale]?.[key] || translations.en[key] || key,
+    L: (vi, en) => (locale === "vi" ? vi : en),
   }), [locale]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+/** Current UI locale for non-React code (reads the persisted choice; defaults to Vietnamese). */
+export function currentLocale(): Locale {
+  try {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("mintly-locale");
+      if (saved === "en" || saved === "vi") return saved;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return "vi";
+}
+
+/** Inline bilingual text for non-React code: Lg(vietnamese, english). */
+export function Lg(vi: string, en: string): string {
+  return currentLocale() === "vi" ? vi : en;
 }
 
 export function useI18n() {

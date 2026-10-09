@@ -35,7 +35,7 @@ const copy = {
 } as const;
 
 export default function OriginalityPage() {
-  const { locale } = useI18n();
+  const { locale, L } = useI18n();
   const c = copy[locale];
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,7 +70,7 @@ export default function OriginalityPage() {
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
         <PageHero
           eyebrow={c.eyebrow}
-          index="04 / Proof"
+          index={L("04 / Bằng chứng", "04 / Proof")}
           lines={[locale === "vi" ? "Kiểm tra" : "Originality", <em key="x">{locale === "vi" ? "nguyên bản" : "check"}</em>]}
           description={c.sub}
           actions={

@@ -1,4 +1,5 @@
 import { computeClipEmbedding } from "@/lib/fingerprint/embedding.client";
+import { currentLocale } from "@/lib/i18n";
 
 export interface ArtworkSimilarityResult {
   status: "LOW_SIMILARITY" | "HIGH_SIMILARITY" | "MODERATE_SIMILARITY" | "PENDING_PROVIDER" | "UNAVAILABLE";
@@ -114,7 +115,7 @@ export async function analyzeArtworkSimilarity(
   const response = await fetch("/api/ai/similarity", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ action: "analyze", ...prepared, metadata }),
+    body: JSON.stringify({ action: "analyze", ...prepared, metadata, locale: currentLocale() }),
   });
 
   if (!response.ok) {

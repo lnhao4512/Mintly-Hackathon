@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageHero } from "@/components/layout/PageHero";
+import { useI18n } from "@/lib/i18n";
 
 interface Session {
   creator: string;
@@ -13,6 +14,7 @@ interface Session {
 }
 
 export default function LiveIndexPage() {
+  const { L } = useI18n();
   const [sessions, setSessions] = useState<Session[] | null>(null);
 
   useEffect(() => {
@@ -39,14 +41,14 @@ export default function LiveIndexPage() {
       <Navbar />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-20 pt-32 sm:px-8 lg:px-12">
         <PageHero
-          eyebrow="Live"
-          index="04 / Live"
-          lines={["Drawing", <em key="n">now</em>]}
-          description="Xem nghệ sĩ vẽ theo thời gian thực. Khi tác phẩm xong, đặt giá ngay trong phiên đấu giá của họ."
+          eyebrow={L("Trực tiếp", "Live")}
+          index={L("04 / Trực tiếp", "04 / Live")}
+          lines={[L("Vẽ", "Drawing"), <em key="n">{L("trực tiếp", "now")}</em>]}
+          description={L("Xem nghệ sĩ vẽ theo thời gian thực. Khi tác phẩm xong, đặt giá ngay trong phiên đấu giá của họ.", "Watch artists draw in realtime. When the piece is done, bid in their auction right away.")}
         />
         <div className="grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-          {sessions === null && <p className="bg-bg p-8 text-text-dim">Đang tải...</p>}
-          {sessions?.length === 0 && <p className="bg-bg p-8 text-text-dim-2 sm:col-span-2 lg:col-span-3">Hiện chưa có ai phát trực tiếp. Vào Studio và bấm &quot;Phát trực tiếp&quot; để bắt đầu.</p>}
+          {sessions === null && <p className="bg-bg p-8 text-text-dim">{L("Đang tải...", "Loading...")}</p>}
+          {sessions?.length === 0 && <p className="bg-bg p-8 text-text-dim-2 sm:col-span-2 lg:col-span-3">{L("Hiện chưa có ai phát trực tiếp. Vào Studio và bấm \u201cPhát trực tiếp\u201d để bắt đầu.", "Nobody is live right now. Open the Studio and press \u201cGo live\u201d to start.")}</p>}
           {sessions?.map((s) => (
             <Link key={s.creator} href={`/live/${s.creator}`} data-cursor className="group bg-bg p-8 transition-colors hover:bg-bg-elevated">
               <span className="inline-flex items-center gap-2 font-mono-ui text-[10px] uppercase tracking-[0.16em] text-accent">

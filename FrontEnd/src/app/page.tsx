@@ -8,6 +8,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ArtworkCard, type Artwork } from "@/components/explore/ArtworkCard";
 import { ProcessVisual } from "@/components/explore/ProcessVisual";
+import { Frame3D } from "@/components/explore/Frame3D";
 import { FadeUp, LineReveal, Marquee, Parallax, useInView } from "@/components/motion/Reveal";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { useI18n } from "@/lib/i18n";
@@ -29,6 +30,8 @@ const copy = {
     stats: ["Live auctions", "Direct listings", "Highest bid", "Settled volume"],
     specimen: "Specimen",
     scanned: "Scanning originality…",
+    plateTitle: "Mona Lisa",
+    plateMeta: "Leonardo da Vinci · c. 1503",
     marquee: ["Proven by hand", "Escrowed on Solana", "10% deposit", "No-show insured", "Anti-sniping", "1 of 1"],
     processEyebrow: "How a work earns its price",
     process: [
@@ -58,6 +61,8 @@ const copy = {
     stats: ["Đấu giá đang mở", "Đang bán", "Giá cao nhất", "Đã thanh toán"],
     specimen: "Mẫu vật",
     scanned: "Đang quét nguyên bản…",
+    plateTitle: "Mona Lisa",
+    plateMeta: "Leonardo da Vinci · khoảng 1503",
     marquee: ["Vẽ bằng tay", "Ký quỹ trên Solana", "Cọc 10%", "Bảo hiểm bùng kèo", "Chống bid phút chót", "Độc bản 1/1"],
     processEyebrow: "Một tác phẩm xứng đáng với giá của nó thế nào",
     process: [
@@ -102,7 +107,7 @@ export default function ExplorePage() {
   const manifestoRef = useRef<HTMLParagraphElement>(null);
   const metaRef = useInView<HTMLDivElement>();
   const introRef = useInView<HTMLDivElement>();
-  const plateRef = useInView<HTMLDivElement>();
+  const plateRef = useInView<HTMLAnchorElement>();
 
   useEffect(() => {
     let isMounted = true;
@@ -222,8 +227,7 @@ export default function ExplorePage() {
     };
   }, [locale]);
 
-  const heroImage = featured?.image ?? "/assets/hero-artwork.png";
-  const statValues = [
+    const statValues = [
     loading ? "—" : `${stats.activeAuctions}`,
     loading ? "—" : `${stats.totalListings}`,
     loading ? "—" : stats.highestBidSol,
@@ -258,23 +262,16 @@ export default function ExplorePage() {
 
             {/* Specimen plate */}
             <div className="relative mt-10 w-full max-w-[420px] justify-self-end lg:absolute lg:right-0 lg:top-[2%] lg:mt-0 lg:w-[27%] lg:max-w-none">
-              <Parallax speed={-0.12}>
-                <Link href={featured ? `/auctions/${featured.id}` : "/auctions"} data-cursor className="block">
-                  <div ref={plateRef} style={{ "--d": "0.35s" } as React.CSSProperties} className="plate-wipe relative aspect-[4/5] overflow-hidden bg-bg-elevated scan">
-                    <Image src={heroImage} alt={featured?.title ?? "Specimen"} fill priority sizes="(max-width:1024px) 80vw, 30vw" className="object-cover" />
-                    <i className="reg left-3 top-3" />
-                    <i className="reg right-3 top-3" />
-                    <i className="reg bottom-3 left-3" />
-                    <i className="reg bottom-3 right-3" />
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-ink/90 to-transparent px-4 pb-3 pt-10 font-mono-ui text-[9px] uppercase tracking-[0.16em]">
-                      <span className="text-accent">● {c.scanned}</span>
-                      <span className="text-text-dim-2">{c.specimen}</span>
-                    </div>
+              <Parallax speed={-0.08}>
+                <Link href="/auctions" data-cursor className="block" ref={plateRef}>
+                  <div style={{ "--d": "0.35s" } as React.CSSProperties} className="plate-wipe-soft">
+                    <Frame3D src="/assets/mona-lisa-frame.png" alt={c.plateTitle} />
                   </div>
-                  <div className="mt-3 flex items-baseline justify-between border-t border-line pt-2">
-                    <span className="font-display text-lg font-light tracking-[-0.02em]">{featured?.title ?? "—"}</span>
-                    <span className="font-mono-ui text-xs text-text-dim-2">{featured ? `${featured.currentBid} SOL` : ""}</span>
+                  <div className="mt-5 flex items-baseline justify-between border-t border-line pt-2">
+                    <span className="font-display text-lg font-light tracking-[-0.02em]">{c.plateTitle}</span>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-text-dim-2">{c.plateMeta}</span>
                   </div>
+                  <p className="mt-1 font-mono-ui text-[10px] uppercase tracking-[0.14em] text-accent">● {c.scanned}</p>
                 </Link>
               </Parallax>
             </div>

@@ -15,6 +15,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { getMarketplaceProgram } from "@/utils/anchor";
+import { Lg } from "@/lib/i18n";
 import {
   WSOL_MINT,
   MARKETPLACE_FEE_BPS,
@@ -299,7 +300,7 @@ export async function createAuctionOnChain(
   instructions.forEach((i) => tx.add(i));
 
   if (!wallet.signTransaction) {
-    throw new Error("Ví không hỗ trợ ký giao dịch");
+    throw new Error(Lg("Ví không hỗ trợ ký giao dịch", "The wallet cannot sign transactions"));
   }
   const signedTx = await wallet.signTransaction(tx);
   signedTx.partialSign(escrowNftAccount);
@@ -335,7 +336,7 @@ export async function cancelListingOnChain(
 
   const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
   if (!escrowNftAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow NFT của tin đăng này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow NFT của tin đăng này trên Solana.", "The NFT escrow account for this listing was not found on Solana."));
   }
   const sellerNftAccount = await ensureAta(connection, wallet, nftMint, seller);
 
@@ -505,7 +506,7 @@ export async function payAuctionBalance(
   const escrowPaymentAccount = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
   const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
   if (!escrowPaymentAccount || !escrowNftAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.", "The escrow account for this auction was not found on Solana."));
   }
 
   const treasuryPaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, treasury, true);
@@ -551,7 +552,7 @@ export async function defaultWinnerOnChain(
 
   const escrowPaymentAccount = await findTokenAccount(connection, escrowAuthority, WSOL_MINT);
   if (!escrowPaymentAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow của phiên đấu giá này trên Solana.", "The escrow account for this auction was not found on Solana."));
   }
   const forfeiturePaymentAccount = await ensureAta(connection, wallet, WSOL_MINT, forfeitureRecipient, true);
 
@@ -591,7 +592,7 @@ export async function cancelAuctionOnChain(
 
   const escrowNftAccount = await findTokenAccount(connection, escrowAuthority, nftMint);
   if (!escrowNftAccount) {
-    throw new Error("Không tìm thấy tài khoản escrow NFT của phiên đấu giá này trên Solana.");
+    throw new Error(Lg("Không tìm thấy tài khoản escrow NFT của phiên đấu giá này trên Solana.", "The NFT escrow account for this auction was not found on Solana."));
   }
   const sellerNftAccount = await ensureAta(connection, wallet, nftMint, seller);
 
