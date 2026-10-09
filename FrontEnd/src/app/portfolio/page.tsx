@@ -1,6 +1,7 @@
 "use client";
 
 import { LineIcon } from "@/components/ui/LineIcon";
+import { RankBadge } from "@/components/ui/RankBadge";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -319,6 +320,7 @@ export default function PortfolioPage() {
                   <h1 className="font-display text-2xl text-text sm:text-4xl">
                     {t("portfolio.title")}
                   </h1>
+                  <RankBadge wallet={publicKey?.toBase58()} className="!px-2 !py-1 !text-[11px]" />
                   <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-green-400">
                     Solana Devnet
                   </span>

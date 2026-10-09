@@ -5,6 +5,8 @@
  * Auction round data itself (price, status, resale rounds) lives on-chain — see lib/data.ts.
  */
 
+import { invalidateRanks } from "@/lib/rank";
+
 export interface MintedArtworkRecord {
   mintAddress: string;
   title: string;
@@ -204,6 +206,7 @@ export function unhideArtwork(mintAddress: string, walletAddress: string): void 
 export function markArtworkAsSold(record: SoldArtworkRecord): void {
   salesCache.unshift(record);
   postJson("/api/sales", record);
+  invalidateRanks(); // a completed trade changes both parties' rank
 
   const art = getArtworkByMint(record.mintAddress);
   saveMintedArtwork({

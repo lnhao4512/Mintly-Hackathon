@@ -1,6 +1,7 @@
 "use client";
 
 import { LineIcon } from "@/components/ui/LineIcon";
+import { RankBadge } from "@/components/ui/RankBadge";
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
@@ -273,7 +274,7 @@ export default function PassportPage({ params }: { params: Promise<{ mint: strin
                   </p>
                   {originalCreator && (
                     <p className="mt-0.5 font-mono text-xs text-text-dim break-all">
-                      {L("Người tạo: ", "Creator: ")}{originalCreator}
+                      {L("Người tạo: ", "Creator: ")}{originalCreator} <RankBadge wallet={originalCreator} />
                     </p>
                   )}
                 </div>

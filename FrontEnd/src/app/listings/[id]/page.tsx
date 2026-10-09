@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, use } from "react";
+import { RankBadge } from "@/components/ui/RankBadge";
 import Image from "next/image";
 import Link from "next/link";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -177,7 +178,7 @@ export default function ListingDetailPage({
                 {listing.seller && (
                   <div className="flex justify-between">
                     <span>{t("auctions.seller")}:</span>
-                    <span className="text-text">{listing.seller.slice(0, 8)}...{listing.seller.slice(-8)}</span>
+                    <span className="flex items-center gap-2 text-text">{listing.seller.slice(0, 8)}...{listing.seller.slice(-8)} <RankBadge wallet={listing.seller} /></span>
                   </div>
                 )}
               </div>

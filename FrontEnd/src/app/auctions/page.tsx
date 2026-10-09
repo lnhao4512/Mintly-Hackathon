@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RankBadge } from "@/components/ui/RankBadge";
 import Link from "next/link";
 import Image from "next/image";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -193,7 +194,7 @@ export default function AuctionsPage() {
                       <span className={`font-mono-ui text-sm ${state === "LIVE" ? "text-accent" : "text-text"}`}>{effectiveHighestBid} SOL</span>
                       <span />
                       <span className="eyebrow truncate">
-                        {t("auctions.seller")} {auction.artist}
+                        {t("auctions.seller")} {auction.artist} <RankBadge wallet={auction.seller} />
                       </span>
                       <span className="eyebrow text-right">{isSettled ? L("Giá chốt", "Final price") : isEnded ? L("Giá cuối", "Final bid") : t("auctions.currentBid")}</span>
                     </div>

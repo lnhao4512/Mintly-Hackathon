@@ -28,6 +28,7 @@ import { placeBidOnChain, payAuctionBalance, defaultWinnerOnChain, cancelAuction
 import { saveMintedArtwork, markArtworkAsSold, isAuctionSettled, hydrateSales, NO_ARTWORK_IMAGE, mintLabel, getArtworkByMint } from "@/lib/artworkCache";
 import { useI18n } from "@/lib/i18n";
 import { ReputationBadge } from "@/components/auction/ReputationBadge";
+import { RankBadge } from "@/components/ui/RankBadge";
 import { Loading, Skeleton } from "@/components/ui/Loading";
 import { useMarketConfig } from "@/lib/useMarketConfig";
 
@@ -586,7 +587,7 @@ export default function AuctionDetailPage({
                 {auction.seller && (
                   <div className="flex justify-between border-b border-white/5 pb-2">
                     <span>{L("Tác Giả (Seller):", "Seller:")}</span>
-                    <span className="text-text truncate max-w-[200px]">{auction.seller}</span>
+                    <span className="flex items-center gap-2 text-text"><span className="max-w-[200px] truncate">{auction.seller}</span><RankBadge wallet={auction.seller} /></span>
                   </div>
                 )}
 
@@ -679,6 +680,7 @@ export default function AuctionDetailPage({
                   {auction.highestBidder && (
                     <div className="mt-2 flex items-center gap-2 text-[11px] text-text-dim">
                       <span className="font-mono">{auction.highestBidder.slice(0, 4)}…{auction.highestBidder.slice(-4)}</span>
+                      <RankBadge wallet={auction.highestBidder} />
                       <ReputationBadge wallet={auction.highestBidder} />
                     </div>
                   )}
