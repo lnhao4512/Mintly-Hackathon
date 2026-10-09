@@ -1,32 +1,32 @@
 import { MongoClient, Db } from "mongodb";
 
-const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB || "MINTLY";
-
-if (!uri) {
-  throw new Error("Missing MONGODB_URI environment variable");
-}
 
 declare global {
   // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-let clientPromise: Promise<MongoClient>;
-
-if (process.env.NODE_ENV === "development") {
-  // Reuse the client across HMR reloads in dev
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = new MongoClient(uri).connect();
+// Connect lazily: `next build` imports API route modules to collect page data, and must not
+// fail (or open connections) when MONGODB_URI is only available at runtime.
+function getClient(): Promise<MongoClient> {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("Missing MONGODB_URI environment variable");
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  clientPromise = new MongoClient(uri).connect();
+  // Reuse one client per server instance (dev HMR reloads and warm serverless invocations)
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = new MongoClient(uri).connect().catch((err) => {
+      global._mongoClientPromise = undefined; // allow retry after a failed connect
+      throw err;
+    });
+  }
+  return global._mongoClientPromise;
 }
 
 export async function getDb(): Promise<Db> {
-  const client = await clientPromise;
+  const client = await getClient();
   return client.db(dbName);
 }
 
-export default clientPromise;
+export default getClient;

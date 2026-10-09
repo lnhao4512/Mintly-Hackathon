@@ -163,19 +163,19 @@ export function CreateListingModal({ artwork, isOpen, onClose }: CreateListingMo
           <div className="grid gap-3 rounded-2xl border border-line bg-accent/10 p-4 text-sm sm:grid-cols-3">
             <div>
               <div className="text-xs font-semibold text-accent">{L("Người mua trả", "Buyer pays")}</div>
-              <div className="mt-1 font-mono text-base font-bold text-text">
+              <div className="mt-1 font-mono text-base font-bold text-black">
                 {Number.isFinite(parsedPrice) ? parsedPrice.toFixed(2) : "0.00"} SOL
               </div>
             </div>
             <div>
               <div className="text-xs font-semibold text-accent">{L("Phí sàn 5%", "Platform fee 5%")}</div>
-              <div className="mt-1 font-mono text-base font-bold text-text">
+              <div className="mt-1 font-mono text-base font-bold text-black">
                 {feeSol.toFixed(3)} SOL
               </div>
             </div>
             <div>
               <div className="text-xs font-semibold text-accent">{L("Seller nhận", "Seller receives")}</div>
-              <div className="mt-1 font-mono text-base font-bold text-text">
+              <div className="mt-1 font-mono text-base font-bold text-black">
                 {sellerReceives.toFixed(3)} SOL
               </div>
             </div>
